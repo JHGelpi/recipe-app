@@ -54,8 +54,8 @@ supabase/
   tests/functions/      /upload HTTP tests
   seed.sql              two households for local dev and tests
 powersync/
-  config.yaml           service config for local Docker
-  sync-rules.yaml       household-scoped sync rules
+  service.yaml          service config for local Docker
+  sync-config.yaml      household-scoped sync config (Sync Streams)
 e2e/                    Playwright specs
 docker-compose.yml      PowerSync service and its storage database
 .github/workflows/ci.yml
@@ -106,9 +106,11 @@ A trigger on insert into `auth.users` runs a `security definer` function that, i
 
 ### Claims in the token
 
-A Supabase custom access-token hook (a Postgres function executable only by `supabase_auth_admin`) looks up the user's membership and adds top-level `household_id` and `role` claims to every JWT. RLS, sync rules, and the Edge Function read only those two claims.
+A Supabase custom access-token hook (a Postgres function executable only by `supabase_auth_admin`) looks up the user's membership and adds top-level `household_id` and `household_role` claims to every JWT. RLS, the sync config, and the app read only those two claims.
 
-Two SQL helpers, `auth_household_id()` and `auth_role()`, read the claims from `auth.jwt()` and are used by all policies.
+The role claim is named `household_role`, not `role`: Supabase reserves the JWT's `role` claim for the Postgres role (`authenticated`), and overwriting it would break database access. This corrects the wording in ADR-0006.
+
+Two SQL helpers, `auth_household_id()` and `auth_household_role()`, read the claims from `auth.jwt()` and are used by all policies.
 
 **Recorded limitation:** a role change takes effect only at the next token refresh (up to an hour by default). Nothing changes roles in the skeleton; sub-project 6 must handle it.
 
@@ -116,8 +118,8 @@ Two SQL helpers, `auth_household_id()` and `auth_role()`, read the claims from `
 
 | Table | Select | Insert / update | Delete |
 |---|---|---|---|
-| `recipes` | `household_id = auth_household_id()` | `household_id = auth_household_id()` and `auth_role() in ('admin','member')`, as both `using` and `with check` | none |
-| `households` | `id = auth_household_id()` | update only, `id = auth_household_id()` and `auth_role() = 'admin'` | none |
+| `recipes` | `household_id = auth_household_id()` | `household_id = auth_household_id()` and `auth_household_role() in ('admin','member')`, as both `using` and `with check` | none |
+| `households` | `id = auth_household_id()` | update only, `id = auth_household_id()` and `auth_household_role() = 'admin'` | none |
 | `memberships` | `household_id = auth_household_id()` | none from clients | none |
 
 Because `with check` applies to the row after the change, a recipe cannot be moved to another household by editing `household_id`.
@@ -136,18 +138,18 @@ Two households. Household A: an admin, a member, a viewer. Household B: an admin
 
 ## 5. Sync
 
-### Sync rules (`powersync/sync-rules.yaml`)
+### Sync config (`powersync/sync-config.yaml`)
 
-One bucket per household, parameterised on the token's `household_id` claim, selecting that household's `recipes` rows (all standard columns plus `title`), including soft-deleted rows.
+Written as PowerSync **Sync Streams**, which PowerSync now recommends over the older Sync Rules format. One auto-subscribed stream filtered on the token's `household_id` claim, selecting that household's `recipes` rows (all standard columns plus `title`), including soft-deleted rows.
 
-**RLS ↔ sync-rule mirror (rule 6):**
+**RLS ↔ sync mirror (rule 6):**
 
 | | Condition |
 |---|---|
 | `recipes` select policy | `household_id = auth_household_id()` |
-| `recipes` sync bucket | `household_id = <token household_id claim>` |
+| `recipes` stream query | `household_id = auth.parameter('household_id')` |
 
-`households` and `memberships` are not synced in the skeleton; the app reads `household_id` and `role` from the session token.
+`households` and `memberships` are not synced in the skeleton; the app reads `household_id` and `household_role` from the session token.
 
 The migration creates a logical replication publication containing `recipes`. The local PowerSync service connects to the local Supabase Postgres and verifies Supabase-issued JWTs.
 
@@ -158,13 +160,14 @@ The migration creates a logical replication publication containing `recipes`. Th
 | **Session** | Email-code sign-in, token refresh, sign-out; exposes `household_id` and `role` from the token | Supabase auth SDK |
 | **Database** | Opens the local SQLite database and declares its schema. The one platform-specific file: `.web.ts` now, `.native.ts` later. | PowerSync web SDK |
 | **Connector** | Supplies PowerSync with the current token; sends queued local writes to `/upload` | Session, Database |
-| **Recipe Repository** | `watchRecipes()` (live list, excluding soft-deleted) and `createRecipe(title)`; generates the UUID and stamps `household_id` from the session | Database, Session |
+| **Recipe Repository** | `useRecipes()` (live list, excluding soft-deleted) and `createRecipe(title)`; generates the UUID and stamps `household_id` from the session. Never writes server-owned fields (`created_at`, `updated_at`, `updated_by`). | Database, Session |
 | **Screens** | Sign-in (email, then code); recipe list with add form, sync status line, and sign-out | Session, Repository |
 
 Rules applied:
 
 - Screens talk only to the Repository and Session, never to Supabase data APIs or the network directly (rule 3).
-- The add form is not rendered when `role` is `viewer` (rule 4).
+- The add form is not rendered when `household_role` is `viewer` (rule 4).
+- A signed-in user whose token has no household claims sees a message saying so, not an empty list.
 - The status line shows online/offline and the count of unsynced changes.
 - Sign-out disconnects sync and wipes the local database, so the next user on the same browser cannot see the previous household's data.
 - The app bundle contains only the Supabase URL, anon key, and PowerSync URL (rule 2).
@@ -176,11 +179,11 @@ Rules applied:
 
 ## 7. The `/upload` Edge Function
 
-Request: `POST /functions/v1/upload` with the user's JWT and a JSON body `{ "ops": [ { "op": "put" | "patch" | "delete", "table": string, "id": uuid, "data": object } ] }`.
+Request: `POST /functions/v1/upload` with the user's JWT and a JSON body `{ "ops": [ { "op": "put" | "patch" | "delete", "table": string, "id": uuid, "data": object } ] }`, at most 500 ops.
 
 Behaviour:
 
-1. Rejects a missing or invalid token with `401`.
+1. Rejects a missing or invalid token with `401`, and a malformed body or more than 500 ops with `400` (nothing applied).
 2. Creates a database client carrying the caller's token, so RLS governs every statement.
 3. For each op, in order:
    - `table` must be on the allow-list (`recipes` only); otherwise the op is rejected.
@@ -198,6 +201,9 @@ Behaviour:
 | `applied` | Mark the change complete. |
 | `rejected` | Mark the change complete (dropping it) and log the reason. The next sync restores the server's version locally. |
 | `401` | Refresh the session and retry; if refresh fails, sign out. |
+| Any other `4xx` | The server will never accept the batch: mark it complete (dropping it) and log. |
+
+The Connector sends only client-owned fields (`household_id`, `title`, `deleted_at`); server-owned fields never leave the device.
 
 Dropping rejected changes prevents one bad change from blocking the queue. Showing the user a message for a rejected change is deferred to sub-project 2.
 
