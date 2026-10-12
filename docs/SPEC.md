@@ -1,0 +1,140 @@
+# Product Specification
+
+> Status: **Draft v0.1** · Last updated: 2026-10-12
+> Source of truth for *what* we build. `ARCHITECTURE.md` covers *how*.
+
+## 1. Vision
+
+A shared household cookbook that pulls every recipe out of the places it's scattered (Google Drive, iCloud, Notes, cookbooks, websites), cleans it up automatically with AI, and makes it instantly findable — then helps you shop and plan from it.
+
+**Core problem:** recipes are fragmented across many tools, inconsistently formatted, and hard to search.
+
+**Success looks like:** every recipe the household cares about lives in one place, can be found in seconds (e.g. "all chicken recipes"), and is easy to cook from on a phone.
+
+## 2. Users & tenancy
+
+- **Tenant = household.** Each household has its own private recipe collection. Data never crosses households except through explicit sharing.
+- **Each user belongs to exactly one household in v1** *(assumption — confirm)*.
+
+| Role | Can do |
+|---|---|
+| **Admin** | Everything a Member can, plus invite/remove users and change roles |
+| **Member** | Add, import, edit, delete recipes; use AI features |
+| **Viewer** | Browse, search, cook, share recipes out. No edits. |
+
+Outside the household:
+- **Recipient** — receives a shared recipe (PDF/text or import link). May or may not have an account.
+- **New household** — someone invited to use the app with their own separate household.
+
+## 3. Scope & phasing
+
+| Phase | Theme | Contents |
+|---|---|---|
+| **1 (v1)** | Recipe repository | Import, AI parsing, edit, tags, search, cook mode, substitutions, sharing, offline |
+| 2 | Shopping list | Add ingredients from recipes, merge duplicates, group by aisle |
+| 3 | Meal planning | Weekly dinner menu feeding the shopping list |
+| Future | Desktop app; natural-language / semantic search | |
+
+**Platforms (v1):** iOS and Android. Desktop later.
+
+**Out of scope (v1):** bulk import/migration; importing from social video itself (only recipes written in post comments, via paste); public recipe community; multiple households per user.
+
+## 4. Core user journeys (Phase 1)
+
+1. **Capture from photo** — snap or pick one or more photos of a cookbook page or recipe card → AI extracts the recipe → review → save.
+2. **Import a link** — share a URL from the browser to the app (or paste it) → recipe arrives without blog clutter → review → save.
+3. **Paste text** — paste from Notes or a social media comment → structured recipe → review → save.
+4. **Find** — search "chicken" → every recipe with chicken in the title, ingredients, or tags; combine with tag filters.
+5. **Cook** — open a recipe → cook mode keeps the screen awake, scales servings, offers substitutions.
+6. **Share out** — send a recipe as a formatted PDF or text by text message/email, or send an import link so the recipient saves a copy to their own household.
+7. **Invite** — Admin invites a family member to the household, or invites someone to start their own household.
+
+## 5. Functional requirements (Phase 1)
+
+Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(proposed)* were suggested during design and still need confirmation.
+
+### Households & users
+| ID | Requirement | Pri |
+|---|---|---|
+| FR-1 | Sign up / sign in on iOS and Android | M |
+| FR-2 | Creating an account creates a household; creator becomes Admin | M |
+| FR-3 | Admin invites people into the household by text or email link | M |
+| FR-4 | Roles: Admin, Member, Viewer with permissions per §2 | M |
+| FR-5 | Admin can change roles and remove members | M |
+| FR-6 | Any user can invite someone to create their own household | S |
+
+### Capture & import
+| ID | Requirement | Pri |
+|---|---|---|
+| FR-7 | Import from photo (camera or library), multiple pages per recipe | M |
+| FR-8 | Import from URL via OS share sheet or paste | M |
+| FR-9 | Import from pasted text (incl. social media comments) | M |
+| FR-10 | AI parses: title, ingredients (qty / unit / item / prep note), steps, servings, prep & cook time, suggested tags | M |
+| FR-11 | Review screen before save; low-confidence fields highlighted | M |
+| FR-12 | Original photo(s) or URL stored and viewable on the recipe | M |
+| FR-13 | Re-parse from original *(proposed)* | S |
+| FR-14 | Duplicate warning on import *(proposed)* | C |
+
+### Recipe management
+| ID | Requirement | Pri |
+|---|---|---|
+| FR-15 | Edit all fields; add own photo; personal notes | M |
+| FR-16 | Tags: free-form plus AI suggestions | M |
+| FR-17 | Favorites *(proposed)* | S |
+| FR-18 | 30-day trash before permanent delete *(proposed)* | S |
+
+### Search
+| ID | Requirement | Pri |
+|---|---|---|
+| FR-19 | Search by title, ingredient, tag; combinable filters | M |
+| FR-20 | Search works offline | M |
+
+### Cooking
+| ID | Requirement | Pri |
+|---|---|---|
+| FR-21 | Cook mode: screen awake, large text, step-by-step, checkable ingredients | M |
+| FR-22 | Scale servings *(proposed)* | S |
+| FR-23 | US ↔ metric conversion *(proposed)* | C |
+| FR-24 | AI substitutions per ingredient, with amounts and effect on dish | M |
+| FR-25 | Save a substitution to the recipe as note/variant *(proposed)* | C |
+
+### Sharing out
+| ID | Requirement | Pri |
+|---|---|---|
+| FR-26 | Share recipe as formatted PDF or plain text via OS share sheet | M |
+| FR-27 | Share import link; recipient saves a copy into own household (sign-up prompt if needed) | M |
+
+### Offline & sync
+| ID | Requirement | Pri |
+|---|---|---|
+| FR-28 | View, search, create, edit offline | M |
+| FR-29 | Imports captured offline are queued and parsed when online | M |
+| FR-30 | Sync across household devices; last save wins | M |
+
+## 6. Non-functional requirements
+
+> **Draft — not yet reviewed.** Targets are starting proposals.
+
+| ID | Area | Requirement |
+|---|---|---|
+| NFR-1 | Tenant isolation | No user can read or write another household's data. Enforced in the database, not only in app code. Covered by automated tests. |
+| NFR-2 | Privacy | Recipe photos and data are private to the household by default. Shared links expose only the shared recipe snapshot. |
+| NFR-3 | Security | No secrets (AI keys, service keys) on the device. All AI and URL-fetch calls run server-side. |
+| NFR-4 | Offline | All read, search, create, edit work with no connectivity. AI features degrade gracefully with a clear message. |
+| NFR-5 | Sync latency | Online edits visible on other household devices within ~10 s. |
+| NFR-6 | Performance | Cold start < 2 s on a mid-range phone; local search < 300 ms over 2,000 recipes; photo parse < 30 s p90. |
+| NFR-7 | AI cost | Per-household monthly AI usage tracked and capped (quota configurable). |
+| NFR-8 | Availability | Backend 99.5% monthly (best effort for a family-scale app). |
+| NFR-9 | Data durability | Daily backups with point-in-time recovery; no data loss on device reinstall once synced. |
+| NFR-10 | Portability | Household can export all recipes (JSON + PDFs). |
+| NFR-11 | Accessibility | Supports OS dynamic text size, VoiceOver/TalkBack, WCAG AA contrast. |
+| NFR-12 | Store compliance | In-app account deletion; Sign in with Apple offered on iOS if other social sign-in is offered. |
+| NFR-13 | Attribution | Imported web recipes retain source URL and author attribution. |
+
+## 7. Open questions
+
+1. Confirm one-household-per-user for v1.
+2. Confirm or cut the *(proposed)* FRs.
+3. Review NFR targets, especially AI quota per household.
+4. Working app name.
+5. Monetization, if any, once other households join (affects AI quota design).
