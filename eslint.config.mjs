@@ -1,0 +1,37 @@
+import js from '@eslint/js';
+import tseslint from 'typescript-eslint';
+
+export default tseslint.config(
+  {
+    ignores: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/.expo/**',
+      '**/expo-env.d.ts',
+      'apps/mobile/public/@powersync/**',
+      'playwright-report/**',
+      'test-results/**',
+    ],
+  },
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+  { rules: { '@typescript-eslint/no-explicit-any': 'error' } },
+  {
+    files: ['**/*.js', '**/*.cjs'],
+    languageOptions: {
+      globals: { module: 'writable', require: 'readonly', __dirname: 'readonly' },
+    },
+    rules: { '@typescript-eslint/no-require-imports': 'off' },
+  },
+  {
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        process: 'readonly',
+        console: 'readonly',
+        fetch: 'readonly',
+        setTimeout: 'readonly',
+      },
+    },
+  },
+);

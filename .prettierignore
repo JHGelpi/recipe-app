@@ -1,0 +1,10 @@
+pnpm-lock.yaml
+dist
+.expo
+apps/mobile/public/@powersync
+playwright-report
+test-results
+supabase/.temp
+supabase/.branches
+.superpowers
+*.md
