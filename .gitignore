@@ -46,3 +46,10 @@ Thumbs.db
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# PowerSync worker assets (copied from node_modules by `copy-assets`)
+apps/mobile/public/@powersync/
+
+# Playwright
+playwright-report/
+test-results/
