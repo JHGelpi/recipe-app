@@ -115,7 +115,7 @@ pnpm test:e2e          # Playwright against the proxy (needs dev:backend)
 pnpm lint && pnpm typecheck
 ```
 
-`pnpm dev:web` runs on a different origin from the proxy, so the API, auth and sync services accept the dev origin through a CORS allow-list set by environment variable. The built app served by the proxy is same-origin and needs no CORS.
+`pnpm dev:web` runs on a different origin from the proxy, so the proxy answers cross-origin requests for one dev origin set by environment variable (`CORS_DEV_ORIGIN`), in front of the API, auth and sync services alike. The built app served by the proxy is same-origin and needs no CORS.
 
 ### Environment note
 
@@ -240,7 +240,7 @@ Request: `POST /api/upload` with the user's JWT and a JSON body `{ "ops": [ { "o
 
 Behaviour:
 
-1. Rejects a missing or invalid token with `401`, and a malformed body or more than 500 ops with `400` (nothing applied).
+1. Rejects a missing or invalid token with `401` (checked before the body is read), a malformed body or more than 500 ops with `400`, and a body over 1 MB with `413` (nothing applied in any of these).
 2. Runs the batch through `asUser`, so RLS governs every statement.
 3. For each op, in order, inside its own savepoint so one refusal does not undo the others:
    - `table` must be on the allow-list (`recipes` only); otherwise the op is rejected.
