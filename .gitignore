@@ -6,8 +6,6 @@ node_modules/
 .env
 .env.*
 !.env.example
-supabase/.env
-supabase/functions/.env
 
 # Expo / React Native
 .expo/
@@ -21,10 +19,6 @@ android/
 *.key
 *.mobileprovision
 *.orig.*
-
-# Supabase local
-supabase/.branches/
-supabase/.temp/
 
 # Build & test output
 build/

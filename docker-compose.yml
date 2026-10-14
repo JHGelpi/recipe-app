@@ -1,0 +1,103 @@
+# The whole stack. The same file runs locally and on the production host;
+# only the values in .env differ. `--profile dev` adds the mail catcher.
+name: recipe-app
+
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    command: ['postgres', '-c', 'wal_level=logical']
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run pnpm env:init}
+      APP_OWNER_PASSWORD: ${APP_OWNER_PASSWORD:?run pnpm env:init}
+      API_LOGIN_PASSWORD: ${API_LOGIN_PASSWORD:?run pnpm env:init}
+      AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD:?run pnpm env:init}
+      POWERSYNC_REPL_PASSWORD: ${POWERSYNC_REPL_PASSWORD:?run pnpm env:init}
+      POWERSYNC_STORAGE_PASSWORD: ${POWERSYNC_STORAGE_PASSWORD:?run pnpm env:init}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      # Loopback only: for the test suites and psql on this machine.
+      - '127.0.0.1:${DB_HOST_PORT:-54329}:5432'
+    healthcheck:
+      # Over TCP on purpose: the first-boot init server listens only on the
+      # socket, so this stays unhealthy until init has finished.
+      test: ['CMD-SHELL', 'pg_isready -h 127.0.0.1 -U postgres -d app']
+      interval: 2s
+      timeout: 5s
+      retries: 60
+
+  auth:
+    image: supabase/gotrue:v2.197.0
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      PORT: 9999
+      API_EXTERNAL_URL: ${PUBLIC_URL}/auth
+      GOTRUE_SITE_URL: ${PUBLIC_URL}
+      GOTRUE_DB_DRIVER: postgres
+      DATABASE_URL: postgres://supabase_auth_admin:${AUTH_DB_PASSWORD}@db:5432/app
+      DB_NAMESPACE: auth
+      GOTRUE_JWT_SECRET: ${JWT_SECRET:?run pnpm env:init}
+      GOTRUE_JWT_KEYS: ${JWT_KEYS:-[]}
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_DISABLE_SIGNUP: 'false'
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: 'true'
+      GOTRUE_EXTERNAL_PHONE_ENABLED: 'false'
+      GOTRUE_MAILER_AUTOCONFIRM: 'false'
+      GOTRUE_MAILER_OTP_LENGTH: 6
+      GOTRUE_MAILER_OTP_EXP: 3600
+      GOTRUE_MAILER_SUBJECTS_MAGIC_LINK: Your sign-in code
+      GOTRUE_MAILER_SUBJECTS_CONFIRMATION: Your sign-in code
+      GOTRUE_MAILER_TEMPLATES_MAGIC_LINK: http://proxy:8080/email-templates/otp.html
+      GOTRUE_MAILER_TEMPLATES_CONFIRMATION: http://proxy:8080/email-templates/otp.html
+      GOTRUE_SMTP_HOST: ${SMTP_HOST}
+      GOTRUE_SMTP_PORT: ${SMTP_PORT}
+      GOTRUE_SMTP_USER: ${SMTP_USER}
+      GOTRUE_SMTP_PASS: ${SMTP_PASS}
+      GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_FROM}
+      GOTRUE_SMTP_SENDER_NAME: Recipes
+      GOTRUE_SMTP_MAX_FREQUENCY: ${AUTH_EMAIL_MAX_FREQUENCY:-60s}
+      GOTRUE_RATE_LIMIT_EMAIL_SENT: ${AUTH_RATE_LIMIT:-30}
+      GOTRUE_RATE_LIMIT_OTP: ${AUTH_RATE_LIMIT:-30}
+      GOTRUE_RATE_LIMIT_VERIFY: ${AUTH_RATE_LIMIT:-30}
+      GOTRUE_RATE_LIMIT_TOKEN_REFRESH: ${AUTH_RATE_LIMIT:-30}
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://127.0.0.1:9999/health']
+      interval: 2s
+      timeout: 5s
+      retries: 60
+
+  proxy:
+    build:
+      context: .
+      dockerfile: deploy/proxy.Dockerfile
+    restart: unless-stopped
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:8080}
+      CORS_DEV_ORIGIN: ${CORS_DEV_ORIGIN:-http://cors-disabled.invalid}
+    ports:
+      - '${PROXY_PORT:-8080}:8080'
+    healthcheck:
+      test:
+        ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://127.0.0.1:8080/healthz']
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  mail:
+    image: axllent/mailpit:v1.31.5
+    profiles: [dev]
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:${MAIL_HOST_PORT:-8025}:8025'
+
+volumes:
+  db_data:

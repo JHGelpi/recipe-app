@@ -1,0 +1,65 @@
+{
+	admin off
+}
+
+# Lets the one configured dev origin (the Expo dev server) call the stack.
+# The built app is same-origin and never sends these requests.
+(dev_cors) {
+	@preflight {
+		method OPTIONS
+		header Origin {$CORS_DEV_ORIGIN:http://cors-disabled.invalid}
+	}
+	@from_dev header Origin {$CORS_DEV_ORIGIN:http://cors-disabled.invalid}
+
+	handle @preflight {
+		header Access-Control-Allow-Origin {$CORS_DEV_ORIGIN:http://cors-disabled.invalid}
+		header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+		header Access-Control-Allow-Headers {http.request.header.Access-Control-Request-Headers}
+		header Access-Control-Max-Age 600
+		header Vary Origin
+		respond 204
+	}
+	# defer: set after the upstream answers, replacing any value it sent.
+	header @from_dev {
+		defer
+		Access-Control-Allow-Origin {$CORS_DEV_ORIGIN:http://cors-disabled.invalid}
+		Vary Origin
+	}
+}
+
+{$SITE_ADDRESS::8080} {
+	encode zstd gzip
+
+	# route keeps these in the order written.
+	route {
+		import dev_cors
+
+		handle /healthz {
+			respond "ok" 200
+		}
+		handle_path /auth/* {
+			reverse_proxy auth:9999
+		}
+		handle /api/* {
+			# A coarse cap; the API enforces its exact 1 MB limit itself.
+			request_body {
+				max_size 4MB
+			}
+			reverse_proxy api:3000
+		}
+		handle_path /sync/* {
+			reverse_proxy sync:8080 {
+				flush_interval -1
+			}
+		}
+		handle /email-templates/* {
+			root * /srv
+			file_server
+		}
+		handle {
+			root * /srv/web
+			try_files {path} /index.html
+			file_server
+		}
+	}
+}

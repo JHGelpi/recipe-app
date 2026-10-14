@@ -1,0 +1,12 @@
+{
+  "name": "@recipe-app/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "jose": "^6.2.12"
+  }
+}

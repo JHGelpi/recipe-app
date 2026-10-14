@@ -1,6 +1,6 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { env } from '../../../test-support/env';
-import { watchMailbox } from '../../../test-support/mail';
+import { AuthClient } from '@supabase/auth-js';
+import { env } from './env';
+import { watchMailbox } from './mail';
 
 export const SEED = {
   adminA: 'admin-a@example.test',
@@ -11,7 +11,6 @@ export const SEED = {
 
 export type Actor = {
   email: string;
-  client: SupabaseClient;
   accessToken: string;
   userId: string;
   householdId: string | null;
@@ -20,14 +19,17 @@ export type Actor = {
 
 /** Signs in through the real email-code flow, so the token hook runs. */
 export async function signInFresh(email: string): Promise<Actor> {
-  const client = createClient(env.supabaseUrl, env.anonKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
+  const client = new AuthClient({
+    url: env.authUrl,
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false,
   });
   const mailbox = await watchMailbox(env.mailUrl, email);
-  const requested = await client.auth.signInWithOtp({ email });
+  const requested = await client.signInWithOtp({ email });
   if (requested.error) throw requested.error;
   const code = await mailbox.nextCode();
-  const verified = await client.auth.verifyOtp({ email, token: code, type: 'email' });
+  const verified = await client.verifyOtp({ email, token: code, type: 'email' });
   if (verified.error || !verified.data.session) {
     throw verified.error ?? new Error(`No session for ${email}`);
   }
@@ -37,7 +39,6 @@ export async function signInFresh(email: string): Promise<Actor> {
   ) as { sub: string; household_id?: string; household_role?: string };
   return {
     email,
-    client,
     accessToken,
     userId: payload.sub,
     householdId: payload.household_id ?? null,

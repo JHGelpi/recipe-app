@@ -1,11 +1,5 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": { "types": ["node"] },
-  "include": [
-    "*.config.ts",
-    "test-support",
-    "supabase/tests",
-    "e2e",
-    "apps/mobile/src/**/*.test.ts"
-  ]
+  "include": ["*.config.ts", "test-support", "e2e", "apps/mobile/src/**/*.test.ts"]
 }
