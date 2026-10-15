@@ -69,11 +69,35 @@ services:
       GOTRUE_RATE_LIMIT_OTP: ${AUTH_RATE_LIMIT:-30}
       GOTRUE_RATE_LIMIT_VERIFY: ${AUTH_RATE_LIMIT:-30}
       GOTRUE_RATE_LIMIT_TOKEN_REFRESH: ${AUTH_RATE_LIMIT:-30}
+      GOTRUE_HOOK_CUSTOM_ACCESS_TOKEN_ENABLED: 'true'
+      GOTRUE_HOOK_CUSTOM_ACCESS_TOKEN_URI: pg-functions://postgres/public/custom_access_token_hook
     healthcheck:
       test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://127.0.0.1:9999/health']
       interval: 2s
       timeout: 5s
       retries: 60
+
+  migrate:
+    image: ghcr.io/amacneil/dbmate:2.36.0
+    restart: 'no'
+    depends_on:
+      db:
+        condition: service_healthy
+      # GoTrue creates auth.users, which our migration references.
+      auth:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://app_owner:${APP_OWNER_PASSWORD}@db:5432/app?sslmode=disable
+    volumes:
+      - ./db/migrations:/db/migrations:ro
+    command:
+      - --no-dump-schema
+      - --migrations-dir
+      - /db/migrations
+      # Kept out of the public schema so the RLS coverage guard sees only our tables.
+      - --migrations-table
+      - dbmate.schema_migrations
+      - migrate
 
   proxy:
     build:

@@ -1711,7 +1711,7 @@ git commit -m "feat(infra): Compose stack with Postgres, GoTrue, and proxy; toke
 
 ---
 
-### Task 4: Database, tenancy, `asUser`, and the isolation suite
+### Task 4: Database, tenancy, `asUser`, and the isolation suite (complete)
 
 **Files:**
 - Create: `db/migrations/20261013000000_create_households_memberships_recipes.sql`, `db/seed.sql`
@@ -2691,6 +2691,7 @@ Likely first-run problems:
 | Claims are `null` for every user | The hook is not enabled or not executable: confirm the two `GOTRUE_HOOK_*` lines, check `docker compose logs auth` for a hook error, and confirm the `grant execute ... to supabase_auth_admin` line ran. |
 | Sign-in fails with a hook error mentioning `permission denied for function` | `supabase_auth_admin` lacks `usage` on schema `public`; the grant is in the migration, so confirm `migrate` exited 0. |
 | A refusal test gets a code other than `42501` | Print the error. `42P01` (no such table) means a typo; a missing-grant refusal and an RLS refusal are both `42501`. |
+| `pnpm db:reset` stops with `container recipe-app-migrate-1 exited (0)` | Expected until Task 5. `up --wait` (Compose v5.3.1) fails on a one-shot service that exits 0 unless another service depends on it with `service_completed_successfully`; Task 5's `api` does. Until then confirm `migrate` exited 0 and run `pnpm db:seed` by hand. |
 
 - [ ] **Step 10: Run all checks and commit**
 
