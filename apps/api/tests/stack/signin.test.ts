@@ -14,7 +14,10 @@ describe('the auth service', () => {
     expect(decodeProtectedHeader(actor.accessToken).alg).toBe('ES256');
     const claims = await verify(actor.accessToken);
     expect(claims.sub).toBe(actor.userId);
-    expect(claims.aud).toBe('authenticated');
+    // With the token hook on, GoTrue v2.197.0 sends aud as ["authenticated"]
+    // in the first token after it starts and as a string after that. Both are
+    // valid JWT; the verifier has already checked the audience.
+    expect([claims.aud].flat()).toEqual(['authenticated']);
   });
 
   it('publishes its public key and never the private half', async () => {

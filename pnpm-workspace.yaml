@@ -1,6 +1,10 @@
 packages:
   - apps/*
   - packages/*
+# Install scripts are declined explicitly; an undecided one fails the install
+# in Docker. esbuild's binary comes from its @esbuild/<platform> package.
+allowBuilds:
+  esbuild: false
 minimumReleaseAgeExclude:
   - '@expo/cli@57.0.29'
   - '@expo/fingerprint@0.20.14'

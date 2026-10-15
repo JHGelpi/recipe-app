@@ -99,6 +99,24 @@ services:
       - dbmate.schema_migrations
       - migrate
 
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      auth:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      PORT: 3000
+      DATABASE_URL: postgres://api_login:${API_LOGIN_PASSWORD}@db:5432/app
+      JWT_JWKS_URL: http://auth:9999/.well-known/jwks.json
+      JWT_AUDIENCE: authenticated
+
   proxy:
     build:
       context: .

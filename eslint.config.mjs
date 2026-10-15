@@ -39,4 +39,22 @@ export default tseslint.config(
       },
     },
   },
+  {
+    // asUser is the only database entry point in the API (spec §13).
+    files: ['apps/api/src/**/*.ts'],
+    ignores: ['apps/api/src/db/asUser.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'postgres',
+              message: 'Go through asUser in src/db/asUser.ts; do not open your own connection.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 );

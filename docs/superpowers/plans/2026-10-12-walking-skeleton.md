@@ -2705,7 +2705,7 @@ git commit -m "feat(db): households, memberships, recipes with RLS, asUser, and 
 
 ---
 
-### Task 5: The `/api/upload` endpoint and the API container
+### Task 5: The `/api/upload` endpoint and the API container (complete)
 
 **Files:**
 - Create: `apps/api/src/upload/ops.ts`, `apps/api/src/app.ts`, `apps/api/src/config.ts`, `apps/api/src/server.ts`
@@ -3450,6 +3450,7 @@ Expected: the `api` image builds, `api` becomes healthy, and the suite PASSES.
 | Symptom | Fix |
 |---|---|
 | The image build fails at `pnpm install` with a lockfile error | Run `pnpm install` on the host so `pnpm-lock.yaml` includes `apps/api`, commit it, rebuild. |
+| The image build fails at `pnpm install` with `ERR_PNPM_IGNORED_BUILDS` (esbuild) | pnpm 12 only warns on the host but fails in the image. Record the decision with `pnpm approve-builds '!esbuild'` (writes `allowBuilds` to `pnpm-workspace.yaml`); the binary comes from esbuild's platform package, so its install script is not needed. |
 | The container exits with `Dynamic require` or a module-format error | A dependency did not bundle as CommonJS. Read the message; mark that one package `--external:<name>` in the build script and copy its folder from the build stage's `node_modules` into the runtime image. |
 | `api` unhealthy; log shows `password authentication failed` | The database volume predates the current `.env`. `pnpm db:reset`. |
 | Every request `401`; log is quiet | The API cannot verify: `docker compose exec api node -e "fetch('http://auth:9999/.well-known/jwks.json').then(r=>r.text()).then(console.log)"` must print the key set. |
