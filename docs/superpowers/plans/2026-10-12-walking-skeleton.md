@@ -791,7 +791,7 @@ git commit -m "feat(app): Expo web shell with PowerSync browser database (FR-28)
 
 ---
 
-### Task 3: Compose stack foundation and token verification (risk gate)
+### Task 3: Compose stack foundation and token verification (risk gate) (complete)
 
 After this task `db`, `auth`, `mail`, and `proxy` run from `docker-compose.yml`, a person can sign in with an emailed code, and the API's verifier accepts the resulting token. This is the spec's first risk (§13): standalone GoTrue against plain Postgres, and asymmetric token signing.
 
