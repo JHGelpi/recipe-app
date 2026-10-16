@@ -10,10 +10,11 @@ RUN pnpm install --frozen-lockfile --filter 'mobile...'
 COPY tsconfig.base.json ./
 COPY packages/domain packages/domain
 COPY apps/mobile apps/mobile
-# No EXPO_PUBLIC_* values are set: the bundle uses same-origin paths, so this
-# image is identical on every host.
+# Only the build time is set: the bundle uses same-origin paths, so this image
+# holds no host name or key and runs on every host. The time shows in the
+# app's footer; the layer is reused, time included, when no source changed.
 ENV METRO_MAX_WORKERS=2
-RUN pnpm --filter mobile run build:web
+RUN EXPO_PUBLIC_BUILD_TIME="$(date -u '+%Y-%m-%d %H:%M')" pnpm --filter mobile run build:web
 
 FROM caddy:2
 COPY deploy/Caddyfile /etc/caddy/Caddyfile

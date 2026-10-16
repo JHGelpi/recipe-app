@@ -1,5 +1,6 @@
 import { FlatList, Pressable, Text, View } from 'react-native';
 import { AddRecipeForm } from '../components/AddRecipeForm';
+import { BuildFooter } from '../components/BuildFooter';
 import { StatusLine } from '../components/StatusLine';
 import { useRecipes } from '../recipes/useRecipes';
 import { canWrite, type Claims } from '../session/claims';
@@ -37,6 +38,7 @@ export function RecipeListScreen({ claims }: { claims: Claims | null }) {
       <Pressable role="button" onPress={() => void signOut()}>
         <Text style={{ textDecorationLine: 'underline' }}>Sign out</Text>
       </Pressable>
+      <BuildFooter />
     </View>
   );
 }

@@ -66,8 +66,8 @@ C4Container
   Person(user, "Household User", "Admin / Member / Viewer")
 
   System_Boundary(sys, "Recipe App") {
-    Container(mobile, "Web App", "Expo / React Native Web, TypeScript", "UI, cook mode, local search, PDF generation, offline queue")
-    ContainerDb(localDb, "On-device Database", "SQLite in the browser (via PowerSync web SDK)", "Household's recipes; full-text index; pending-upload queue")
+    Container(mobile, "Web App", "Expo / React Native Web, TypeScript; Workbox service worker", "UI, cook mode, local search, PDF generation, offline queue; installable, opens offline (ADR-0009)")
+    ContainerDb(localDb, "On-device Database", "SQLite in the browser (OPFS, via PowerSync web SDK)", "Household's recipes; full-text index; pending-upload queue")
     Container(proxy, "Proxy", "Caddy", "Single entry point; serves the built web app; routes /auth, /api, /sync")
     Container(syncSvc, "Sync Service", "PowerSync service (self-hosted container)", "Streams household-scoped changes between Postgres and devices")
     Container(api, "API", "Node / TypeScript (Hono)", "Upload of local writes now; import pipeline, AI calls, invites, share links later")
@@ -101,7 +101,7 @@ Object storage and the share landing page are not built yet; they are decided in
 
 | Container | Owns | Notes |
 |---|---|---|
-| **Mobile App** | All UI; cook mode; scaling & unit conversion (pure functions, offline); PDF/text rendering for sharing (FR-26); offline import queue (FR-29) | Never holds AI or service-role keys (NFR-3) |
+| **Mobile App** | All UI; cook mode; scaling & unit conversion (pure functions, offline); PDF/text rendering for sharing (FR-26); offline import queue (FR-29) | Never holds AI or service-role keys (NFR-3); a service worker precaches the app's files so it opens offline (ADR-0009) |
 | **On-device DB** | Local copy of the household's data; FTS index for search (FR-19/20) | Writes go here first, then upload queue → API |
 | **Sync Service** | Change streaming, per-household sync rules | Sync rules mirror RLS; a device only receives its household's rows |
 | **API** | Business logic that must be server-side: import pipeline, AI, invites, share tokens, write validation | Stateless; verifies the JWT, then runs every statement as the user through asUser |
@@ -307,4 +307,4 @@ Conventions for every tenant table:
 
 ## 9. Decision log
 
-See [`docs/adr/`](docs/adr/). Current: ADR-0001 through ADR-0008.
+See [`docs/adr/`](docs/adr/). Current: ADR-0001 through ADR-0009.
