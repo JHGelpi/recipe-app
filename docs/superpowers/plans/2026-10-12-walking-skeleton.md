@@ -4410,7 +4410,7 @@ git commit -m "feat(app): email-code sign-in and local recipe list (FR-1, FR-2, 
 
 ---
 
-### Task 7: Sync — PowerSync service, connector, and the acceptance tests
+### Task 7: Sync — PowerSync service, connector, and the acceptance tests (complete)
 
 **Files:**
 - Create: `powersync/service.yaml`, `powersync/sync-config.yaml`
@@ -4997,6 +4997,8 @@ Expected: PASS, every spec. (`test:e2e` rebuilds the proxy image, so the new app
 | Online, but no rows arrive | The client must support Sync Streams. Check the installed `@powersync/web` docs for a connect option selecting the newer sync client and pass it in `db.connect(connector, { ... })`. |
 | Rows from the other household appear | Stop. This is an isolation failure; fix `sync-config.yaml` before anything else. |
 | The offline test's `1 unsynced` never shows | Apply the `ps_crud` fallback from Task 2 Step 9. |
+| The offline test shows `Online · 1 unsynced` and never `Offline` | An open sync stream (`POST /sync/stream`) does not fail when the browser goes offline, so PowerSync stays connected. Resolved (owner's choice): `DatabaseSessionBridge` disconnects on the browser's `offline` event and reconnects on `online` (`src/db/useNetworkOnline.ts`). |
+| `No sign-in code arrived` for a seed user in a later spec | The same address was asked for a code under `AUTH_EMAIL_MAX_FREQUENCY` (1s) after the previous test. `e2e/helpers.ts` spaces requests per address. |
 | Uploads never leave the queue; `api` log shows `request_failed` | Read the logged message; the request reached the API and failed there. |
 
 - [ ] **Step 11: Run every suite and commit**

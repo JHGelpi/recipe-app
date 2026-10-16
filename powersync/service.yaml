@@ -1,0 +1,26 @@
+# Connection strings come from the container's environment (docker-compose.yml).
+replication:
+  connections:
+    - type: postgresql
+      uri: !env PS_SOURCE_URI
+      sslmode: disable
+
+# Buckets are kept in a second database on the same Postgres server, so the
+# stack needs no MongoDB. Supported on Postgres 14 and newer.
+storage:
+  type: postgresql
+  uri: !env PS_STORAGE_URI
+  sslmode: disable
+
+port: 8080
+
+sync_config:
+  path: sync-config.yaml
+
+client_auth:
+  # The auth container's published key set, reached over the Compose network.
+  jwks_uri: http://auth:9999/.well-known/jwks.json
+  # The key set is on a private address by design.
+  block_local_jwks: false
+  audience:
+    - authenticated

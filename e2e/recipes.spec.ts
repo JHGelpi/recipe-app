@@ -28,6 +28,7 @@ test('rejects a title over 200 characters', async ({ page }) => {
 
 test('a viewer sees the list but no add form', async ({ page }) => {
   await signIn(page, SEED.viewerA);
+  await expect(page.getByText('Seed pancakes', { exact: true })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByLabel('Recipe title')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Add recipe' })).toHaveCount(0);
 });

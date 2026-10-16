@@ -117,6 +117,34 @@ services:
       JWT_JWKS_URL: http://auth:9999/.well-known/jwks.json
       JWT_AUDIENCE: authenticated
 
+  sync:
+    image: journeyapps/powersync-service:1.27.0
+    restart: unless-stopped
+    command: ['start', '-r', 'unified']
+    depends_on:
+      db:
+        condition: service_healthy
+      auth:
+        condition: service_healthy
+      # The migration creates the publication the service replicates from.
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - ./powersync:/config:ro
+    environment:
+      POWERSYNC_CONFIG_PATH: /config/service.yaml
+      PS_SOURCE_URI: postgresql://powersync_repl:${POWERSYNC_REPL_PASSWORD}@db:5432/app
+      PS_STORAGE_URI: postgresql://powersync_storage:${POWERSYNC_STORAGE_PASSWORD}@db:5432/powersync_storage
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:8080/probes/liveness').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 2s
+      timeout: 5s
+      retries: 60
+
   proxy:
     build:
       context: .

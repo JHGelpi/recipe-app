@@ -1,0 +1,12 @@
+# What each device receives. MIRRORS the RLS select policy on public.recipes
+# (household_id = auth_household_id()). Change one, change the other.
+config:
+  edition: 3
+
+streams:
+  household_recipes:
+    auto_subscribe: true
+    query: >-
+      SELECT id, household_id, title, created_at, updated_at, updated_by, deleted_at
+      FROM recipes
+      WHERE household_id = auth.parameter('household_id')
