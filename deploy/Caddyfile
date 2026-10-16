@@ -5,6 +5,14 @@
 	skip_install_trust
 	# Safari sends no SNI when connecting to an IP address.
 	default_sni {$LAN_HTTPS_HOST:localhost}
+	# A browser that sends plain HTTP to the HTTPS port is redirected to
+	# HTTPS rather than shown an error.
+	servers :8443 {
+		listener_wrappers {
+			http_redirect
+			tls
+		}
+	}
 }
 
 # Lets the one configured dev origin (the Expo dev server) call the stack.
