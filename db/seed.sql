@@ -54,3 +54,9 @@ where not exists (select 1 from public.memberships m where m.household_id = h.id
 insert into public.recipes (id, household_id, title) values
   ('00000000-0000-0000-0000-0000000000c1', '00000000-0000-0000-0000-00000000000a', 'Seed pancakes'),
   ('00000000-0000-0000-0000-0000000000c2', '00000000-0000-0000-0000-00000000000b', 'Seed curry');
+
+-- One favorite per household, so the isolation suite's favorites checks are
+-- not vacuous: each household's admin has starred its seed recipe.
+insert into public.favorites (id, household_id, user_id, recipe_id) values
+  ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-0000000000c1'),
+  ('00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000b1', '00000000-0000-0000-0000-0000000000c2');

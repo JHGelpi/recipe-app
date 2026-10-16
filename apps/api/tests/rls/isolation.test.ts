@@ -156,17 +156,23 @@ describe('roles', () => {
   });
 });
 
-describe('no hard deletes', () => {
-  it.each([SEED.adminA, SEED.memberA, SEED.viewerA])('%s cannot delete a recipe', async (email) => {
-    const member = await signInAs(SEED.memberA);
-    const actor = await signInAs(email);
-    const id = await insertRecipe(member, 'Keep me');
-    const code = await refusalCode(
-      as(actor, (tx) => tx`delete from public.recipes where id = ${id}`),
-    );
-    expect(code).toBe(REFUSED);
-    expect(await titleOf(member, id)).toBe('Keep me');
-  });
+describe('hard deletes', () => {
+  // Only trash older than 30 days can be deleted (recipes_purge); any other
+  // delete matches no row under RLS, so it runs and removes nothing.
+  it.each([SEED.adminA, SEED.memberA, SEED.viewerA])(
+    '%s cannot delete a recipe that is not expired trash',
+    async (email) => {
+      const member = await signInAs(SEED.memberA);
+      const actor = await signInAs(email);
+      const id = await insertRecipe(member, 'Keep me');
+      const deleted = await as(
+        actor,
+        (tx) => tx`delete from public.recipes where id = ${id} returning id`,
+      );
+      expect(deleted).toHaveLength(0);
+      expect(await titleOf(member, id)).toBe('Keep me');
+    },
+  );
 
   it('an admin cannot delete the household or a membership', async () => {
     const admin = await signInAs(SEED.adminA);
