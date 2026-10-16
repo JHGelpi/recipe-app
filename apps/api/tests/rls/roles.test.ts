@@ -53,7 +53,8 @@ describe('database roles (spec §4)', () => {
     expect(byTable).toEqual({
       households: ['SELECT', 'UPDATE'],
       memberships: ['SELECT'],
-      recipes: ['INSERT', 'SELECT', 'UPDATE'],
+      recipes: ['DELETE', 'INSERT', 'SELECT', 'UPDATE'],
+      favorites: ['INSERT', 'SELECT', 'UPDATE'],
     });
   });
 

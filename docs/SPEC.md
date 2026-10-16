@@ -1,6 +1,6 @@
 # Product Specification
 
-> Status: **Draft v0.2** · Last updated: 2026-10-16
+> Status: **Draft v0.2** · Last updated: 2026-10-17
 > Source of truth for *what* we build. `ARCHITECTURE.md` covers *how*.
 
 ## 1. Vision
@@ -78,10 +78,10 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 ### Recipe management
 | ID | Requirement | Pri |
 |---|---|---|
-| FR-15 | Edit all fields; add own photo; personal notes | M |
-| FR-16 | Tags: free-form plus AI suggestions | M |
-| FR-17 | Favorites *(proposed)* | S |
-| FR-18 | 30-day trash before permanent delete *(proposed)* | S |
+| FR-15 | Edit all fields; personal notes (shared with the household). Own photo arrives with import (sub-project 4) | M |
+| FR-16 | Tags: free-form, with suggestions from the household's tags; AI suggestions arrive with import | M |
+| FR-17 | Favorites (per user) | S |
+| FR-18 | 30-day trash before permanent delete | S |
 
 ### Search
 | ID | Requirement | Pri |

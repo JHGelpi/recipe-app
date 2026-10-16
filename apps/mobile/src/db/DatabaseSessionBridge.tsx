@@ -1,8 +1,10 @@
 import { usePowerSync } from '@powersync/react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { canWrite } from '../session/claims';
 import { localDataAction, type SettledSession } from '../session/sessionState';
 import { useSession } from '../session/SessionProvider';
 import { createConnector } from '../sync/connector';
+import { purgeTrashIfDue } from '../sync/purge';
 import { dbOwner } from './dbOwner';
 import { useNetworkOnline } from './useNetworkOnline';
 
@@ -29,6 +31,8 @@ export function DatabaseSessionBridge({ children }: { children: ReactNode }) {
   const userId = state.status === 'signedIn' ? state.userId : null;
   const hasHousehold = state.status === 'signedIn' && state.claims !== null;
   const byUser = state.status === 'signedOut' && state.byUser;
+  const writer =
+    state.status === 'signedIn' && state.claims !== null && canWrite(state.claims.role);
   // The user the local database is settled for.
   const [readyFor, setReadyFor] = useState<string | null>(null);
   // Serialise transitions so a wipe always finishes before the next connect.
@@ -56,12 +60,14 @@ export function DatabaseSessionBridge({ children }: { children: ReactNode }) {
         }
         if (session.status === 'signedIn' && hasHousehold && online) {
           await db.connect(connector);
+          // FR-18: at most once a day per device; failures wait for the next connect.
+          if (writer) void purgeTrashIfDue(db);
         } else {
           await db.disconnect();
         }
       })
       .catch((error: unknown) => console.error('Database session change failed', error));
-  }, [db, status, userId, hasHousehold, byUser, online]);
+  }, [db, status, userId, hasHousehold, byUser, online, writer]);
 
   if (status === 'signedIn' && readyFor !== userId) return null;
   return <>{children}</>;

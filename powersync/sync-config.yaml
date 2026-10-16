@@ -1,12 +1,25 @@
-# What each device receives. MIRRORS the RLS select policy on public.recipes
-# (household_id = auth_household_id()). Change one, change the other.
+# What each device receives. Each stream MIRRORS an RLS select policy;
+# change one, change the other (CLAUDE.md rule 6).
 config:
   edition: 3
 
 streams:
+  # Mirrors recipes_select: household_id = auth_household_id().
   household_recipes:
     auto_subscribe: true
     query: >-
-      SELECT id, household_id, title, created_at, updated_at, updated_by, deleted_at
+      SELECT id, household_id, title, servings, prep_minutes, cook_minutes,
+             ingredients, steps, tags, notes,
+             created_at, updated_at, updated_by, deleted_at
       FROM recipes
       WHERE household_id = auth.parameter('household_id')
+
+  # Mirrors favorites_select: the user's own rows. RLS on write keeps a
+  # user's rows inside their household, so the user filter is enough.
+  user_favorites:
+    auto_subscribe: true
+    query: >-
+      SELECT id, household_id, user_id, recipe_id,
+             created_at, updated_at, updated_by, deleted_at
+      FROM favorites
+      WHERE user_id = auth.user_id()

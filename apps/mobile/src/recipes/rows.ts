@@ -1,0 +1,95 @@
+import { recipeSchema, type Ingredient, type Step } from '@recipe-app/domain';
+
+export const TRASH_DAYS = 30;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export type RecipeRecord = {
+  id: string;
+  household_id: string;
+  title: string;
+  servings: number | null;
+  prep_minutes: number | null;
+  cook_minutes: number | null;
+  ingredients: Ingredient[];
+  steps: Step[];
+  tags: string[];
+  notes: string;
+  deleted_at: string | null;
+};
+
+/** A Postgres text[] literal such as {quick,"two words"}. */
+function fromArrayLiteral(text: string): string[] {
+  const inner = text.slice(1, -1);
+  if (inner === '') return [];
+  return (inner.match(/"(?:[^"\\]|\\.)*"|[^,]+/g) ?? []).map((part) =>
+    part.startsWith('"') ? part.slice(1, -1).replace(/\\(.)/g, '$1') : part,
+  );
+}
+
+function jsonList(value: unknown): unknown {
+  if (value === null || value === undefined || value === '') return [];
+  if (typeof value !== 'string') return value;
+  if (value.startsWith('{')) return fromArrayLiteral(value);
+  return JSON.parse(value) as unknown;
+}
+
+/**
+ * A local row as a recipe, or null when it cannot be read. Columns added
+ * after a row was written arrive as null and read as empty.
+ */
+export function rowToRecipe(row: Record<string, unknown>): RecipeRecord | null {
+  try {
+    const parsed = recipeSchema.safeParse({
+      id: row.id,
+      household_id: row.household_id,
+      title: row.title,
+      servings: row.servings ?? null,
+      prep_minutes: row.prep_minutes ?? null,
+      cook_minutes: row.cook_minutes ?? null,
+      ingredients: jsonList(row.ingredients),
+      steps: jsonList(row.steps),
+      tags: jsonList(row.tags),
+      notes: row.notes ?? '',
+    });
+    if (!parsed.success) return null;
+    const recipe = parsed.data;
+    return {
+      id: recipe.id,
+      household_id: recipe.household_id,
+      title: recipe.title,
+      servings: recipe.servings ?? null,
+      prep_minutes: recipe.prep_minutes ?? null,
+      cook_minutes: recipe.cook_minutes ?? null,
+      ingredients: recipe.ingredients ?? [],
+      steps: recipe.steps ?? [],
+      tags: recipe.tags ?? [],
+      notes: recipe.notes ?? '',
+      deleted_at: typeof row.deleted_at === 'string' ? row.deleted_at : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Milliseconds since the epoch, for timestamps written here ("…T…Z") and
+ * those sync sends ("… …Z", "+00"). Safari's Date.parse accepts only the
+ * strict ISO form, so the text is normalised first.
+ */
+export function parseTimestamp(text: string | null | undefined): number | null {
+  if (!text) return null;
+  const iso = text
+    .trim()
+    .replace(' ', 'T')
+    .replace(/(\.\d{3})\d+/, '$1')
+    .replace(/([+-]\d{2})$/, '$1:00');
+  const value = Date.parse(iso);
+  return Number.isNaN(value) ? null : value;
+}
+
+/** Whole days left before the purge, rounded up; 0 once due. */
+export function trashDaysLeft(deletedAt: string, now: number): number {
+  const deleted = parseTimestamp(deletedAt);
+  if (deleted === null) return 0;
+  return Math.max(0, Math.ceil((deleted + TRASH_DAYS * DAY_MS - now) / DAY_MS));
+}

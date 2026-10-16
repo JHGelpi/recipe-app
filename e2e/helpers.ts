@@ -38,9 +38,46 @@ export async function signIn(page: Page, email: string): Promise<void> {
   await expect(page.getByRole('heading', { name: 'Recipes' })).toBeVisible();
 }
 
+export type RecipeInput = {
+  title: string;
+  servings?: string;
+  prep?: string;
+  cook?: string;
+  ingredients?: string;
+  steps?: string;
+  tags?: string;
+  notes?: string;
+};
+
+/** Fills the open editor. Empty fields are left as they are. */
+export async function fillEditor(page: Page, input: RecipeInput): Promise<void> {
+  const fields: [string, string | undefined][] = [
+    ['Title', input.title],
+    ['Servings', input.servings],
+    ['Prep (min)', input.prep],
+    ['Cook (min)', input.cook],
+    ['Ingredients', input.ingredients],
+    ['Steps', input.steps],
+    ['Tags', input.tags],
+    ['Notes', input.notes],
+  ];
+  for (const [label, value] of fields) {
+    if (value !== undefined) await page.getByLabel(label, { exact: true }).fill(value);
+  }
+}
+
+/** Creates a recipe through the editor and ends on the recipe's own screen. */
+export async function createRecipe(page: Page, input: RecipeInput): Promise<void> {
+  await page.getByRole('button', { name: 'New recipe' }).click();
+  await fillEditor(page, input);
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('heading', { name: input.title, level: 1 })).toBeVisible();
+}
+
+/** Creates a title-only recipe and returns to the list (the walking-skeleton flow). */
 export async function addRecipe(page: Page, title: string): Promise<void> {
-  await page.getByLabel('Recipe title').fill(title);
-  await page.getByRole('button', { name: 'Add recipe' }).click();
+  await createRecipe(page, { title });
+  await page.getByRole('link', { name: 'All recipes' }).click();
   await expect(page.getByText(title, { exact: true })).toBeVisible();
 }
 

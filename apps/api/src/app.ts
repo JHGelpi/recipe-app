@@ -59,5 +59,20 @@ export function createApp(deps: AppDeps): Hono {
     return c.json({ results });
   });
 
+  // FR-18: deletes the caller's household trash older than 30 days. RLS
+  // (recipes_purge) limits it to that household, to admins and members, and
+  // to expired trash.
+  app.post('/api/trash/purge', async (c) => {
+    const token = bearer(c.req.header('Authorization'));
+    if (!token) return c.json({ error: 'unauthorized' }, 401);
+    await deps.verify(token);
+    const purged = await deps.asUser(token, async (tx) => {
+      const rows = await tx`
+        delete from public.recipes where deleted_at < now() - interval '30 days' returning id`;
+      return rows.length;
+    });
+    return c.json({ purged });
+  });
+
   return app;
 }

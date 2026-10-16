@@ -1,6 +1,6 @@
 # Architecture
 
-> Status: **Proposed v0.2** · Last updated: 2026-10-16
+> Status: **Proposed v0.2** · Last updated: 2026-10-17
 > Structured per the [C4 model](https://c4model.com): System Context → Containers → Components, plus Dynamic and Deployment diagrams. Level 4 (Code) diagrams are intentionally omitted; the code is the source of truth at that level.
 >
 > Requirements live in [`docs/SPEC.md`](docs/SPEC.md). Decisions and their trade-offs live in [`docs/adr/`](docs/adr/). Requirement IDs (FR-x, NFR-x) are referenced throughout.
@@ -263,15 +263,10 @@ erDiagram
   HOUSEHOLD ||--o{ MEMBERSHIP : has
   USER ||--|| MEMBERSHIP : "belongs to (v1: one)"
   HOUSEHOLD ||--o{ RECIPE : owns
-  RECIPE ||--o{ INGREDIENT : lists
-  RECIPE ||--o{ STEP : has
-  RECIPE ||--o{ RECIPE_TAG : tagged
-  TAG ||--o{ RECIPE_TAG : ""
-  HOUSEHOLD ||--o{ TAG : defines
   RECIPE ||--o{ SOURCE : "imported from"
   RECIPE ||--o{ PHOTO : has
-  RECIPE ||--o{ NOTE : has
   USER ||--o{ FAVORITE : marks
+  RECIPE ||--o{ FAVORITE : "starred as"
   RECIPE ||--o{ SHARE : "shared as"
   HOUSEHOLD ||--o{ INVITE : issues
   HOUSEHOLD ||--o{ AI_USAGE : accrues
@@ -281,7 +276,8 @@ Conventions for every tenant table:
 - `id` as a UUID, generated on the device so it works offline
 - `household_id` (NOT NULL, indexed); RLS policy `household_id = auth_household_id()`
 - `created_at`, `updated_at`, `updated_by`, `deleted_at` (soft delete → 30-day trash, FR-18)
-- Ingredients are stored structured (`quantity`, `unit`, `item`, `prep_note`, `raw_text`) so scaling, search, and the Phase 2 shopping list can use them
+- Ingredients and steps are JSON arrays on the recipe row (ADR-0010), each element with a stable id; ingredients keep the typed line (`raw`) plus parsed `quantity`, `quantity_max`, `unit`, `item`, `note`, so scaling, search, and the Phase 2 shopping list can use them
+- Favorites are a per-user table (`favorites`), synced only to that user
 
 `SHARE` stores an immutable JSON **snapshot** of the recipe. Recipients import from the snapshot, never from the sender's live row.
 

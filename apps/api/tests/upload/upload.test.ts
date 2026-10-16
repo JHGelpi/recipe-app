@@ -259,3 +259,107 @@ describe('cross-origin access', () => {
     expect(response.headers.get('access-control-allow-origin')).toBeNull();
   });
 });
+
+describe('POST /api/upload, recipe details and favorites', () => {
+  const ingredient = () => ({
+    id: randomUUID(),
+    raw: '2 cups flour',
+    quantity: 2,
+    quantity_max: null,
+    unit: 'cup',
+    item: 'flour',
+    note: null,
+    heading: false,
+  });
+
+  function fullPut(actor: Actor, id: string) {
+    return {
+      op: 'put',
+      table: 'recipes',
+      id,
+      data: {
+        household_id: actor.householdId,
+        title: 'Bread',
+        servings: 4,
+        prep_minutes: 15,
+        cook_minutes: 40,
+        ingredients: [ingredient()],
+        steps: [{ id: randomUUID(), text: 'Knead' }],
+        tags: ['bread'],
+        notes: 'From Grandma',
+      },
+    };
+  }
+
+  it('stores a full recipe and a patch of its ingredients', async () => {
+    const member = await signInAs(SEED.memberA);
+    const id = randomUUID();
+    const next = [ingredient(), ingredient()];
+    const results = await upload(member, [
+      fullPut(member, id),
+      { op: 'patch', table: 'recipes', id, data: { ingredients: next, tags: ['bread', 'quick'] } },
+    ]);
+    expect(results.map((result) => result.status)).toEqual(['applied', 'applied']);
+    const [row] = await as(
+      member,
+      (tx) => tx<{ servings: number; ingredients: unknown[]; tags: string[]; notes: string }[]>`
+        select servings, ingredients, tags, notes from public.recipes where id = ${id}`,
+    );
+    expect(row).toMatchObject({ servings: 4, tags: ['bread', 'quick'], notes: 'From Grandma' });
+    expect(row?.ingredients).toHaveLength(2);
+  });
+
+  it('rejects an invalid ingredient shape and too many ingredients', async () => {
+    const member = await signInAs(SEED.memberA);
+    const bad = { ...fullPut(member, randomUUID()) };
+    bad.data = { ...bad.data, ingredients: [{ raw: 'no id' }] as never };
+    const many = fullPut(member, randomUUID());
+    many.data = { ...many.data, ingredients: Array.from({ length: 201 }, ingredient) };
+    const results = await upload(member, [bad, many]);
+    expect(results.map((result) => result.reason)).toEqual(['invalid', 'invalid']);
+  });
+
+  it('stars, un-stars, and re-stars a recipe', async () => {
+    const viewer = await signInAs(SEED.viewerA);
+    const member = await signInAs(SEED.memberA);
+    const recipeId = randomUUID();
+    await upload(member, [fullPut(member, recipeId)]);
+    const favoriteId = randomUUID();
+    const data = { household_id: viewer.householdId, user_id: viewer.userId, recipe_id: recipeId };
+    const results = await upload(viewer, [
+      { op: 'put', table: 'favorites', id: favoriteId, data },
+      {
+        op: 'patch',
+        table: 'favorites',
+        id: favoriteId,
+        data: { deleted_at: new Date().toISOString() },
+      },
+      { op: 'patch', table: 'favorites', id: favoriteId, data: { deleted_at: null } },
+    ]);
+    expect(results.map((result) => result.status)).toEqual(['applied', 'applied', 'applied']);
+    const rows = await as(
+      viewer,
+      (tx) =>
+        tx<
+          { deleted_at: Date | null }[]
+        >`select deleted_at from public.favorites where id = ${favoriteId}`,
+    );
+    expect(rows[0]?.deleted_at).toBeNull();
+  });
+
+  it('rejects a favorite of another household recipe', async () => {
+    const memberA = await signInAs(SEED.memberA);
+    const adminB = await signInAs(SEED.adminB);
+    const recipeId = randomUUID();
+    await upload(memberA, [fullPut(memberA, recipeId)]);
+    const [result] = await upload(adminB, [
+      {
+        op: 'put',
+        table: 'favorites',
+        id: randomUUID(),
+        data: { household_id: adminB.householdId, user_id: adminB.userId, recipe_id: recipeId },
+      },
+    ]);
+    expect(result?.status).toBe('rejected');
+  });
+});

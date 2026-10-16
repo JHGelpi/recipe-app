@@ -35,8 +35,8 @@ pnpm lint && pnpm typecheck
 1. **Tenant isolation.** Every tenant table has `household_id NOT NULL` + RLS enabled + policies in the same migration. Add the table to the RLS test suite in the same PR. The API connects only as `api_login` and only through `asUser`; no code path may use a role that owns tables or bypasses RLS. New tables must also be added to `apps/api/tests/rls/registry.ts`; the coverage guard fails otherwise.
 2. **No secrets on device.** The web app ships no keys at all, only relative service paths. Database passwords, the signing key, and AI keys live in .env on the server.
 3. **Offline-first.** UI reads/writes the local DB, never the network directly. Features needing the network (AI, import) must queue or degrade gracefully with a clear message.
-4. **Viewers can't write.** Enforce in RLS *and* hide controls in the UI.
-5. **IDs are client-generated UUIDs.** Every tenant row has `created_at`, `updated_at`, `updated_by`, `deleted_at`. Delete = soft delete.
+4. **Viewers can't change household data.** Enforce in RLS *and* hide controls in the UI. Their own favorites are the exception.
+5. **IDs are client-generated UUIDs.** Every tenant row has `created_at`, `updated_at`, `updated_by`, `deleted_at`. Delete = soft delete. The only hard delete is the 30-day trash purge (`recipes_purge` policy, `POST /api/trash/purge`).
 6. **Sync rules mirror RLS.** Changing one means changing the other. RLS lives in `db/migrations/`, sync config in `powersync/sync-config.yaml`.
 7. **AI output is untrusted.** Validate against the zod schema in `packages/domain`; never write raw LLM output to the DB. Prompts live in versioned files, not inline strings.
 8. **Keep the original.** Imports always store the source photo/URL/text (FR-12).
