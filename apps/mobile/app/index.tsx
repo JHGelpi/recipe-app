@@ -1,13 +1,10 @@
-import { Text, View } from 'react-native';
-import { StatusLine } from '../src/components/StatusLine';
+import { Redirect } from 'expo-router';
+import { RecipeListScreen } from '../src/screens/RecipeListScreen';
+import { useSession } from '../src/session/SessionProvider';
 
 export default function Home() {
-  return (
-    <View style={{ padding: 16, gap: 12 }}>
-      <Text role="heading" aria-level={1} style={{ fontSize: 24, fontWeight: '600' }}>
-        Recipes
-      </Text>
-      <StatusLine />
-    </View>
-  );
+  const { state } = useSession();
+  if (state.status === 'loading') return null;
+  if (state.status === 'signedOut') return <Redirect href="/sign-in" />;
+  return <RecipeListScreen claims={state.claims} />;
 }

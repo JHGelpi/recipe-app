@@ -3469,7 +3469,7 @@ git commit -m "feat(api): /api/upload with zod validation under RLS, as a contai
 
 ---
 
-### Task 6: Sign-in, the recipe repository, and the list screen
+### Task 6: Sign-in, the recipe repository, and the list screen (complete)
 
 After this task the built app is served by the proxy at `http://localhost:8080` and works with no sync: sign in, add recipes, sign out. Recipes queue in the local database and are not yet uploaded.
 
