@@ -13,4 +13,6 @@ export const config = {
   authUrl: resolve(process.env.EXPO_PUBLIC_AUTH_URL, '/auth'),
   apiUrl: resolve(process.env.EXPO_PUBLIC_API_URL, '/api'),
   powersyncUrl: resolve(process.env.EXPO_PUBLIC_POWERSYNC_URL, '/sync'),
+  // Set by the proxy image build (deploy/proxy.Dockerfile); `dev` elsewhere.
+  buildTime: process.env.EXPO_PUBLIC_BUILD_TIME || 'dev',
 };

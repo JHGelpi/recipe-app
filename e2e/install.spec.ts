@@ -53,3 +53,10 @@ test('the page is revalidated and hashed bundles are cached for good', async ({
     'public, max-age=31536000, immutable',
   );
 });
+
+test('the footer shows the build time and the storage status', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByLabel('Build')).toHaveText(
+    /^Build \d{4}-\d{2}-\d{2} \d{2}:\d{2} · Storage: (persistent|best effort|unknown)$/,
+  );
+});
