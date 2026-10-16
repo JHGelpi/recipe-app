@@ -1,0 +1,86 @@
+import { describe, expect, it } from 'vitest';
+import { parseTimestamp, rowToRecipe, trashDaysLeft } from './rows';
+
+const base = {
+  id: '6f1c2f0e-8f0a-4a3b-9d5e-2b7c1a9e4d10',
+  household_id: '00000000-0000-0000-0000-00000000000a',
+  title: 'Bread',
+};
+const ingredient = {
+  id: '6f1c2f0e-8f0a-4a3b-9d5e-2b7c1a9e4d11',
+  raw: '2 cups flour',
+  quantity: 2,
+  quantity_max: null,
+  unit: 'cup',
+  item: 'flour',
+  note: null,
+  heading: false,
+};
+
+describe('rowToRecipe', () => {
+  it('parses JSON text columns from the local database', () => {
+    const recipe = rowToRecipe({
+      ...base,
+      servings: 4,
+      prep_minutes: 10,
+      cook_minutes: null,
+      ingredients: JSON.stringify([ingredient]),
+      steps: JSON.stringify([{ id: '6f1c2f0e-8f0a-4a3b-9d5e-2b7c1a9e4d12', text: 'Mix' }]),
+      tags: JSON.stringify(['bread']),
+      notes: 'Note',
+      deleted_at: null,
+    });
+    expect(recipe).toMatchObject({ servings: 4, tags: ['bread'], notes: 'Note' });
+    expect(recipe?.ingredients[0]?.raw).toBe('2 cups flour');
+  });
+
+  it('treats missing or null new columns as empty (a recipe from before this change)', () => {
+    expect(rowToRecipe({ ...base })).toEqual({
+      ...base,
+      servings: null,
+      prep_minutes: null,
+      cook_minutes: null,
+      ingredients: [],
+      steps: [],
+      tags: [],
+      notes: '',
+      deleted_at: null,
+    });
+  });
+
+  it('accepts tags as a Postgres array literal', () => {
+    expect(rowToRecipe({ ...base, tags: '{quick,"two words"}' })?.tags).toEqual([
+      'quick',
+      'two words',
+    ]);
+  });
+
+  it('returns null for corrupt JSON or an invalid shape', () => {
+    expect(rowToRecipe({ ...base, ingredients: '[{' })).toBeNull();
+    expect(rowToRecipe({ ...base, ingredients: JSON.stringify([{ raw: 'x' }]) })).toBeNull();
+    expect(rowToRecipe({ id: base.id })).toBeNull();
+  });
+});
+
+describe('parseTimestamp', () => {
+  it('reads both the ISO form the app writes and the space form sync may send', () => {
+    const iso = parseTimestamp('2026-10-16T18:44:44.102Z');
+    expect(iso).toBe(Date.UTC(2026, 9, 16, 18, 44, 44, 102));
+    expect(parseTimestamp('2026-10-16 18:44:44.102155Z')).toBe(iso);
+    expect(parseTimestamp('2026-10-16 18:44:44+00')).toBe(Date.UTC(2026, 9, 16, 18, 44, 44));
+  });
+
+  it('returns null for empty or unreadable text', () => {
+    expect(parseTimestamp(null)).toBeNull();
+    expect(parseTimestamp('soon')).toBeNull();
+  });
+});
+
+describe('trashDaysLeft', () => {
+  const now = Date.UTC(2026, 9, 17, 12);
+  it('counts whole days left in the 30-day window, rounding up', () => {
+    expect(trashDaysLeft('2026-10-17T12:00:00.000Z', now)).toBe(30);
+    expect(trashDaysLeft('2026-09-18T11:00:00.000Z', now)).toBe(1); // 23 hours left
+    expect(trashDaysLeft('2026-09-17T11:00:00.000Z', now)).toBe(0);
+  });
+});

@@ -1,0 +1,120 @@
+import {
+  ingredientsFromText,
+  ingredientsToText,
+  normalizeTags,
+  recipeSchema,
+  stepsFromText,
+  stepsToText,
+  type Ingredient,
+  type Step,
+} from '@recipe-app/domain';
+import type { RecipeRecord } from './rows';
+
+export type RecipeForm = {
+  title: string;
+  servings: string;
+  prep: string;
+  cook: string;
+  ingredients: string;
+  steps: string;
+  tags: string;
+  notes: string;
+};
+
+export type RecipeValues = {
+  title: string;
+  servings: number | null;
+  prep_minutes: number | null;
+  cook_minutes: number | null;
+  ingredients: Ingredient[];
+  steps: Step[];
+  tags: string[];
+  notes: string;
+};
+
+export type FormResult =
+  | { ok: true; values: RecipeValues }
+  | { ok: false; errors: Partial<Record<keyof RecipeForm, string>> };
+
+// Which editor field each schema field is typed in.
+const FIELD_OF: Record<string, keyof RecipeForm> = {
+  title: 'title',
+  servings: 'servings',
+  prep_minutes: 'prep',
+  cook_minutes: 'cook',
+  ingredients: 'ingredients',
+  steps: 'steps',
+  tags: 'tags',
+  notes: 'notes',
+};
+
+// Messages for numbers that could not be read at all (zod's default
+// "expected number, received NaN" means nothing to a cook).
+const NUMBER_MESSAGE: Partial<Record<keyof RecipeForm, string>> = {
+  servings: 'Servings must be 1 to 999',
+  prep: 'Prep must be 0 to 10000 minutes',
+  cook: 'Cook must be 0 to 10000 minutes',
+};
+
+export function emptyForm(): RecipeForm {
+  return {
+    title: '',
+    servings: '',
+    prep: '',
+    cook: '',
+    ingredients: '',
+    steps: '',
+    tags: '',
+    notes: '',
+  };
+}
+
+export function formFromRecipe(recipe: RecipeRecord): RecipeForm {
+  return {
+    title: recipe.title,
+    servings: recipe.servings === null ? '' : String(recipe.servings),
+    prep: recipe.prep_minutes === null ? '' : String(recipe.prep_minutes),
+    cook: recipe.cook_minutes === null ? '' : String(recipe.cook_minutes),
+    ingredients: ingredientsToText(recipe.ingredients),
+    steps: stepsToText(recipe.steps),
+    tags: recipe.tags.join(', '),
+    notes: recipe.notes,
+  };
+}
+
+/** Empty text means "not set"; anything else must be a whole number. */
+function whole(text: string): number | null {
+  const value = text.trim();
+  if (value === '') return null;
+  return /^-?\d+$/.test(value) ? Number(value) : Number.NaN;
+}
+
+/** The editor's text as validated recipe values, or a message per field. */
+export function valuesFromForm(
+  form: RecipeForm,
+  previous: RecipeRecord | null,
+  newId: () => string,
+): FormResult {
+  const candidate = {
+    title: form.title,
+    servings: whole(form.servings),
+    prep_minutes: whole(form.prep),
+    cook_minutes: whole(form.cook),
+    ingredients: ingredientsFromText(form.ingredients, previous?.ingredients ?? [], newId),
+    steps: stepsFromText(form.steps, previous?.steps ?? [], newId),
+    tags: normalizeTags(form.tags),
+    notes: form.notes.trim(),
+  };
+  const parsed = recipeSchema
+    .omit({ id: true, household_id: true, deleted_at: true })
+    .safeParse(candidate);
+  if (parsed.success) {
+    return { ok: true, values: { ...candidate, title: parsed.data.title } };
+  }
+  const errors: Partial<Record<keyof RecipeForm, string>> = {};
+  for (const issue of parsed.error.issues) {
+    const field = FIELD_OF[String(issue.path[0])];
+    if (field && !errors[field]) errors[field] = NUMBER_MESSAGE[field] ?? issue.message;
+  }
+  return { ok: false, errors };
+}

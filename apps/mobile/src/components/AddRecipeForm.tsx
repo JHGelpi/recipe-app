@@ -1,6 +1,7 @@
 import { usePowerSync } from '@powersync/react';
 import { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
+import { recipeTitleSchema } from '@recipe-app/domain';
 import { ZodError } from 'zod';
 import { createRecipe } from '../recipes/repository';
 import type { Claims } from '../session/claims';
@@ -16,7 +17,16 @@ export function AddRecipeForm({ claims }: { claims: Claims }) {
     setBusy(true);
     setMessage(null);
     try {
-      await createRecipe(db, claims, title);
+      await createRecipe(db, claims, {
+        title: recipeTitleSchema.parse(title),
+        servings: null,
+        prep_minutes: null,
+        cook_minutes: null,
+        ingredients: [],
+        steps: [],
+        tags: [],
+        notes: '',
+      });
       setTitle('');
     } catch (error) {
       setMessage(

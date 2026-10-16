@@ -125,3 +125,51 @@ describe('sendOps', () => {
     });
   });
 });
+
+describe('toUploadOps for recipe details and favorites', () => {
+  it('decodes JSON text columns into arrays', () => {
+    const [op] = toUploadOps([
+      {
+        op: 'PUT',
+        table: 'recipes',
+        id: 'r1',
+        opData: {
+          household_id: 'h1',
+          title: 'Bread',
+          ingredients: '[{"raw":"1 egg"}]',
+          steps: '[]',
+          tags: '["bread"]',
+          notes: '',
+        },
+      },
+    ]);
+    expect(op?.data).toMatchObject({
+      ingredients: [{ raw: '1 egg' }],
+      steps: [],
+      tags: ['bread'],
+      notes: '',
+    });
+  });
+
+  it('keeps unreadable JSON as text, so the server rejects it instead of the client crashing', () => {
+    const [op] = toUploadOps([{ op: 'PATCH', table: 'recipes', id: 'r1', opData: { tags: '[' } }]);
+    expect(op?.data).toEqual({ tags: '[' });
+  });
+
+  it('uploads only the client fields of a favorite', () => {
+    const [op] = toUploadOps([
+      {
+        op: 'PUT',
+        table: 'favorites',
+        id: 'f1',
+        opData: { household_id: 'h1', user_id: 'u1', recipe_id: 'r1', created_at: 'x' },
+      },
+    ]);
+    expect(op).toEqual({
+      op: 'put',
+      table: 'favorites',
+      id: 'f1',
+      data: { household_id: 'h1', user_id: 'u1', recipe_id: 'r1' },
+    });
+  });
+});

@@ -1,4 +1,4 @@
-import { RECIPE_CLIENT_FIELDS } from '@recipe-app/domain';
+import { FAVORITE_CLIENT_FIELDS, RECIPE_CLIENT_FIELDS } from '@recipe-app/domain';
 
 export type UploadOp = {
   op: 'put' | 'patch' | 'delete';
@@ -25,12 +25,30 @@ export type SendDeps = { fetch: typeof fetch; url: string; token: string };
 /** Fields the client may upload, per table. Server-owned fields never leave the device. */
 const CLIENT_FIELDS: Record<string, readonly string[]> = {
   recipes: RECIPE_CLIENT_FIELDS,
+  favorites: FAVORITE_CLIENT_FIELDS,
 };
+
+// The local database stores these as JSON text; the API expects arrays.
+const JSON_FIELDS: Record<string, readonly string[]> = {
+  recipes: ['ingredients', 'steps', 'tags'],
+};
+
+function decoded(table: string, key: string, value: unknown): unknown {
+  if (typeof value !== 'string' || !(JSON_FIELDS[table] ?? []).includes(key)) return value;
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    // Left as text: the server rejects it rather than the upload loop failing.
+    return value;
+  }
+}
 
 function pickClientFields(table: string, data: Record<string, unknown> = {}) {
   const allowed = CLIENT_FIELDS[table] ?? [];
   return Object.fromEntries(
-    Object.entries(data).filter(([key, value]) => allowed.includes(key) && value !== undefined),
+    Object.entries(data)
+      .filter(([key, value]) => allowed.includes(key) && value !== undefined)
+      .map(([key, value]) => [key, decoded(table, key, value)]),
   );
 }
 
