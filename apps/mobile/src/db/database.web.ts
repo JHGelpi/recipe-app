@@ -1,4 +1,9 @@
-import { createConsoleLogger, PowerSyncDatabase, WASQLiteOpenFactory } from '@powersync/web';
+import {
+  createConsoleLogger,
+  PowerSyncDatabase,
+  WASQLiteOpenFactory,
+  WASQLiteVFS,
+} from '@powersync/web';
 import type { AbstractPowerSyncDatabase } from '@powersync/web';
 import { AppSchema } from './schema';
 
@@ -10,7 +15,10 @@ const logger = createConsoleLogger();
 export function openDatabase(): AbstractPowerSyncDatabase {
   const factory = new WASQLiteOpenFactory({
     logger,
-    open: { dbFilename: 'recipes.db', worker: WORKER },
+    // PowerSync recommends OPFSCoopSyncVFS for Safari/iOS; using it on every
+    // browser means the Chromium e2e suite tests what the phone runs.
+    // The SDK switches to dedicated workers, which this VFS requires.
+    open: { dbFilename: 'recipes.db', worker: WORKER, vfs: WASQLiteVFS.OPFSCoopSyncVFS },
   });
   return new PowerSyncDatabase({
     schema: AppSchema,
