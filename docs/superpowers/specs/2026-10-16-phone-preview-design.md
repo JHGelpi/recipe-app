@@ -71,9 +71,8 @@ Real email delivery, native builds, production hosting, migration of local data 
 
 ### Proxy (`deploy/Caddyfile`)
 
-- `Cache-Control: no-cache` on `/sw.js`, `/index.html`, `/` and `/manifest.webmanifest`.
-- `Cache-Control: public, max-age=31536000, immutable` on `/_expo/static/*`.
-- `/@powersync/*` and `/icons/*` keep Caddy's defaults; the service worker serves them from its precache.
+- `Cache-Control: public, max-age=31536000, immutable` on `/_expo/static/*`, whose file names carry a content hash.
+- `Cache-Control: no-cache` on every other file of the web app, including `/sw.js`, `/index.html`, the manifest, icons and `/@powersync/*`. Caddy evaluates headers before the `index.html` fallback rewrite, so app paths such as `/sign-in` cannot be matched by name; one rule for everything keeps the HTML from being cached under any path. Revalidation is cheap (an ETag check), and the service worker serves these files from its precache anyway.
 
 ## 4. Service worker behaviour
 
