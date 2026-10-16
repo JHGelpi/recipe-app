@@ -47,3 +47,6 @@ apps/mobile/public/@powersync/
 # Playwright
 playwright-report/
 test-results/
+
+# Proxy data: the private CA that phones trust (see README)
+.local/

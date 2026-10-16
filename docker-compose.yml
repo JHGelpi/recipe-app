@@ -152,9 +152,15 @@ services:
     restart: unless-stopped
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:-:8080}
+      LAN_HTTPS_HOST: ${LAN_HTTPS_HOST:-localhost}
       CORS_DEV_ORIGIN: ${CORS_DEV_ORIGIN:-http://cors-disabled.invalid}
     ports:
       - '${PROXY_PORT:-8080}:8080'
+      - '${LAN_HTTPS_PORT:-8443}:8443'
+    volumes:
+      # A bind mount, not a named volume, so `down -v` (db:reset) keeps the
+      # private CA and phones that trust it.
+      - ./.local/caddy:/data
     healthcheck:
       test:
         ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://127.0.0.1:8080/healthz']

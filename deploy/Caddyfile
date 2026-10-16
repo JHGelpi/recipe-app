@@ -1,5 +1,10 @@
 {
 	admin off
+	# The private CA below lives inside the container; there is no host trust
+	# store to install its root into.
+	skip_install_trust
+	# Safari sends no SNI when connecting to an IP address.
+	default_sni {$LAN_HTTPS_HOST:localhost}
 }
 
 # Lets the one configured dev origin (the Expo dev server) call the stack.
@@ -27,7 +32,7 @@
 	}
 }
 
-{$SITE_ADDRESS::8080} {
+(app) {
 	encode zstd gzip
 
 	# route keeps these in the order written.
@@ -36,6 +41,14 @@
 
 		handle /healthz {
 			respond "ok" 200
+		}
+		# The public root of the private CA, so a phone can install and trust
+		# it. Only this one file under /data is reachable.
+		handle /local-ca.crt {
+			root * /data/caddy/pki/authorities/local
+			rewrite * /root.crt
+			header Content-Type application/x-x509-ca-cert
+			file_server
 		}
 		handle_path /auth/* {
 			reverse_proxy auth:9999
@@ -62,4 +75,16 @@
 			file_server
 		}
 	}
+}
+
+# Plain HTTP: containers, tests, and browsers on this machine.
+{$SITE_ADDRESS::8080} {
+	import app
+}
+
+# HTTPS for phones on the LAN or VPN, signed by Caddy's private CA. Browsers
+# need a secure origin for the app's storage and workers.
+https://{$LAN_HTTPS_HOST:localhost}:8443 {
+	tls internal
+	import app
 }

@@ -67,5 +67,14 @@ Then open http://localhost:8080 and sign in with one of the seeded emails:
 
 Sign-in codes arrive in the local mail catcher at http://127.0.0.1:8025. See [`CLAUDE.md`](CLAUDE.md) for the test commands.
 
+### Testing on a phone
+The phone needs an HTTPS address: browsers keep the app's local database and workers to secure origins. The proxy serves one, signed by its own private certificate authority.
+
+1. In `.env`, set `LAN_HTTPS_HOST` to the address the phone uses to reach this machine (on your LAN or VPN), then run `pnpm dev:backend`.
+2. On the iPhone, open `http://<LAN_HTTPS_HOST>:8080/local-ca.crt` in Safari and allow the profile download. Install it in Settings → General → VPN & Device Management, then turn on full trust in Settings → General → About → Certificate Trust Settings.
+3. Open `https://<LAN_HTTPS_HOST>:8443` and sign in. Read the code from the mail catcher on this machine.
+
+The authority is kept in `.local/caddy/` (git-ignored), so `pnpm db:reset` keeps it and the phone stays trusted. Deleting that folder creates a new authority, which the phone must trust again. Opening the app with no connection does not work yet; going offline while it is open does.
+
 ## License
 Private. All rights reserved.
