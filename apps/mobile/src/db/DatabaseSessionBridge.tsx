@@ -1,5 +1,5 @@
 import { usePowerSync } from '@powersync/react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { localDataAction, type SettledSession } from '../session/sessionState';
 import { useSession } from '../session/SessionProvider';
 import { createConnector } from '../sync/connector';
@@ -12,13 +12,16 @@ const connector = createConnector();
  * Keeps the local database in step with the session and the network.
  * - Local data is wiped only when the user signs out, or when a different
  *   user signs in (localDataAction). A session the server ended keeps it.
+ * - Signed-in screens render only once the database is settled for that
+ *   user: any wipe has finished and the owner is recorded, so the next user
+ *   on a shared device never glimpses the previous household's recipes.
  * - Signed in with a household and online: connect, so sync and uploads run.
  * - Signed in but offline: disconnect, keeping local data and the queue. An
  *   open sync stream does not fail when the network drops, so without this
  *   the app would show Online and wait on PowerSync's backoff to reconnect.
  * - Signed out: disconnect.
  */
-export function DatabaseSessionBridge() {
+export function DatabaseSessionBridge({ children }: { children: ReactNode }) {
   const db = usePowerSync();
   const { state } = useSession();
   const online = useNetworkOnline();
@@ -26,6 +29,8 @@ export function DatabaseSessionBridge() {
   const userId = state.status === 'signedIn' ? state.userId : null;
   const hasHousehold = state.status === 'signedIn' && state.claims !== null;
   const byUser = state.status === 'signedOut' && state.byUser;
+  // The user the local database is settled for.
+  const [readyFor, setReadyFor] = useState<string | null>(null);
   // Serialise transitions so a wipe always finishes before the next connect.
   const queue = useRef<Promise<void>>(Promise.resolve());
 
@@ -43,8 +48,13 @@ export function DatabaseSessionBridge() {
           await db.disconnectAndClear();
           dbOwner.clear();
         }
-        if (session.status === 'signedIn' && hasHousehold && online) {
+        if (session.status === 'signedIn') {
           dbOwner.set(session.userId);
+          setReadyFor(session.userId);
+        } else {
+          setReadyFor(null);
+        }
+        if (session.status === 'signedIn' && hasHousehold && online) {
           await db.connect(connector);
         } else {
           await db.disconnect();
@@ -53,5 +63,6 @@ export function DatabaseSessionBridge() {
       .catch((error: unknown) => console.error('Database session change failed', error));
   }, [db, status, userId, hasHousehold, byUser, online]);
 
-  return null;
+  if (status === 'signedIn' && readyFor !== userId) return null;
+  return <>{children}</>;
 }

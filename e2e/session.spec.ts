@@ -51,9 +51,22 @@ test('when the server ends the session and a different user signs in, the old da
   await page.reload();
   await expect(page.getByLabel('Email')).toBeVisible({ timeout: 30_000 });
 
+  // Record whether the old title is ever on screen, not just at the end:
+  // the next user must not glimpse it while the wipe runs.
+  await page.addInitScript((oldTitle) => {
+    const check = () => {
+      if (document.body?.innerText.includes(oldTitle)) sessionStorage.setItem('sawOld', '1');
+    };
+    new MutationObserver(check).observe(document, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+    });
+  }, title);
   await signIn(page, freshEmail('next'));
   await expect(page.getByText('No recipes yet')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText(title)).toHaveCount(0);
+  expect(await page.evaluate(() => sessionStorage.getItem('sawOld'))).toBeNull();
 });
 
 test('signing out while offline still wipes the local data', async ({ browser }) => {

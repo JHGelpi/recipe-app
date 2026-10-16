@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { auth, readSavedSession } from './auth';
+import { AUTH_STORAGE_KEY, auth, readSavedSession } from './auth';
 import { normalizeEmail } from './email';
 import {
   provisionalSession,
@@ -88,8 +88,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       },
       async signOut() {
         signingOut.current = true;
-        // scope 'local' clears this device's session even when offline.
-        await auth.signOut({ scope: 'local' });
+        // Clear the saved session first. Offline with an expired token,
+        // auth-js would retry renewing it for about 30 seconds and then return
+        // an error without clearing anything.
+        globalThis.localStorage?.removeItem(AUTH_STORAGE_KEY);
+        setState({ status: 'signedOut', byUser: true });
+        try {
+          // With nothing saved this returns at once; scope 'local' never asks
+          // the server.
+          await auth.signOut({ scope: 'local' });
+        } finally {
+          // A later sign-out the user did not ask for must not count as theirs.
+          signingOut.current = false;
+        }
       },
     }),
     [state],

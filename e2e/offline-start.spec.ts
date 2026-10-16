@@ -6,6 +6,7 @@ import {
   reloadOffline,
   SEED,
   session,
+  signIn,
   unique,
   waitForServiceWorker,
 } from './helpers';
@@ -98,4 +99,27 @@ test('sw.js is never cached by HTTP and precaches the app shell', async ({ reque
   const source = await response.text();
   expect(source).toContain('precacheAndRoute');
   expect(source).toContain('index.html');
+});
+
+test('signing out offline with an expired token signs out and wipes the local data', async ({
+  browser,
+}) => {
+  const page = await session(browser, freshEmail('stale-out'));
+  const title = unique('Stale sign-out stew');
+  await addRecipe(page, title);
+  await expect(page.getByText('Online · 0 unsynced')).toBeVisible({ timeout: 30_000 });
+  await waitForServiceWorker(page);
+
+  await page.context().setOffline(true);
+  await expireSavedSession(page);
+  await reloadOffline(page);
+  await expect(page.getByText(title, { exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await expect(page.getByLabel('Email')).toBeVisible({ timeout: 10_000 });
+
+  await page.context().setOffline(false);
+  await signIn(page, freshEmail('after-stale-out'));
+  await expect(page.getByText('No recipes yet')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(title)).toHaveCount(0);
 });

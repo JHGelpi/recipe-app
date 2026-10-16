@@ -14,9 +14,10 @@ export default function RootLayout() {
   return (
     <SessionProvider>
       <DatabaseProvider>
-        <DatabaseSessionBridge />
-        <UpdateBanner />
-        <Slot />
+        <DatabaseSessionBridge>
+          <UpdateBanner />
+          <Slot />
+        </DatabaseSessionBridge>
       </DatabaseProvider>
     </SessionProvider>
   );
