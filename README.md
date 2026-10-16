@@ -74,7 +74,19 @@ The phone needs an HTTPS address: browsers keep the app's local database and wor
 2. On the iPhone, open `https://<LAN_HTTPS_HOST>:8443/local-ca.crt` in Safari. It warns that the connection is not private until the authority is trusted; choose Show Details → visit this website, then allow the profile download. Install it in Settings → General → VPN & Device Management, then turn on full trust in Settings → General → About → Certificate Trust Settings.
 3. Open `https://<LAN_HTTPS_HOST>:8443` and sign in. Read the code from the mail catcher on this machine.
 
-The authority is kept in `.local/caddy/` (git-ignored), so `pnpm db:reset` keeps it and the phone stays trusted. Deleting that folder creates a new authority, which the phone must trust again. Opening the app with no connection does not work yet; going offline while it is open does.
+The authority is kept in `.local/caddy/` (git-ignored), so `pnpm db:reset` keeps it and the phone stays trusted. Deleting that folder creates a new authority, which the phone must trust again.
+
+To use it as an app, open the HTTPS address in Safari and choose Share → Add to Home Screen. The home-screen app has its own storage, so sign in once more there. After the first load it opens with no connection; a banner offers to reload when a new build is ready. The footer shows the build time and whether Safari granted persistent storage.
+
+Before loading a build that changes the local storage mode (as the phone preview did, from IndexedDB to OPFS), wait until the app shows "0 unsynced": unsynced changes in the old storage are not carried over.
+
+Phone checklist:
+1. Add to Home Screen; the "Recipes" icon appears.
+2. Open it from the home screen: full screen, no address bar. Sign in.
+3. Airplane mode on, close the app fully, reopen: recipes show and the status says "Offline". Add one; it shows as unsynced. Airplane mode off: it syncs and appears on the PC.
+4. Rebuild on the PC (`pnpm dev:backend`) and bring the app to the front: the banner appears; tap Reload; the footer's build time changes.
+5. Restart the phone and reopen: still signed in, data present.
+6. Reopen after a few days: still signed in, data present.
 
 ## License
 Private. All rights reserved.

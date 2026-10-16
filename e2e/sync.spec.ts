@@ -1,18 +1,7 @@
-import { expect, test, type Browser, type Page } from '@playwright/test';
-import { addRecipe, SEED, signIn } from './helpers';
+import { expect, test } from '@playwright/test';
+import { addRecipe, SEED, session, unique } from './helpers';
 
 const NFR5_MS = 10_000; // NFR-5: visible on other devices within ~10 s
-
-async function session(browser: Browser, email: string): Promise<Page> {
-  const context = await browser.newContext();
-  const page = await context.newPage();
-  await signIn(page, email);
-  return page;
-}
-
-function unique(prefix: string): string {
-  return `${prefix} ${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-}
 
 test('a signed-in session goes online and receives its household recipes', async ({ browser }) => {
   const page = await session(browser, SEED.memberA);

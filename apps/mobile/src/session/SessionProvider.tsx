@@ -1,13 +1,22 @@
-import type { Session } from '@supabase/auth-js';
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { auth } from './auth';
-import { claimsFromToken, type Claims } from './claims';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
+import { AUTH_STORAGE_KEY, auth, readSavedSession } from './auth';
 import { normalizeEmail } from './email';
+import {
+  provisionalSession,
+  resolveSession,
+  sessionFromAuth,
+  type SessionState,
+} from './sessionState';
 
-export type SessionState =
-  | { status: 'loading' }
-  | { status: 'signedOut' }
-  | { status: 'signedIn'; userId: string; claims: Claims | null };
+export type { SessionState } from './sessionState';
 
 export type ActionResult = { ok: true } | { ok: false; message: string };
 
@@ -20,23 +29,26 @@ export type SessionValue = {
 
 const UNREACHABLE = 'Could not reach the server. Check your connection and try again.';
 
-function toState(session: Session | null): SessionState {
-  if (!session) return { status: 'signedOut' };
-  return {
-    status: 'signedIn',
-    userId: session.user.id,
-    claims: claimsFromToken(session.access_token),
-  };
-}
-
 const SessionContext = createContext<SessionValue | null>(null);
 
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<SessionState>({ status: 'loading' });
+  // Start from the saved session, so an offline start shows the list at once.
+  const [state, setState] = useState<SessionState>(() => provisionalSession(readSavedSession()));
+  // Set while the user's own sign-out runs, so the bridge knows to wipe.
+  const signingOut = useRef(false);
 
   useEffect(() => {
-    void auth.getSession().then(({ data }) => setState(toState(data.session)));
-    const { data } = auth.onAuthStateChange((_event, session) => setState(toState(session)));
+    void auth.getSession().then((result) => setState(resolveSession(result, readSavedSession())));
+    const { data } = auth.onAuthStateChange((event, session) => {
+      // getSession above decides the start-up state, including the offline case.
+      if (event === 'INITIAL_SESSION') return;
+      if (session) {
+        setState(sessionFromAuth(session));
+      } else if (event === 'SIGNED_OUT') {
+        setState({ status: 'signedOut', byUser: signingOut.current });
+        signingOut.current = false;
+      }
+    });
     return () => data.subscription.unsubscribe();
   }, []);
 
@@ -75,8 +87,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         }
       },
       async signOut() {
-        // scope 'local' clears this device's session even when offline.
-        await auth.signOut({ scope: 'local' });
+        signingOut.current = true;
+        // Clear the saved session first. Offline with an expired token,
+        // auth-js would retry renewing it for about 30 seconds and then return
+        // an error without clearing anything.
+        globalThis.localStorage?.removeItem(AUTH_STORAGE_KEY);
+        setState({ status: 'signedOut', byUser: true });
+        try {
+          // With nothing saved this returns at once; scope 'local' never asks
+          // the server.
+          await auth.signOut({ scope: 'local' });
+        } finally {
+          // A later sign-out the user did not ask for must not count as theirs.
+          signingOut.current = false;
+        }
       },
     }),
     [state],

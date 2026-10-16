@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
+import { BuildFooter } from '../components/BuildFooter';
 import { useSession } from '../session/SessionProvider';
 
 const input = {
@@ -94,6 +95,7 @@ export function SignInScreen() {
           {message}
         </Text>
       ) : null}
+      <BuildFooter />
     </View>
   );
 }
