@@ -1,6 +1,15 @@
 {
   "extends": "expo/tsconfig.base",
-  "compilerOptions": { "strict": true, "noUncheckedIndexedAccess": true },
-  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"],
-  "exclude": ["node_modules", "**/*.test.ts"]
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/*.test.ts"
+  ]
 }

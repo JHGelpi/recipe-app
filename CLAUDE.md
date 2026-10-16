@@ -27,7 +27,7 @@ pnpm test                    # unit tests
 pnpm test:stack              # auth and token checks (needs dev:backend)
 pnpm test:rls                # tenant isolation suite (needs dev:backend + seed)
 pnpm test:api                # /api/upload tests (needs dev:backend + seed)
-pnpm test:e2e                # Playwright against the built app at http://localhost:8080
+pnpm test:e2e                # Playwright against the built app at PUBLIC_URL (default http://localhost:8080)
 pnpm lint && pnpm typecheck
 ```
 

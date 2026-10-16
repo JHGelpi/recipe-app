@@ -56,7 +56,7 @@ pnpm dev:backend   # creates .env if missing; builds and starts the stack
 pnpm db:seed       # two households and four users
 ```
 
-Then open http://localhost:8080 and sign in with one of the seeded emails:
+Then open http://localhost:8080 (the `PUBLIC_URL` in `.env`; if another program already uses port 8080, change `PUBLIC_URL` and `PROXY_PORT` together) and sign in with one of the seeded emails:
 
 | Email | Household | Role |
 |---|---|---|
