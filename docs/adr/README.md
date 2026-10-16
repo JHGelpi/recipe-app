@@ -13,5 +13,6 @@ Lightweight ADRs ([Michael Nygard format](https://cognitect.com/blog/2011/11/15/
 | [0007](0007-web-first-delivery-via-expo-web.md) | Web-first delivery via Expo web | Accepted |
 | [0008](0008-self-hosted-containerized-backend.md) | Self-hosted, containerized backend | Accepted |
 | [0009](0009-installable-web-app-with-workbox.md) | Installable web app with a Workbox-generated service worker | Accepted |
+| [0010](0010-recipe-content-as-json.md) | Recipe content as JSON on the recipe row | Accepted |
 
 Template: [`template.md`](template.md)
