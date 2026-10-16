@@ -5013,7 +5013,7 @@ git commit -m "feat(sync): PowerSync service container, upload connector, and ac
 
 ---
 
-### Task 8: CI and documentation
+### Task 8: CI and documentation (Steps 1 to 5 complete; push and pull request await the owner)
 
 **Files:**
 - Create: `.github/workflows/ci.yml`

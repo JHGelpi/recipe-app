@@ -1,6 +1,6 @@
 # Product Specification
 
-> Status: **Draft v0.1** · Last updated: 2026-10-12
+> Status: **Draft v0.2** · Last updated: 2026-10-16
 > Source of truth for *what* we build. `ARCHITECTURE.md` covers *how*.
 
 ## 1. Vision
@@ -35,7 +35,7 @@ Outside the household:
 | 3 | Meal planning | Weekly dinner menu feeding the shopping list |
 | Future | Desktop app; natural-language / semantic search | |
 
-**Platforms (v1):** iOS and Android. Desktop later.
+**Platforms (v1):** web first, as an installable web app built with Expo; native iOS and Android later from the same codebase (ADR-0007). Desktop later.
 
 **Out of scope (v1):** bulk import/migration; importing from social video itself (only recipes written in post comments, via paste); public recipe community; multiple households per user.
 
@@ -56,7 +56,7 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 ### Households & users
 | ID | Requirement | Pri |
 |---|---|---|
-| FR-1 | Sign up / sign in on iOS and Android | M |
+| FR-1 | Sign up / sign in with an email one-time code | M |
 | FR-2 | Creating an account creates a household; creator becomes Admin | M |
 | FR-3 | Admin invites people into the household by text or email link | M |
 | FR-4 | Roles: Admin, Member, Viewer with permissions per §2 | M |
@@ -67,7 +67,7 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 | ID | Requirement | Pri |
 |---|---|---|
 | FR-7 | Import from photo (camera or library), multiple pages per recipe | M |
-| FR-8 | Import from URL via OS share sheet or paste | M |
+| FR-8 | Import from URL via paste; via OS share sheet on native builds only (ADR-0007) | M |
 | FR-9 | Import from pasted text (incl. social media comments) | M |
 | FR-10 | AI parses: title, ingredients (qty / unit / item / prep note), steps, servings, prep & cook time, suggested tags | M |
 | FR-11 | Review screen before save; low-confidence fields highlighted | M |
@@ -128,7 +128,7 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 | NFR-9 | Data durability | Daily backups with point-in-time recovery; no data loss on device reinstall once synced. |
 | NFR-10 | Portability | Household can export all recipes (JSON + PDFs). |
 | NFR-11 | Accessibility | Supports OS dynamic text size, VoiceOver/TalkBack, WCAG AA contrast. |
-| NFR-12 | Store compliance | In-app account deletion; Sign in with Apple offered on iOS if other social sign-in is offered. |
+| NFR-12 | Store compliance | Native builds only: in-app account deletion; Sign in with Apple offered on iOS if other social sign-in is offered. |
 | NFR-13 | Attribution | Imported web recipes retain source URL and author attribution. |
 
 ## 7. Open questions

@@ -5,10 +5,12 @@ Lightweight ADRs ([Michael Nygard format](https://cognitect.com/blog/2011/11/15/
 | # | Title | Status |
 |---|---|---|
 | [0001](0001-record-architecture-decisions.md) | Record architecture decisions | Accepted |
-| [0002](0002-cross-platform-mobile-with-expo.md) | Cross-platform mobile with Expo / React Native | Proposed |
-| [0003](0003-supabase-as-backend.md) | Supabase as backend platform | Proposed |
-| [0004](0004-offline-first-sync-with-powersync.md) | Offline-first sync with PowerSync, last-write-wins | Proposed |
+| [0002](0002-cross-platform-mobile-with-expo.md) | Cross-platform mobile with Expo / React Native | Accepted, amended by 0007 |
+| [0003](0003-supabase-as-backend.md) | Supabase as backend platform | Superseded by 0008 |
+| [0004](0004-offline-first-sync-with-powersync.md) | Offline-first sync with PowerSync, last-write-wins | Accepted, amended by 0008 |
 | [0005](0005-server-side-ai-via-claude-api.md) | Server-side AI via Claude API | Proposed |
-| [0006](0006-household-tenancy-with-rls.md) | Household tenancy via shared schema + RLS | Proposed |
+| [0006](0006-household-tenancy-with-rls.md) | Household tenancy via shared schema + RLS | Accepted, amended by 0008 |
+| [0007](0007-web-first-delivery-via-expo-web.md) | Web-first delivery via Expo web | Accepted |
+| [0008](0008-self-hosted-containerized-backend.md) | Self-hosted, containerized backend | Accepted |
 
 Template: [`template.md`](template.md)
