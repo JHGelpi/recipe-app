@@ -1,9 +1,16 @@
-import { recipePatchSchema, recipeSchema } from '@recipe-app/domain';
+import {
+  favoritePatchSchema,
+  favoriteSchema,
+  recipePatchSchema,
+  recipeSchema,
+} from '@recipe-app/domain';
 import { z } from 'zod';
 import type { UserTx } from '../db/asUser';
 
 export const MAX_OPS = 500;
-const ALLOWED_TABLES = new Set(['recipes']);
+const ALLOWED_TABLES = new Set(['recipes', 'favorites']);
+// jsonb columns: sent with tx.json so postgres.js does not build an array literal.
+const JSON_COLUMNS = new Set(['ingredients', 'steps']);
 
 const opSchema = z.strictObject({
   op: z.enum(['put', 'patch', 'delete']),
@@ -39,35 +46,73 @@ function isRefusal(error: unknown): boolean {
   );
 }
 
-async function applyOne(tx: UserTx, op: Op): Promise<Result> {
-  if (!ALLOWED_TABLES.has(op.table)) return rejected(op, 'table_not_allowed');
-  if (op.op === 'delete') return rejected(op, 'delete_not_allowed');
+/** Column values ready for postgres.js: jsonb columns wrapped, everything else as is. */
+function columns(tx: UserTx, data: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(data).map(([key, value]) => [
+      key,
+      // postgres.js accepts any JSON value here; its declared type is narrower.
+      JSON_COLUMNS.has(key) ? tx.json(value as never) : value,
+    ]),
+  );
+}
 
-  const candidate = { ...(op.data ?? {}), id: op.id };
-
+async function applyRecipe(
+  tx: UserTx,
+  op: Op,
+  candidate: Record<string, unknown>,
+): Promise<Result> {
   if (op.op === 'put') {
     const parsed = recipeSchema.safeParse(candidate);
     if (!parsed.success) return rejected(op, 'invalid');
-    const { id, household_id, title } = parsed.data;
-    const deleted_at = parsed.data.deleted_at ?? null;
+    const { id, ...fields } = parsed.data;
+    const row = columns(tx, { ...fields, deleted_at: fields.deleted_at ?? null });
     // An existing row the caller may not update (another household's, or any
     // row for a viewer) makes the DO UPDATE branch raise 42501.
     await tx`
-      insert into public.recipes (id, household_id, title, deleted_at)
-      values (${id}, ${household_id}, ${title}, ${deleted_at})
-      on conflict (id) do update
-        set household_id = excluded.household_id,
-            title = excluded.title,
-            deleted_at = excluded.deleted_at`;
+      insert into public.recipes ${tx({ id, ...row })}
+      on conflict (id) do update set ${tx(row)}`;
     return applied(op);
   }
-
   const parsed = recipePatchSchema.safeParse(candidate);
   if (!parsed.success) return rejected(op, 'invalid');
   const { id, ...fields } = parsed.data;
-  const rows = await tx`update public.recipes set ${tx(fields)} where id = ${id} returning id`;
+  const rows = await tx`
+    update public.recipes set ${tx(columns(tx, fields))} where id = ${id} returning id`;
   // RLS hides rows the caller may not update, so "no row" covers both cases.
   return rows.length === 0 ? rejected(op, 'not_found_or_forbidden') : applied(op);
+}
+
+async function applyFavorite(
+  tx: UserTx,
+  op: Op,
+  candidate: Record<string, unknown>,
+): Promise<Result> {
+  if (op.op === 'put') {
+    const parsed = favoriteSchema.safeParse(candidate);
+    if (!parsed.success) return rejected(op, 'invalid');
+    const { id, ...fields } = parsed.data;
+    const row = { ...fields, deleted_at: fields.deleted_at ?? null };
+    // A second row for the same user and recipe violates the unique
+    // constraint (23505) and is rejected like any refusal.
+    await tx`
+      insert into public.favorites ${tx({ id, ...row })}
+      on conflict (id) do update set deleted_at = excluded.deleted_at`;
+    return applied(op);
+  }
+  const parsed = favoritePatchSchema.safeParse(candidate);
+  if (!parsed.success) return rejected(op, 'invalid');
+  const rows = await tx`
+    update public.favorites set deleted_at = ${parsed.data.deleted_at}
+    where id = ${parsed.data.id} returning id`;
+  return rows.length === 0 ? rejected(op, 'not_found_or_forbidden') : applied(op);
+}
+
+async function applyOne(tx: UserTx, op: Op): Promise<Result> {
+  if (!ALLOWED_TABLES.has(op.table)) return rejected(op, 'table_not_allowed');
+  if (op.op === 'delete') return rejected(op, 'delete_not_allowed');
+  const candidate = { ...(op.data ?? {}), id: op.id };
+  return op.table === 'recipes' ? applyRecipe(tx, op, candidate) : applyFavorite(tx, op, candidate);
 }
 
 /**

@@ -115,3 +115,29 @@ describe('POST /api/upload', () => {
     expect((await post(createApp(d), '{"ops":[]}')).status).toBe(500);
   });
 });
+
+describe('POST /api/trash/purge', () => {
+  function purge(app: ReturnType<typeof createApp>, token: string | null = 'jwt') {
+    return app.request('/api/trash/purge', {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  }
+
+  it('returns 401 with no token and never touches the database', async () => {
+    const d = deps();
+    expect((await purge(createApp(d), null)).status).toBe(401);
+    expect(d.asUser).not.toHaveBeenCalled();
+  });
+
+  it('runs one delete as the user and returns how many rows it removed', async () => {
+    const tx = vi.fn().mockResolvedValue([{ id: 'a' }, { id: 'b' }]);
+    const asUser = vi.fn(async (_token: string, fn: (t: typeof tx) => Promise<unknown>) => fn(tx));
+    const d = deps({ asUser: asUser as unknown as AppDeps['asUser'] });
+    const response = await purge(createApp(d));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ purged: 2 });
+    expect(asUser).toHaveBeenCalledTimes(1);
+    expect(asUser.mock.calls[0]?.[0]).toBe('jwt');
+  });
+});
