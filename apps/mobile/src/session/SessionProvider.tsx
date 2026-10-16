@@ -9,7 +9,12 @@ import {
 } from 'react';
 import { auth, readSavedSession } from './auth';
 import { normalizeEmail } from './email';
-import { resolveSession, sessionFromAuth, type SessionState } from './sessionState';
+import {
+  provisionalSession,
+  resolveSession,
+  sessionFromAuth,
+  type SessionState,
+} from './sessionState';
 
 export type { SessionState } from './sessionState';
 
@@ -27,7 +32,8 @@ const UNREACHABLE = 'Could not reach the server. Check your connection and try a
 const SessionContext = createContext<SessionValue | null>(null);
 
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<SessionState>({ status: 'loading' });
+  // Start from the saved session, so an offline start shows the list at once.
+  const [state, setState] = useState<SessionState>(() => provisionalSession(readSavedSession()));
   // Set while the user's own sign-out runs, so the bridge knows to wipe.
   const signingOut = useRef(false);
 

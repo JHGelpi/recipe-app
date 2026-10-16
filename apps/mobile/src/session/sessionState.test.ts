@@ -1,6 +1,11 @@
 import { AuthApiError, AuthRetryableFetchError, type Session } from '@supabase/auth-js';
 import { describe, expect, it } from 'vitest';
-import { localDataAction, resolveSession, sessionFromAuth } from './sessionState';
+import {
+  localDataAction,
+  provisionalSession,
+  resolveSession,
+  sessionFromAuth,
+} from './sessionState';
 
 function token(payload: object): string {
   const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url');
@@ -53,6 +58,24 @@ describe('resolveSession', () => {
       status: 'signedOut',
       byUser: false,
     });
+  });
+});
+
+describe('provisionalSession', () => {
+  // auth-js retries an offline renewal for up to ~30 s before getSession
+  // resolves; the app must not sit on a blank screen meanwhile.
+  it('starts signed in, marked stale, from a saved session', () => {
+    expect(provisionalSession(saved)).toEqual({
+      status: 'signedIn',
+      userId: 'user-1',
+      claims: CLAIMS,
+      stale: true,
+    });
+  });
+
+  it('starts loading when nothing usable is saved', () => {
+    expect(provisionalSession(null)).toEqual({ status: 'loading' });
+    expect(provisionalSession({ access_token: 42 })).toEqual({ status: 'loading' });
   });
 });
 

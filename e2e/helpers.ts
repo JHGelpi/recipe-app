@@ -80,3 +80,22 @@ export async function expireSavedSession(page: Page): Promise<void> {
     localStorage.setItem(key, JSON.stringify(saved));
   }, AUTH_STORAGE_KEY);
 }
+
+/** Waits until the service worker controls the page, so it can open offline. */
+export async function waitForServiceWorker(page: Page): Promise<void> {
+  await page.waitForFunction(() => navigator.serviceWorker?.controller != null, undefined, {
+    timeout: 30_000,
+  });
+}
+
+/**
+ * Reloads while offline. After a reload served by the service worker,
+ * Chromium under Playwright reports navigator.onLine === true although the
+ * network is still blocked (a real phone in airplane mode reports false), so
+ * offline is applied again to restore the browser's offline state.
+ */
+export async function reloadOffline(page: Page): Promise<void> {
+  await page.reload();
+  await page.context().setOffline(false);
+  await page.context().setOffline(true);
+}

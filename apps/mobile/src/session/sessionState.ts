@@ -29,6 +29,24 @@ function savedUser(saved: unknown): { userId: string; accessToken: string } | nu
 }
 
 /**
+ * The state to show before getSession() resolves. Offline, auth-js retries
+ * renewing an expired token for up to about 30 seconds first, so starting
+ * from the saved session (marked stale) avoids a blank screen meanwhile.
+ * The local data belongs to this user either way; the server checks every
+ * request.
+ */
+export function provisionalSession(saved: unknown): SessionState {
+  const user = savedUser(saved);
+  if (!user) return { status: 'loading' };
+  return {
+    status: 'signedIn',
+    userId: user.userId,
+    claims: claimsFromToken(user.accessToken),
+    stale: true,
+  };
+}
+
+/**
  * The state after start-up. When the access token has expired and renewing it
  * fails because the network is unreachable, auth-js returns no session but
  * keeps the saved one; the app stays signed in from it (marked stale) so an
@@ -38,15 +56,8 @@ function savedUser(saved: unknown): { userId: string; accessToken: string } | nu
 export function resolveSession(result: GetSessionResult, saved: unknown): SessionState {
   if (result.data.session) return sessionFromAuth(result.data.session);
   if (isAuthRetryableFetchError(result.error)) {
-    const user = savedUser(saved);
-    if (user) {
-      return {
-        status: 'signedIn',
-        userId: user.userId,
-        claims: claimsFromToken(user.accessToken),
-        stale: true,
-      };
-    }
+    const provisional = provisionalSession(saved);
+    if (provisional.status === 'signedIn') return provisional;
   }
   return { status: 'signedOut', byUser: false };
 }

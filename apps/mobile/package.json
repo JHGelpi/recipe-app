@@ -23,12 +23,13 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "workbox-cli": "7.4.1"
   },
   "scripts": {
     "copy-assets": "npx --no @powersync/web copy-assets",
     "web": "pnpm run copy-assets && expo start --web --port 8081",
-    "build:web": "pnpm run copy-assets && expo export --platform web",
+    "build:web": "pnpm run copy-assets && expo export --platform web && workbox generateSW workbox.config.cjs",
     "typecheck": "tsc --noEmit"
   },
   "private": true
