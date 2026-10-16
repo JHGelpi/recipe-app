@@ -1,6 +1,6 @@
 # Architecture
 
-> Status: **Proposed v0.1** · Last updated: 2026-10-12
+> Status: **Proposed v0.2** · Last updated: 2026-10-16
 > Structured per the [C4 model](https://c4model.com): System Context → Containers → Components, plus Dynamic and Deployment diagrams. Level 4 (Code) diagrams are intentionally omitted; the code is the source of truth at that level.
 >
 > Requirements live in [`docs/SPEC.md`](docs/SPEC.md). Decisions and their trade-offs live in [`docs/adr/`](docs/adr/). Requirement IDs (FR-x, NFR-x) are referenced throughout.
@@ -15,12 +15,12 @@ The requirements that shape the architecture most:
 
 | Driver | Source | Consequence |
 |---|---|---|
-| iOS + Android from one codebase, desktop later | Platform decision | Cross-platform framework (ADR-0002) |
+| Web first; iOS + Android later from one codebase | Platform decision | Cross-platform framework with a web target (ADR-0002, ADR-0007) |
 | Offline-first: read, search, create, edit with no signal | FR-20, FR-28, NFR-4 | Local database on device is the primary store; cloud is the sync hub (ADR-0004) |
 | Household tenancy with strict isolation | §2, NFR-1 | Every row carries `household_id`; isolation enforced by Postgres Row-Level Security (ADR-0006) |
 | AI parsing & substitutions, no keys on device | FR-10, FR-24, NFR-3 | AI calls only from a server-side function (ADR-0005) |
 | Last save wins | FR-30 | Row-level last-write-wins; no CRDTs |
-| Small team, family-scale load, low cost | — | Managed backend (BaaS) over self-hosted services (ADR-0003) |
+| Small team, family-scale load, lowest fixed cost, portable | — | Our own containers in one Compose stack, self-hosted (ADR-0008) |
 
 ## 1. Level 1 — System Context
 
@@ -64,17 +64,15 @@ C4Container
   title Container Diagram — Recipe App
 
   Person(user, "Household User", "Admin / Member / Viewer")
-  Person_Ext(recipient, "Recipient")
 
   System_Boundary(sys, "Recipe App") {
-    Container(mobile, "Mobile App", "Expo / React Native, TypeScript", "UI, cook mode, local search, PDF generation, offline queue")
-    ContainerDb(localDb, "On-device Database", "SQLite (via PowerSync SDK)", "Household's recipes; full-text index; pending-upload queue")
-    Container(syncSvc, "Sync Service", "PowerSync (managed)", "Streams household-scoped changes between Postgres and devices")
-    Container(api, "Edge Functions API", "Supabase Edge Functions, Deno/TypeScript", "Import pipeline, AI calls, invites, share links, upload of local writes")
-    Container(auth, "Auth", "Supabase Auth", "Sign-in (email magic link, Apple, Google); issues JWTs with household claim")
-    ContainerDb(db, "Cloud Database", "PostgreSQL (Supabase) with RLS", "System of record: households, users, recipes, shares, AI usage")
-    ContainerDb(blob, "Object Storage", "Supabase Storage", "Original import photos, recipe photos, generated share PDFs")
-    Container(shareWeb, "Share Landing Page", "Static page + Edge Function", "Renders a shared recipe; deep-links into the app to import")
+    Container(mobile, "Web App", "Expo / React Native Web, TypeScript", "UI, cook mode, local search, PDF generation, offline queue")
+    ContainerDb(localDb, "On-device Database", "SQLite in the browser (via PowerSync web SDK)", "Household's recipes; full-text index; pending-upload queue")
+    Container(proxy, "Proxy", "Caddy", "Single entry point; serves the built web app; routes /auth, /api, /sync")
+    Container(syncSvc, "Sync Service", "PowerSync service (self-hosted container)", "Streams household-scoped changes between Postgres and devices")
+    Container(api, "API", "Node / TypeScript (Hono)", "Upload of local writes now; import pipeline, AI calls, invites, share links later")
+    Container(auth, "Auth", "GoTrue (self-hosted container)", "Sign-in (email one-time code); issues JWTs with household_id and household_role claims")
+    ContainerDb(db, "Database", "PostgreSQL 17 with RLS", "System of record: households, users, recipes; also holds the sync service's storage database")
   }
 
   System_Ext(llm, "Claude API")
@@ -83,19 +81,21 @@ C4Container
 
   Rel(user, mobile, "Uses")
   Rel(mobile, localDb, "Reads/writes (always local-first)")
-  Rel(localDb, syncSvc, "Bidirectional sync", "WebSocket/HTTPS")
+  Rel(mobile, proxy, "All network traffic", "HTTPS")
+  Rel(proxy, auth, "/auth")
+  Rel(proxy, api, "/api")
+  Rel(proxy, syncSvc, "/sync", "HTTP streaming / WebSocket")
   Rel(syncSvc, db, "Replicates household-scoped data", "Postgres logical replication")
-  Rel(mobile, api, "Import, substitutions, invites, shares; uploads queued writes", "HTTPS + JWT")
-  Rel(mobile, auth, "Sign in", "HTTPS")
-  Rel(mobile, blob, "Uploads photos", "HTTPS signed URL")
-  Rel(api, db, "Reads/writes as user (RLS applies)")
-  Rel(api, blob, "Reads originals; writes PDFs")
-  Rel(api, llm, "Parse / substitute", "HTTPS")
-  Rel(api, sites, "Fetch page HTML", "HTTPS")
-  Rel(auth, email, "Magic links, invites")
-  Rel(recipient, shareWeb, "Opens shared link")
-  Rel(shareWeb, mobile, "Deep link to import")
+  Rel(api, db, "Reads/writes as the user (RLS applies)")
+  Rel(auth, db, "Users, sessions; reads memberships for claims")
+  Rel(api, llm, "Parse / substitute (later)", "HTTPS")
+  Rel(api, sites, "Fetch page HTML (later)", "HTTPS")
+  Rel(auth, email, "Sign-in codes, invites", "SMTP")
 ```
+
+Object storage and the share landing page are not built yet; they are decided in the import and sharing sub-projects.
+
+### Container responsibilities```
 
 ### Container responsibilities
 
@@ -104,11 +104,10 @@ C4Container
 | **Mobile App** | All UI; cook mode; scaling & unit conversion (pure functions, offline); PDF/text rendering for sharing (FR-26); offline import queue (FR-29) | Never holds AI or service-role keys (NFR-3) |
 | **On-device DB** | Local copy of the household's data; FTS index for search (FR-19/20) | Writes go here first, then upload queue → API |
 | **Sync Service** | Change streaming, per-household sync rules | Sync rules mirror RLS; a device only receives its household's rows |
-| **Edge Functions API** | Business logic that must be server-side: import pipeline, AI, invites, share tokens, write validation | Stateless; all functions verify JWT and role |
-| **Auth** | Identity; JWT custom claims `household_id`, `role` | Sign in with Apple required on iOS (NFR-12) |
-| **Cloud DB** | System of record; RLS on every tenant table | Point-in-time recovery (NFR-9) |
-| **Object Storage** | Binary files under `households/{household_id}/...` | Bucket policies mirror RLS |
-| **Share Landing Page** | Public, read-only render of a share snapshot | Exposes only the snapshot, never the live recipe (NFR-2) |
+| **API** | Business logic that must be server-side: import pipeline, AI, invites, share tokens, write validation | Stateless; verifies the JWT, then runs every statement as the user through asUser |
+| **Auth** | Identity; JWT custom claims `household_id`, `household_role` (added by an access-token hook) | Sign in with Apple required on iOS (NFR-12) |
+| **Database** | System of record; RLS on every tenant table | Backups arrive with the hosting sub-project (NFR-9) |
+| **Proxy** | TLS, routing, static web app | Only container with a published port |
 
 ## 3. Level 3 — Components
 
@@ -126,12 +125,12 @@ C4Component
     Component(search, "Search", "SQLite FTS5", "Title/ingredient/tag search + filters, offline (FR-19/20)")
     Component(cook, "Cook Engine", "Pure TS", "Scaling, unit conversion, step state, keep-awake (FR-21–23)")
     Component(shareOut, "Share Builder", "expo-print / expo-sharing", "Formats PDF/text; requests share links (FR-26/27)")
-    Component(apiClient, "API Client", "Supabase JS", "Typed calls to Edge Functions; attaches JWT")
-    Component(authC, "Session", "Supabase Auth SDK", "Sign-in, token refresh, household/role claims")
+    Component(apiClient, "API Client", "fetch", "Typed calls to the API; attaches JWT")
+    Component(authC, "Session", "@supabase/auth-js against GoTrue", "Sign-in, token refresh, household/role claims")
   }
 
   ContainerDb(localDb, "On-device DB", "SQLite")
-  Container(api, "Edge Functions API")
+  Container(api, "API")
 
   Rel(nav, capture, "Starts import")
   Rel(capture, importQ, "Enqueues")
@@ -146,13 +145,15 @@ C4Component
   Rel(shareOut, apiClient, "Create share token")
 ```
 
-### 3b. Edge Functions API
+### 3b. API
+
+Only the Auth Guard and Write Upload Handler exist after the walking skeleton.
 
 ```mermaid
 C4Component
-  title Component Diagram — Edge Functions API
+  title Component Diagram — API
 
-  Container_Boundary(api, "Edge Functions API") {
+  Container_Boundary(api, "API") {
     Component(guard, "Auth Guard", "Middleware", "Verifies JWT; resolves household_id and role; rejects Viewer writes")
     Component(importFn, "Import Orchestrator", "Function: /import", "Routes by source type; stores original; returns draft for review")
     Component(urlX, "URL Extractor", "Module", "Fetches HTML; uses schema.org Recipe JSON-LD when present; else cleaned text → LLM")
@@ -160,7 +161,7 @@ C4Component
     Component(subFn, "Substitution Service", "Function: /substitute", "Ingredient + recipe context → options with amounts & effects (FR-24)")
     Component(quota, "AI Usage Meter", "Module", "Records tokens per household; enforces quota (NFR-7)")
     Component(llmGw, "LLM Gateway", "Module", "Single place for model choice, retries, timeouts, prompt versions")
-    Component(writeFn, "Write Upload Handler", "Function: /upload", "Applies queued local writes; last-write-wins on updated_at (FR-30)")
+    Component(writeFn, "Write Upload Handler", "Route: /api/upload", "Applies queued local writes; last-write-wins on updated_at (FR-30)")
     Component(inviteFn, "Invite Service", "Function: /invites", "Household invites & new-household invites (FR-3, FR-6)")
     Component(shareFn, "Share Service", "Function: /shares", "Creates snapshot + token; imports snapshot into recipient household (FR-27)")
   }
@@ -232,29 +233,28 @@ C4Deployment
     ContainerDb(localDb, "SQLite", "On-device")
   }
 
-  Deployment_Node(supa, "Supabase (managed, US region)", "") {
-    Container(api, "Edge Functions", "Deno")
-    Container(auth, "Auth", "GoTrue")
-    ContainerDb(db, "PostgreSQL", "RLS, PITR backups")
-    ContainerDb(blob, "Storage", "S3-compatible")
-    Container(shareWeb, "Share Landing", "Edge Function serving HTML")
-  }
-
-  Deployment_Node(ps, "PowerSync Cloud", "Managed") {
-    Container(sync, "Sync Service", "")
+  Deployment_Node(host, "Owner's server", "Docker Compose, one stack") {
+    Container(proxy, "proxy", "Caddy")
+    Container(api, "api", "Node")
+    Container(auth, "auth", "GoTrue")
+    Container(sync, "sync", "PowerSync service")
+    ContainerDb(db, "db", "PostgreSQL 17")
   }
 
   Deployment_Node(anth, "Anthropic", "") {
     Container(llm, "Claude API", "")
   }
 
-  Rel(mobile, api, "HTTPS")
-  Rel(localDb, sync, "WebSocket")
+  Rel(mobile, proxy, "HTTPS")
+  Rel(proxy, api, "")
+  Rel(proxy, auth, "")
+  Rel(proxy, sync, "")
   Rel(sync, db, "Logical replication")
+  Rel(api, db, "")
   Rel(api, llm, "HTTPS")
 ```
 
-**Environments:** `local` (Supabase CLI in Docker + Expo dev client), `staging`, `production`. Each is a separate Supabase project and PowerSync instance. Builds and OTA updates ship through EAS.
+**Environments:** local (the Compose stack with the dev profile, which adds a mail catcher; Expo web dev server or the built app from the proxy). Production is the same Compose file on the owner's server with a different .env; it arrives with the hosting sub-project. A single cloud VM running the same file is the fallback (ADR-0008).
 
 ## 6. Data model (conceptual)
 
@@ -279,7 +279,7 @@ erDiagram
 
 Conventions for every tenant table:
 - `id` as a UUID, generated on the device so it works offline
-- `household_id` (NOT NULL, indexed); RLS policy `household_id = auth.jwt() ->> 'household_id'`
+- `household_id` (NOT NULL, indexed); RLS policy `household_id = auth_household_id()`
 - `created_at`, `updated_at`, `updated_by`, `deleted_at` (soft delete → 30-day trash, FR-18)
 - Ingredients are stored structured (`quantity`, `unit`, `item`, `prep_note`, `raw_text`) so scaling, search, and the Phase 2 shopping list can use them
 
@@ -289,13 +289,13 @@ Conventions for every tenant table:
 
 | Concern | Approach | NFR |
 |---|---|---|
-| **Tenant isolation** | RLS on every table and storage bucket; sync rules scoped by `household_id`; Edge Functions use the user's JWT, never the service role, except in the share-import path, which is audited; an automated test suite tries cross-household reads and writes | NFR-1 |
-| **Roles** | `role` claim in the JWT; RLS write policies exclude `viewer`; UI hides edit affordances | FR-4 |
+| **Tenant isolation** | RLS on every table; the API reaches the database only through asUser, as a role that cannot bypass RLS; sync config scoped by `household_id`; an automated suite tries cross-household reads and writes and checks the roles themselves | NFR-1 |
+| **Roles** | `household_role` claim in the JWT; RLS write policies require admin or member; UI hides edit affordances | FR-4 |
 | **Conflicts** | Row-level LWW on `updated_at` (server clock on upload). Ingredients and steps are child rows, saved as a set with the recipe | FR-30 |
-| **AI** | All prompts versioned in `supabase/functions/_shared/prompts/`; output validated against a JSON schema; usage metered per household | NFR-3, NFR-7 |
-| **Secrets** | Only the Supabase anon key ships in the app. Claude API key and service role key live in Edge Function secrets | NFR-3 |
-| **Observability** | Structured logs in Edge Functions; Sentry for app crashes; AI latency/cost dashboard from `ai_usage` | NFR-6, NFR-7 |
-| **Backups** | Supabase PITR; household JSON export | NFR-9, NFR-10 |
+| **AI** | All prompts versioned in `apps/api/src/llm/prompts/`; output validated against a JSON schema; usage metered per household | NFR-3, NFR-7 |
+| **Secrets** | The web app ships no keys. Database passwords, the token signing key, and the Claude API key live in .env on the server | NFR-3 |
+| **Observability** | Structured logs in the API; Sentry for app crashes; AI latency/cost dashboard from `ai_usage` | NFR-6, NFR-7 |
+| **Backups** | Off-site Postgres backups with point-in-time recovery, set up in the hosting sub-project; household JSON export | NFR-9, NFR-10 |
 | **Accessibility** | Dynamic type, screen-reader labels, contrast checks in review | NFR-11 |
 
 ## 8. Future evolution
@@ -307,4 +307,4 @@ Conventions for every tenant table:
 
 ## 9. Decision log
 
-See [`docs/adr/`](docs/adr/). Current: ADR-0001 through ADR-0006.
+See [`docs/adr/`](docs/adr/). Current: ADR-0001 through ADR-0008.

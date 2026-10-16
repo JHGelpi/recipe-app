@@ -3,44 +3,48 @@
 Guidance for Claude Code (and other AI agents) working in this repo. Keep this file short; link out for detail.
 
 ## What this is
-Offline-first, multi-tenant mobile recipe app (iOS + Android). Households store, import (photo → URL → text), search, and cook from recipes, with AI parsing and substitutions.
+Offline-first, multi-tenant recipe app: web first, iOS + Android later from the same codebase (ADR-0007). Households store, import (photo → URL → text), search, and cook from recipes, with AI parsing and substitutions.
 
 - **What to build:** `docs/SPEC.md` (requirement IDs FR-x / NFR-x)
 - **How it's built:** `ARCHITECTURE.md` (C4) and `docs/adr/`
 - Reference requirement IDs in commits, PRs, and tests (e.g. `feat(import): multi-page photo capture (FR-7)`).
 
 ## Stack
-- `apps/mobile` — Expo / React Native, TypeScript, Expo Router, PowerSync SDK (SQLite)
-- `supabase/` — migrations, RLS policies, seed data, Edge Functions (Deno/TypeScript)
+- `apps/mobile` — Expo / React Native Web (web first, ADR-0007), TypeScript, Expo Router, PowerSync web SDK (SQLite in the browser)
+- `apps/api` — Node/TypeScript API (Hono). All database access goes through `asUser` in `src/db/asUser.ts`
+- `db/` — SQL migrations (dbmate), first-boot role script, seed data
 - `packages/domain` — shared TS: recipe schema (zod), scaling, unit conversion. Pure functions, no I/O.
-- AI: Claude API, called **only** from Edge Functions via `supabase/functions/_shared/llm/`
+- `docker-compose.yml` — the whole backend: Caddy proxy, API, GoTrue auth, Postgres, PowerSync (ADR-0008)
+- AI: Claude API, called **only** from the API via `apps/api/src/llm/`
 
 ## Commands
 ```bash
 pnpm install                 # install workspace
-supabase start               # local Postgres/Auth/Storage/Functions (Docker)
-supabase db reset            # re-apply migrations + seed
-pnpm --filter mobile start   # Expo dev client
-pnpm test                    # all unit tests
-pnpm test:rls                # tenant isolation suite (requires supabase start)
+pnpm dev:backend             # creates .env if missing; builds and starts the Compose stack
+pnpm db:reset                # fresh database volume, migrations, and seed
+pnpm dev:web                 # Expo web dev server at http://localhost:8081
+pnpm test                    # unit tests
+pnpm test:stack              # auth and token checks (needs dev:backend)
+pnpm test:rls                # tenant isolation suite (needs dev:backend + seed)
+pnpm test:api                # /api/upload tests (needs dev:backend + seed)
+pnpm test:e2e                # Playwright against the built app at PUBLIC_URL (default http://localhost:8080)
 pnpm lint && pnpm typecheck
 ```
-*(Scaffolding not yet created. Update these when it is.)*
 
 ## Non-negotiable rules
-1. **Tenant isolation.** Every tenant table has `household_id NOT NULL` + RLS enabled + policies in the same migration. Add the table to the RLS test suite in the same PR. Never use the service-role key outside the audited share-import path.
-2. **No secrets on device.** The app ships only the Supabase anon key. AI and service keys live in Edge Function secrets.
+1. **Tenant isolation.** Every tenant table has `household_id NOT NULL` + RLS enabled + policies in the same migration. Add the table to the RLS test suite in the same PR. The API connects only as `api_login` and only through `asUser`; no code path may use a role that owns tables or bypasses RLS. New tables must also be added to `apps/api/tests/rls/registry.ts`; the coverage guard fails otherwise.
+2. **No secrets on device.** The web app ships no keys at all, only relative service paths. Database passwords, the signing key, and AI keys live in .env on the server.
 3. **Offline-first.** UI reads/writes the local DB, never the network directly. Features needing the network (AI, import) must queue or degrade gracefully with a clear message.
 4. **Viewers can't write.** Enforce in RLS *and* hide controls in the UI.
 5. **IDs are client-generated UUIDs.** Every tenant row has `created_at`, `updated_at`, `updated_by`, `deleted_at`. Delete = soft delete.
-6. **Sync rules mirror RLS.** Changing one means changing the other.
+6. **Sync rules mirror RLS.** Changing one means changing the other. RLS lives in `db/migrations/`, sync config in `powersync/sync-config.yaml`.
 7. **AI output is untrusted.** Validate against the zod schema in `packages/domain`; never write raw LLM output to the DB. Prompts live in versioned files, not inline strings.
 8. **Keep the original.** Imports always store the source photo/URL/text (FR-12).
 
 ## Conventions
 - TypeScript strict mode everywhere. No `any` without a comment explaining why.
 - Domain logic goes in `packages/domain` with unit tests; screens stay thin.
-- Migrations: `supabase/migrations/<timestamp>_<verb>_<thing>.sql`; never edit an applied migration.
+- Migrations: `db/migrations/<timestamp>_<verb>_<thing>.sql` with dbmate's `-- migrate:up` marker; never edit an applied migration.
 - Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`, `test:`).
 - New dependency or cross-cutting pattern → new ADR in `docs/adr/`.
 

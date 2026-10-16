@@ -6,8 +6,6 @@ node_modules/
 .env
 .env.*
 !.env.example
-supabase/.env
-supabase/functions/.env
 
 # Expo / React Native
 .expo/
@@ -21,10 +19,6 @@ android/
 *.key
 *.mobileprovision
 *.orig.*
-
-# Supabase local
-supabase/.branches/
-supabase/.temp/
 
 # Build & test output
 build/
@@ -46,3 +40,13 @@ Thumbs.db
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# PowerSync worker assets (copied from node_modules by `copy-assets`)
+apps/mobile/public/@powersync/
+
+# Playwright
+playwright-report/
+test-results/
+
+# Proxy data: the private CA that phones trust (see README)
+.local/

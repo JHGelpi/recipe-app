@@ -1,6 +1,6 @@
 # 0002. Cross-platform mobile with Expo / React Native
 
-- **Status:** Proposed
+- **Status:** Accepted, amended by 0007
 - **Date:** 2026-10-12
 
 ## Context

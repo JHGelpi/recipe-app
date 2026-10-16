@@ -1,0 +1,98 @@
+{
+	admin off
+	# The private CA below lives inside the container; there is no host trust
+	# store to install its root into.
+	skip_install_trust
+	# Safari sends no SNI when connecting to an IP address.
+	default_sni {$LAN_HTTPS_HOST:localhost}
+	# A browser that sends plain HTTP to the HTTPS port is redirected to
+	# HTTPS rather than shown an error.
+	servers :8443 {
+		listener_wrappers {
+			http_redirect
+			tls
+		}
+	}
+}
+
+# Lets the one configured dev origin (the Expo dev server) call the stack.
+# The built app is same-origin and never sends these requests.
+(dev_cors) {
+	@preflight {
+		method OPTIONS
+		header Origin {$CORS_DEV_ORIGIN:http://cors-disabled.invalid}
+	}
+	@from_dev header Origin {$CORS_DEV_ORIGIN:http://cors-disabled.invalid}
+
+	handle @preflight {
+		header Access-Control-Allow-Origin {$CORS_DEV_ORIGIN:http://cors-disabled.invalid}
+		header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+		header Access-Control-Allow-Headers {http.request.header.Access-Control-Request-Headers}
+		header Access-Control-Max-Age 600
+		header Vary Origin
+		respond 204
+	}
+	# defer: set after the upstream answers, replacing any value it sent.
+	header @from_dev {
+		defer
+		Access-Control-Allow-Origin {$CORS_DEV_ORIGIN:http://cors-disabled.invalid}
+		Vary Origin
+	}
+}
+
+(app) {
+	encode zstd gzip
+
+	# route keeps these in the order written.
+	route {
+		import dev_cors
+
+		handle /healthz {
+			respond "ok" 200
+		}
+		# The public root of the private CA, so a phone can install and trust
+		# it. Only this one file under /data is reachable.
+		handle /local-ca.crt {
+			root * /data/caddy/pki/authorities/local
+			rewrite * /root.crt
+			header Content-Type application/x-x509-ca-cert
+			file_server
+		}
+		handle_path /auth/* {
+			reverse_proxy auth:9999
+		}
+		handle /api/* {
+			# A coarse cap; the API enforces its exact 1 MB limit itself.
+			request_body {
+				max_size 4MB
+			}
+			reverse_proxy api:3000
+		}
+		handle_path /sync/* {
+			reverse_proxy sync:8080 {
+				flush_interval -1
+			}
+		}
+		handle /email-templates/* {
+			root * /srv
+			file_server
+		}
+		handle {
+			root * /srv/web
+			try_files {path} /index.html
+			file_server
+		}
+	}
+}
+
+# Plain HTTP: containers, tests, and browsers on this machine.
+{$SITE_ADDRESS::8080} {
+	import app
+}
+
+# HTTPS for phones on the LAN or VPN, signed by Caddy's private CA. Browsers
+# need a secure origin for the app's storage and workers.
+https://{$LAN_HTTPS_HOST:localhost}:8443 {
+	tls internal
+	import app
+}

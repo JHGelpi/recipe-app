@@ -1,6 +1,6 @@
 # 0003. Supabase as backend platform
 
-- **Status:** Proposed
+- **Status:** Superseded by 0008
 - **Date:** 2026-10-12
 
 ## Context
