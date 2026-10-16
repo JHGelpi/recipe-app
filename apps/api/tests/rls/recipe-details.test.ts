@@ -132,3 +132,57 @@ describe('trash purge policy', () => {
     expect(left).toHaveLength(0);
   });
 });
+
+describe('deleted_at is stamped by the server', () => {
+  // The purge is irreversible, so the 30 days must start at the server's
+  // clock, not a device's (a wrong clock, or a back-dated upload).
+  it('a member cannot back-date a trash time to purge at once', async () => {
+    const member = await signInAs(SEED.memberA);
+    const id = await insertRecipe(member);
+    await as(
+      member,
+      (tx) => tx`update public.recipes set deleted_at = '2000-01-01T00:00:00Z' where id = ${id}`,
+    );
+    const [row] = await adminSql<{ recent: boolean }[]>`
+      select deleted_at > now() - interval '1 minute' as recent from public.recipes where id = ${id}`;
+    expect(row?.recent).toBe(true);
+    expect(await purge(member, id)).toHaveLength(0);
+    expect(await exists(id)).toBe(true);
+  });
+
+  it('keeps the original trash time when a trashed recipe is saved again', async () => {
+    const member = await signInAs(SEED.memberA);
+    const id = await insertRecipe(member);
+    await trashDaysAgo(id, 10);
+    await as(
+      member,
+      (tx) => tx`update public.recipes set deleted_at = now(), notes = 'edited' where id = ${id}`,
+    );
+    const [row] = await adminSql<{ days: number }[]>`
+      select extract(day from now() - deleted_at)::int as days from public.recipes where id = ${id}`;
+    expect(row?.days).toBe(10);
+  });
+
+  it('restore clears it, and a later trash starts a new 30 days', async () => {
+    const member = await signInAs(SEED.memberA);
+    const id = await insertRecipe(member);
+    await trashDaysAgo(id, 40);
+    await as(member, (tx) => tx`update public.recipes set deleted_at = null where id = ${id}`);
+    await as(
+      member,
+      (tx) => tx`update public.recipes set deleted_at = '2000-01-01T00:00:00Z' where id = ${id}`,
+    );
+    expect(await purge(member, id)).toHaveLength(0);
+  });
+
+  it('a recipe inserted already trashed gets the server time', async () => {
+    const member = await signInAs(SEED.memberA);
+    const id = randomUUID();
+    await as(
+      member,
+      (tx) => tx`insert into public.recipes (id, household_id, title, deleted_at)
+        values (${id}, ${member.householdId}, 'Born trashed', '2000-01-01T00:00:00Z')`,
+    );
+    expect(await purge(member, id)).toHaveLength(0);
+  });
+});

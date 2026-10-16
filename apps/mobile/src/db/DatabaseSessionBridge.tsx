@@ -61,7 +61,7 @@ export function DatabaseSessionBridge({ children }: { children: ReactNode }) {
         if (session.status === 'signedIn' && hasHousehold && online) {
           await db.connect(connector);
           // FR-18: at most once a day per device; failures wait for the next connect.
-          if (writer) void purgeTrashIfDue();
+          if (writer) void purgeTrashIfDue(db);
         } else {
           await db.disconnect();
         }
