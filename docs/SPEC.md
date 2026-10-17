@@ -93,10 +93,10 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 | ID | Requirement | Pri |
 |---|---|---|
 | FR-21 | Cook mode: screen awake, large text, step-by-step, checkable ingredients | M |
-| FR-22 | Scale servings *(proposed)* | S |
-| FR-23 | US ↔ metric conversion *(proposed)* | C |
+| FR-22 | Scale servings | S |
+| FR-23 | US ↔ metric conversion (same kind only: volume ↔ volume, weight ↔ weight) | C |
 | FR-24 | AI substitutions per ingredient, with amounts and effect on dish | M |
-| FR-25 | Save a substitution to the recipe as note/variant *(proposed)* | C |
+| FR-25 | Save a substitution to the recipe as a note | C |
 
 ### Sharing out
 | ID | Requirement | Pri |

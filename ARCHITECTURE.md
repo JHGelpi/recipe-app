@@ -120,6 +120,7 @@ C4Component
   Container_Boundary(mobile, "Mobile App") {
     Component(nav, "Navigation & Screens", "Expo Router", "Library, Recipe detail, Edit, Import review, Cook mode, Household settings")
     Component(capture, "Capture Module", "Import screen", "Photos (FR-7), pasted text and links (FR-8, FR-9); writes an imports row, and a photos row per page")
+    Component(cook, "Cook Mode", "Screen", "Step-by-step view, wake lock, scaling and units on the phone (FR-21–23)")
     Component(importQ, "Import Queue", "imports table + kicker", "The synced imports table; the kicker asks the server to read waiting imports when online (FR-29, ADR-0012)")
     Component(repo, "Recipe Repository", "TypeScript over PowerSync", "CRUD on local DB; soft delete/trash; role checks for UI")
     Component(search, "Search", "In-memory index over the local DB (ADR-0011)", "Title/ingredient/tag search + tag filters, offline (FR-19/20)")
@@ -158,6 +159,7 @@ C4Component
     Component(importFn, "Import Orchestrator", "Route: /api/imports/:id/parse", "Claims the import as the user; reads JSON-LD or asks the AI parser; writes the draft to the row (ADR-0012)")
     Component(urlX, "URL Extractor", "Module", "Fetches HTML with address checks after DNS and on redirects; schema.org Recipe JSON-LD when present; else cleaned text → LLM")
     Component(parser, "AI Parser", "Module", "Prompts LLM with image(s)/text; validates against Recipe JSON schema; flags low-confidence fields (FR-10/11)")
+    Component(subs, "Substitutions", "POST /api/substitutions", "Asks Claude per ingredient; remembers answers in substitutions (FR-24)")
     Component(subFn, "Substitution Service", "Function: /substitute", "Ingredient + recipe context → options with amounts & effects (FR-24)")
     Component(quota, "AI Usage Meter", "ai_usage table", "Records spend per household per month; enforces the cap (NFR-7)")
     Component(llmGw, "LLM Gateway", "Module", "Single place for model choice, retries, timeouts, prompt versions")
@@ -268,6 +270,7 @@ erDiagram
   HOUSEHOLD ||--o{ RECIPE : owns
   RECIPE ||--o{ SOURCE : "imported from"
   RECIPE ||--o{ PHOTO : has
+  RECIPE ||--o{ SUBSTITUTION : "remembered for"
   IMPORT ||--o{ PHOTO : pages
   HOUSEHOLD ||--o{ IMPORT : queues
   USER ||--o{ FAVORITE : marks
