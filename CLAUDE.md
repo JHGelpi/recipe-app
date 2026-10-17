@@ -38,7 +38,7 @@ pnpm lint && pnpm typecheck
 ```
 
 ## Non-negotiable rules
-1. **Tenant isolation.** Every tenant table has `household_id NOT NULL` + RLS enabled + policies in the same migration. Add the table to the RLS test suite in the same PR. The API connects only as `api_login` and only through `asUser` (or `asClaims`, with claims `asUser` verified in the same request, for background work; ADR-0012); no code path may use a role that owns tables or bypasses RLS. New tables must also be added to `apps/api/tests/rls/registry.ts`; the coverage guard fails otherwise.
+1. **Tenant isolation.** Every tenant table has `household_id NOT NULL` + RLS enabled + policies in the same migration. Add the table to the RLS test suite in the same PR. The API connects only as `api_login` and only through `asUser` (or `asClaims`, with claims `asUser` verified in the same request, for background work; ADR-0012); cross-household changes go only through the `SECURITY DEFINER` household functions of ADR-0015, which check the caller themselves; no code path may use a role that owns tables or bypasses RLS. New tables must also be added to `apps/api/tests/rls/registry.ts`; the coverage guard fails otherwise.
 2. **No secrets on device.** The web app ships no keys at all, only relative service paths. Database passwords, the signing key, and AI keys live in .env on the server.
 3. **Offline-first.** UI reads/writes the local DB, never the network directly. Features needing the network (AI, import) must queue or degrade gracefully with a clear message.
 4. **Viewers can't change household data.** Enforce in RLS *and* hide controls in the UI. Their own favorites are the exception.

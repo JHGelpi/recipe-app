@@ -121,6 +121,7 @@ C4Component
     Component(nav, "Navigation & Screens", "Expo Router", "Library, Recipe detail, Edit, Import review, Cook mode, Household settings")
     Component(capture, "Capture Module", "Import screen", "Photos (FR-7), pasted text and links (FR-8, FR-9); writes an imports row, and a photos row per page")
     Component(cook, "Cook Mode", "Screen", "Step-by-step view, wake lock, scaling and units on the phone (FR-21–23)")
+    Component(household, "Household", "Screen", "Members, roles, invites; follows membership changes (FR-3–6)")
     Component(importQ, "Import Queue", "imports table + kicker", "The synced imports table; the kicker asks the server to read waiting imports when online (FR-29, ADR-0012)")
     Component(repo, "Recipe Repository", "TypeScript over PowerSync", "CRUD on local DB; soft delete/trash; role checks for UI")
     Component(search, "Search", "In-memory index over the local DB (ADR-0011)", "Title/ingredient/tag search + tag filters, offline (FR-19/20)")
@@ -160,6 +161,7 @@ C4Component
     Component(urlX, "URL Extractor", "Module", "Fetches HTML with address checks after DNS and on redirects; schema.org Recipe JSON-LD when present; else cleaned text → LLM")
     Component(parser, "AI Parser", "Module", "Prompts LLM with image(s)/text; validates against Recipe JSON schema; flags low-confidence fields (FR-10/11)")
     Component(subs, "Substitutions", "POST /api/substitutions", "Asks Claude per ingredient; remembers answers in substitutions (FR-24)")
+    Component(invites, "Household API", "/api/invites, /api/members, /api/household", "Calls the household definer functions (ADR-0015)")
     Component(subFn, "Substitution Service", "Function: /substitute", "Ingredient + recipe context → options with amounts & effects (FR-24)")
     Component(quota, "AI Usage Meter", "ai_usage table", "Records spend per household per month; enforces the cap (NFR-7)")
     Component(llmGw, "LLM Gateway", "Module", "Single place for model choice, retries, timeouts, prompt versions")
@@ -286,6 +288,7 @@ Conventions for every tenant table:
 - `created_at`, `updated_at`, `updated_by`, `deleted_at` (soft delete → 30-day trash, FR-18)
 - Ingredients and steps are JSON arrays on the recipe row (ADR-0010), each element with a stable id; ingredients keep the typed line (`raw`) plus parsed `quantity`, `quantity_max`, `unit`, `item`, `note`, so scaling, search, and the Phase 2 shopping list can use them
 - Favorites are a per-user table (`favorites`), synced only to that user
+- `INVITE` (`invites`): role, sha256 of the link's code, expiry, accepted and cancelled times; read by the household's Admins only and written only by the ADR-0015 functions. Roles are checked live from `memberships`, which syncs to phones (`household_members`, `my_membership`)
 - `PHOTO` (`photos`): `kind` (page or dish), `import_id` and `position` for pages, `recipe_id`, `media_type`, `bytes`, `width`, `height`, `uploaded_at`; the bytes are on the `photos` volume. A recipe's dish photo is `recipes.photo_id` (ADR-0013)
 
 `SHARE` stores an immutable JSON **snapshot** of the recipe. Recipients import from the snapshot, never from the sender's live row.

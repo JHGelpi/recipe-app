@@ -18,5 +18,6 @@ Lightweight ADRs ([Michael Nygard format](https://cognitect.com/blog/2011/11/15/
 | [0012](0012-imports-as-synced-queue.md) | Imports as a synced queue with server-side parsing | Accepted |
 | [0013](0013-photo-files-on-a-volume.md) | Photo files on a volume behind RLS-checked endpoints | Accepted |
 | [0014](0014-cook-mode-and-substitutions.md) | Cook mode on the phone; substitutions asked live and remembered | Accepted |
+| [0015](0015-household-moves-and-live-roles.md) | Household moves through narrow definer functions; live role checks | Accepted |
 
 Template: [`template.md`](template.md)
