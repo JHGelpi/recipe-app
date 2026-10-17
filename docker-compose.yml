@@ -45,7 +45,8 @@ services:
       DB_NAMESPACE: auth
       GOTRUE_JWT_SECRET: ${JWT_SECRET:?run pnpm env:init}
       GOTRUE_JWT_KEYS: ${JWT_KEYS:-[]}
-      GOTRUE_JWT_EXP: 3600
+      # 10 minutes: bounds what a removed person's phone can still sync (ADR-0015).
+      GOTRUE_JWT_EXP: 600
       GOTRUE_JWT_AUD: authenticated
       GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
       GOTRUE_DISABLE_SIGNUP: 'false'

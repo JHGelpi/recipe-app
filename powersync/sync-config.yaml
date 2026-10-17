@@ -56,3 +56,26 @@ streams:
              created_at, updated_at, updated_by, deleted_at
       FROM substitutions
       WHERE household_id = auth.parameter('household_id') AND deleted_at IS NULL
+
+  # Mirrors memberships_select's household branch.
+  household_members:
+    auto_subscribe: true
+    query: >-
+      SELECT id, household_id, user_id, email, role, created_at
+      FROM memberships
+      WHERE household_id = auth.parameter('household_id') AND deleted_at IS NULL
+
+  # Mirrors memberships_select's own-row branch. Keyed by user, so it keeps
+  # arriving after a change of household; the phone refreshes on a change.
+  my_membership:
+    auto_subscribe: true
+    query: >-
+      SELECT id, household_id, user_id, email, role, created_at
+      FROM memberships
+      WHERE user_id = auth.user_id() AND deleted_at IS NULL
+
+  # Mirrors households_select.
+  household_info:
+    auto_subscribe: true
+    query: >-
+      SELECT id, name FROM households WHERE id = auth.parameter('household_id')
