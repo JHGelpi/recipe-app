@@ -83,12 +83,31 @@ const photos = new Table(
   { indexes: { import: ['import_id'], recipe: ['recipe_id'] } },
 );
 
+// The household's remembered substitutions (household_substitutions stream).
+// Written only by the server; options holds JSON text.
+const substitutions = new Table(
+  {
+    household_id: column.text,
+    recipe_id: column.text,
+    ingredient_id: column.text,
+    ingredient_raw: column.text,
+    options: column.text,
+    note: column.text,
+    created_at: column.text,
+    updated_at: column.text,
+    updated_by: column.text,
+    deleted_at: column.text,
+  },
+  { indexes: { recipe: ['recipe_id'] } },
+);
+
 // attachments is PowerSync's local-only queue table: never uploaded.
 export const AppSchema = new Schema({
   recipes,
   favorites,
   imports,
   photos,
+  substitutions,
   attachments: new AttachmentTable(),
 });
 
