@@ -4,7 +4,7 @@ import { env } from '../../../../test-support/env';
 import { SEED, signInAs } from '../../../../test-support/auth';
 import { signTestToken } from '../../../../test-support/tokens';
 import { createVerifier, UnauthorizedError } from '../../src/auth/verify';
-import { connect, createAsUser } from '../../src/db/asUser';
+import { connect, createAsClaims, createAsUser } from '../../src/db/asUser';
 import { as, asUser, refusalCode } from '../helpers/db';
 import { TENANT_TABLES } from './registry';
 
@@ -81,5 +81,24 @@ describe('asUser', () => {
     expect(
       await as(member, (tx) => tx`select id from public.recipes where id = ${id}`),
     ).toHaveLength(0);
+  });
+});
+
+describe('asClaims', () => {
+  it('runs as the user with claims verified earlier, without the token', async () => {
+    const admin = await signInAs(SEED.adminA);
+    const verify = createVerifier({ audience: 'authenticated', jwksUrl: env.jwksUrl });
+    const claims = await verify(admin.accessToken);
+    const sql = connect(env.apiDbUrl, { max: 1 });
+    try {
+      const asClaims = createAsClaims(sql);
+      const rows = await asClaims(
+        claims,
+        (tx) => tx<{ id: string }[]>`select id from public.households`,
+      );
+      expect(rows.map((row) => row.id)).toEqual([admin.householdId]);
+    } finally {
+      await sql.end();
+    }
   });
 });

@@ -1,9 +1,10 @@
 import postgres from 'postgres';
-import type { VerifyToken } from '../auth/verify';
+import type { TokenClaims, VerifyToken } from '../auth/verify';
 
 export type Sql = postgres.Sql;
 export type UserTx = postgres.TransactionSql;
 export type AsUser = <T>(token: string, fn: (tx: UserTx) => Promise<T>) => Promise<T>;
+export type AsClaims = <T>(claims: TokenClaims, fn: (tx: UserTx) => Promise<T>) => Promise<T>;
 
 /** Connects as the API's login role. That role can do nothing until asUser switches role. */
 export function connect(url: string, options: { max?: number } = {}): Sql {
@@ -18,8 +19,18 @@ export function connect(url: string, options: { max?: number } = {}): Sql {
  * so nothing carries over to the next request on the same connection.
  */
 export function createAsUser(sql: Sql, verify: VerifyToken): AsUser {
-  return async <T>(token: string, fn: (tx: UserTx) => Promise<T>): Promise<T> => {
-    const claims = await verify(token);
+  const asClaims = createAsClaims(sql);
+  return async <T>(token: string, fn: (tx: UserTx) => Promise<T>): Promise<T> =>
+    asClaims(await verify(token), fn);
+}
+
+/**
+ * asUser without the token check, for work that outlives its request (an
+ * import parse, ADR-0012). The claims must come from asUser's verifier
+ * earlier in that request; the role and RLS are exactly asUser's.
+ */
+export function createAsClaims(sql: Sql): AsClaims {
+  return async <T>(claims: TokenClaims, fn: (tx: UserTx) => Promise<T>): Promise<T> => {
     const result = await sql.begin(async (tx) => {
       await tx`set local role authenticated`;
       await tx`select set_config('request.jwt.claims', ${JSON.stringify(claims)}, true)`;
