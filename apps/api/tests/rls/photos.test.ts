@@ -59,9 +59,9 @@ describe('photos RLS', () => {
     const viewer = await signInAs(SEED.viewerA);
     const importId = await photoImport(member);
     expect(await refusalCode(insertPage(viewer, importId).run)).toBe(REFUSED);
-    expect(
-      await refusalCode(insertPage(member, importId, { uploaded_at: new Date() }).run),
-    ).toBe(REFUSED);
+    expect(await refusalCode(insertPage(member, importId, { uploaded_at: new Date() }).run)).toBe(
+      REFUSED,
+    );
   });
 
   it('the other household cannot update or delete a photo', async () => {
