@@ -24,6 +24,13 @@ export const RETRYABLE_IMPORT_ERRORS: readonly ImportError[] = [
   'invalid_output',
 ];
 
+/**
+ * A parse still "parsing" after this long is taken to have died and may be
+ * claimed again. Longer than the slowest possible parse (page fetch plus two
+ * AI attempts), so a live parse is never claimed twice and billed twice.
+ */
+export const PARSE_STALE_SECONDS = 300;
+
 export function isRetryable(error: string | null | undefined): boolean {
   return (RETRYABLE_IMPORT_ERRORS as readonly string[]).includes(error ?? '');
 }

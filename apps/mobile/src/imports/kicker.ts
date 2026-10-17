@@ -1,4 +1,4 @@
-import type { ImportStatus } from '@recipe-app/domain';
+import { PARSE_STALE_SECONDS, type ImportStatus } from '@recipe-app/domain';
 import { parseTimestamp } from '../recipes/rows';
 import type { ParseRequestOutcome } from './api';
 
@@ -9,8 +9,8 @@ export type KickRow = {
 };
 export type Attempt = { failures: number; nextAt: number };
 
-/** Matches the server's reclaim rule (STALE_PARSE_SECONDS). */
-export const STALE_MS = 2 * 60 * 1000;
+/** The server's reclaim rule: a parse older than this may be claimed again. */
+export const STALE_MS = PARSE_STALE_SECONDS * 1000;
 export const TICK_MS = 5_000;
 const BASE_DELAY_MS = 5_000;
 const MAX_DELAY_MS = 5 * 60 * 1000;

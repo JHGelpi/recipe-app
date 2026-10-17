@@ -43,11 +43,18 @@ describe('createGateway', () => {
       input: { title: 'Soup' },
       usage: { inputTokens: 1000, outputTokens: 500 },
     });
+    // Claude Sonnet 5.5 rejects a forced tool_choice with a 400; auto plus a
+    // strict tool and a prompt that asks for the tool is the supported path.
     expect(create.mock.calls[0]?.[0]).toMatchObject({
       model: 'claude-sonnet-5-5',
       max_tokens: 8000,
       system: 'sys',
-      tool_choice: { type: 'tool', name: 'record_recipe' },
+      tool_choice: { type: 'auto' },
+      output_config: { effort: 'low' },
+    });
+    expect(create.mock.calls[0]?.[0].tools[0]).toMatchObject({
+      name: 'record_recipe',
+      strict: true,
     });
   });
 

@@ -118,11 +118,11 @@ describe('POST /api/imports/:id/parse', () => {
     expect((await parse(cook, id)).status).toBe(409);
   });
 
-  it('reclaims an import stuck in parsing for over 2 minutes', async () => {
+  it('reclaims an import stuck in parsing for over 5 minutes', async () => {
     const cook = await fresh();
     const id = await textImport(cook, SOUP);
     await adminSql`update public.imports
-      set status = 'parsing', parse_started_at = now() - interval '3 minutes' where id = ${id}`;
+      set status = 'parsing', parse_started_at = now() - interval '6 minutes' where id = ${id}`;
     expect((await parse(cook, id)).status).toBe(202);
     expect((await settled(cook, id)).status).toBe('ready');
   });

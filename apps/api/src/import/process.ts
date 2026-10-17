@@ -56,7 +56,7 @@ async function parse(
 /**
  * Reads one claimed import and writes its result (spec §4). Never throws for
  * a parse problem: every failure becomes an error code on the row. Only the
- * final write can throw, and the 2-minute reclaim recovers that.
+ * final write can throw, and the 5-minute reclaim recovers that.
  */
 export async function processImport(
   deps: ProcessDeps,

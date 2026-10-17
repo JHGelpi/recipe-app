@@ -9,12 +9,18 @@ export type ParseRequest = { system: string; user: string };
 
 const nullable = (type: string) => ({ type: [type, 'null'] });
 
-/** The forced tool whose input is the draft (spec §4). Its output is still validated (rule 7). */
+/**
+ * The strict tool whose input is the draft (spec §4). Strict mode makes the
+ * input follow this schema; it is still validated (rule 7).
+ */
 export const RECORD_RECIPE_TOOL: Anthropic.Tool = {
   name: 'record_recipe',
-  description: 'Record the recipe found in the source, or say there is none.',
+  description:
+    'Record the recipe found in the source, or say there is none. Always call this tool exactly once.',
+  strict: true,
   input_schema: {
     type: 'object',
+    additionalProperties: false,
     properties: {
       is_recipe: { type: 'boolean', description: 'False when the source contains no recipe.' },
       title: { type: 'string' },
@@ -35,10 +41,12 @@ export const RECORD_RECIPE_TOOL: Anthropic.Tool = {
             heading: { type: 'boolean' },
           },
           required: ['raw', 'quantity', 'quantity_max', 'unit', 'item', 'note', 'heading'],
+          additionalProperties: false,
         },
       },
       steps: { type: 'array', items: { type: 'string' } },
-      tags: { type: 'array', items: { type: 'string' }, maxItems: 5 },
+      // At most 5 is asked in the prompt and enforced by toImportDraft.
+      tags: { type: 'array', items: { type: 'string' } },
       author: nullable('string'),
       low_confidence: { type: 'array', items: { type: 'string', enum: [...DRAFT_FIELDS] } },
     },

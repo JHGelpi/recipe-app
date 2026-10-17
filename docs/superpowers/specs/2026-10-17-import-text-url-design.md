@@ -39,7 +39,7 @@ Let the owner get a recipe into the app by pasting its text (from Notes, a messa
 | Server worker sweeping all households (option C) | Rejected | Needs a role that sees every household, against rule 1. |
 | Who starts a parse | The phone, by calling `POST /api/imports/:id/parse`, which runs as the user through `asUser` | Keeps every statement as the user. A claim on the row makes it safe to call twice. |
 | URL reading | schema.org Recipe JSON-LD first (no AI), else cleaned page text to AI | ADR-0005; most large recipe sites publish JSON-LD. |
-| AI output | A forced tool call, validated by a zod schema in `packages/domain` | Rule 7: never write raw model output. |
+| AI output | A strict tool call (`tool_choice: auto`; the Claude 5.5 models refuse a forced tool), validated by a zod schema in `packages/domain` | Rule 7: never write raw model output. |
 | Review | The existing recipe editor, prefilled | One editor to maintain; validation already there. |
 | Where the original lives | New columns on `recipes` (`source_url`, `source_author`, `source_text`) | The import row is dismissed after save; the original must stay with the recipe (FR-12). |
 
@@ -81,9 +81,9 @@ Check constraints enforce the source rules and the status values.
 
 `POST /api/imports/:id/parse` (bearer token, as every route):
 
-1. **Claim**, as the user: `update imports set status = 'parsing', parse_started_at = now(), error = null where id = :id and deleted_at is null and (status = 'pending' or (status = 'failed' and error is retryable) or (status = 'parsing' and parse_started_at < now() - interval '2 minutes')) returning *`. RLS limits this to the household's admins and members. No row: `409 {status}` when the row exists and is not claimable, `404` otherwise.
+1. **Claim**, as the user: `update imports set status = 'parsing', parse_started_at = now(), error = null where id = :id and deleted_at is null and (status = 'pending' or (status = 'failed' and error is retryable) or (status = 'parsing' and parse_started_at < now() - interval '5 minutes')) returning *`. RLS limits this to the household's admins and members. No row: `409 {status}` when the row exists and is not claimable, `404` otherwise.
 2. Answer `202 {status: 'parsing'}` at once.
-3. Continue in the background, still as that user, then write `ready` with `draft`, or `failed` with `error`. The work runs to the end whether or not the phone is still connected. A crash leaves `parsing`, which the 2-minute rule lets the next call reclaim.
+3. Continue in the background, still as that user, then write `ready` with `draft`, or `failed` with `error`. The work runs to the end whether or not the phone is still connected. A crash leaves `parsing`, which the 5-minute rule lets the next call reclaim.
 
 `GET /api/imports/usage` returns `{spentUsd, capUsd}` for the caller's household this month.
 
@@ -109,7 +109,7 @@ Check constraints enforce the source rules and the status values.
 
 - Prompt in `apps/api/src/llm/prompts/parse-recipe.v1.md` (rule 7: versioned files).
 - **Input:** the text, the source URL when there is one, and up to 200 of the household's existing tags (most used first) so suggestions reuse them.
-- **Output:** a forced tool call `record_recipe` with these fields:
+- **Output:** a strict tool call `record_recipe` (asked for by the prompt; effort `low`) with these fields:
   - title, servings, prep and cook minutes
   - ingredients: raw, quantity, quantity_max, unit, item, note, heading
   - steps
@@ -185,7 +185,7 @@ Retryable: `quota` (once the month has changed), `ai_unavailable`, `fetch_failed
     - **Failed**, with the message from §5, **Try again** when retryable and **Dismiss**
 - **The kicker** (`src/imports/`) runs while signed in as an admin or member. When online, for each of the household's imports, it calls `/parse` in these cases:
   - the import is `pending` and has been uploaded (not in the upload queue)
-  - it is `parsing` with `parse_started_at` over 2 minutes old
+  - it is `parsing` with `parse_started_at` over 5 minutes old
 
   It backs off on failure (5 s, doubling, at most 5 minutes) and never calls twice at once for the same row. Try again calls `/parse` directly. The decisions are pure functions with unit tests.
 - **Review screen** (`/import/[id]`):

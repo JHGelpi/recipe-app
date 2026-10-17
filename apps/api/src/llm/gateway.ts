@@ -23,6 +23,8 @@ export class AiUnavailableError extends Error {
 
 export const MAX_OUTPUT_TOKENS = 8_000;
 export const AI_TIMEOUT_MS = 60_000;
+/** One call plus one retry by the SDK. */
+export const AI_ATTEMPTS = 2;
 
 /** A price per million tokens in dollars is a price per token in micro-dollars. */
 export function costMicroUsd(
@@ -38,6 +40,12 @@ export function costMicroUsd(
 /**
  * The only code that calls Claude (ADR-0005). One retry, by the SDK, on
  * overload, 429 and 5xx; 60 s per attempt; output capped.
+ *
+ * tool_choice is auto: the Claude 5.5 models refuse a forced tool with a 400.
+ * The tool is strict, so when it is called its input follows the schema, and
+ * the prompt asks for it; an answer without it reads as invalid_output.
+ * Effort is low: reading a recipe needs little reasoning, and less thinking
+ * keeps the parse fast and cheap.
  */
 export function createGateway(config: AiConfig, client?: Pick<Anthropic, 'messages'>): Gateway {
   const anthropic =
@@ -47,7 +55,7 @@ export function createGateway(config: AiConfig, client?: Pick<Anthropic, 'messag
           apiKey: config.apiKey,
           baseURL: config.baseUrl ?? undefined,
           timeout: AI_TIMEOUT_MS,
-          maxRetries: 1,
+          maxRetries: AI_ATTEMPTS - 1,
         })
       : null);
 
@@ -62,7 +70,8 @@ export function createGateway(config: AiConfig, client?: Pick<Anthropic, 'messag
           system: request.system,
           messages: [{ role: 'user', content: request.user }],
           tools: [tool],
-          tool_choice: { type: 'tool', name: tool.name },
+          tool_choice: { type: 'auto' },
+          output_config: { effort: 'low' },
         });
       } catch (error) {
         throw new AiUnavailableError(error instanceof Error ? error.message : String(error));

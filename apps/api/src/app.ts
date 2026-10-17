@@ -79,7 +79,7 @@ export function createApp(deps: AppDeps): Hono {
 
   // FR-29, ADR-0012: claims the import as the user and answers at once; the
   // parse continues even if the phone goes away. A crash leaves the row
-  // "parsing", which the next call reclaims after 2 minutes.
+  // "parsing", which the next call reclaims after 5 minutes.
   app.post('/api/imports/:id/parse', async (c) => {
     const token = bearer(c.req.header('Authorization'));
     if (!token) return c.json({ error: 'unauthorized' }, 401);

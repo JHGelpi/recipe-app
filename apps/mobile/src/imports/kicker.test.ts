@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { PARSE_STALE_SECONDS } from '@recipe-app/domain';
 import { afterKick, backoffMs, dueKicks, needsKick, STALE_MS } from './kicker';
 
 const now = Date.parse('2026-10-17T10:10:00Z');
@@ -11,16 +12,20 @@ describe('backoffMs', () => {
 });
 
 describe('needsKick', () => {
-  it('kicks pending imports and parses stuck for over 2 minutes', () => {
+  it('waits as long as the server before treating a parse as stuck', () => {
+    expect(STALE_MS).toBe(PARSE_STALE_SECONDS * 1000);
+  });
+
+  it('kicks pending imports and parses stuck for over 5 minutes', () => {
     expect(needsKick({ id: 'a', status: 'pending', parse_started_at: null }, now)).toBe(true);
     expect(
       needsKick(
-        { id: 'b', status: 'parsing', parse_started_at: '2026-10-17 10:07:00.123456Z' },
+        { id: 'b', status: 'parsing', parse_started_at: '2026-10-17 10:04:00.123456Z' },
         now,
       ),
     ).toBe(true);
     expect(
-      needsKick({ id: 'c', status: 'parsing', parse_started_at: '2026-10-17T10:09:00Z' }, now),
+      needsKick({ id: 'c', status: 'parsing', parse_started_at: '2026-10-17T10:06:00Z' }, now),
     ).toBe(false);
     expect(needsKick({ id: 'd', status: 'ready', parse_started_at: null }, now)).toBe(false);
     expect(needsKick({ id: 'e', status: 'failed', parse_started_at: null }, now)).toBe(false);

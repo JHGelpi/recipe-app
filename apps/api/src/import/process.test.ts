@@ -1,8 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
-import { AiUnavailableError, type Gateway } from '../llm/gateway';
+import { AI_ATTEMPTS, AI_TIMEOUT_MS, AiUnavailableError, type Gateway } from '../llm/gateway';
+import { FETCH_DEFAULTS } from './fetchPage';
 import type { FetchResult } from './fetchPage';
 import { processImport, type ProcessDeps } from './process';
-import type { ClaimedImport, ImportStore, ParseResult } from './store';
+import {
+  STALE_PARSE_SECONDS,
+  type ClaimedImport,
+  type ImportStore,
+  type ParseResult,
+} from './store';
 
 const claims = { sub: 'u1', household_id: 'h1', household_role: 'member', exp: 0 };
 const textRow: ClaimedImport = {
@@ -141,4 +147,9 @@ describe('processImport', () => {
     await processImport(deps, claims, urlRow);
     expect(finished[0]?.result).toEqual({ status: 'failed', error: 'ai_unavailable' });
   });
+});
+
+it('a parse always ends before it can be reclaimed as stuck, so no import is parsed and billed twice', () => {
+  const worstCaseMs = FETCH_DEFAULTS.timeoutMs + AI_TIMEOUT_MS * AI_ATTEMPTS + 30_000; // retry backoff and the writes
+  expect(worstCaseMs).toBeLessThan(STALE_PARSE_SECONDS * 1000);
 });

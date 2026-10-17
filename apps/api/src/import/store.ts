@@ -1,4 +1,9 @@
-import { RETRYABLE_IMPORT_ERRORS, type ImportDraft, type ImportError } from '@recipe-app/domain';
+import {
+  PARSE_STALE_SECONDS,
+  RETRYABLE_IMPORT_ERRORS,
+  type ImportDraft,
+  type ImportError,
+} from '@recipe-app/domain';
 import type { TokenClaims } from '../auth/verify';
 import type { AsClaims } from '../db/asUser';
 
@@ -31,7 +36,7 @@ export type ImportStore = {
   spent(claims: TokenClaims): Promise<number>;
 };
 
-export const STALE_PARSE_SECONDS = 120;
+export const STALE_PARSE_SECONDS = PARSE_STALE_SECONDS;
 const TAGS_IN_PROMPT = 200;
 
 /** Every statement here runs as the user, under RLS (rule 1). */

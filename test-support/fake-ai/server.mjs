@@ -51,6 +51,13 @@ function recipeFrom(text) {
 }
 
 async function messages(res, body) {
+  // As the Claude 5.5 models do: a forced tool_choice is refused.
+  if (body.tool_choice?.type === 'tool' || body.tool_choice?.type === 'any') {
+    return send(res, 400, {
+      type: 'error',
+      error: { type: 'invalid_request_error', message: 'forced tool use is not supported' },
+    });
+  }
   const content = body.messages?.[0]?.content;
   const text = typeof content === 'string' ? content : '';
   requests.push(text);

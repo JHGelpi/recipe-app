@@ -57,3 +57,13 @@ it('the tool requires every field the draft needs', () => {
     ]),
   );
 });
+
+it('the tool is strict: no fields beyond the schema, at the top or in an ingredient', () => {
+  const schema = RECORD_RECIPE_TOOL.input_schema as unknown as {
+    additionalProperties: boolean;
+    properties: { ingredients: { items: { additionalProperties: boolean } } };
+  };
+  expect(RECORD_RECIPE_TOOL.strict).toBe(true);
+  expect(schema.additionalProperties).toBe(false);
+  expect(schema.properties.ingredients.items.additionalProperties).toBe(false);
+});
