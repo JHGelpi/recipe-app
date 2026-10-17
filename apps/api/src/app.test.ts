@@ -13,6 +13,13 @@ function deps(overrides: Partial<AppDeps> = {}): AppDeps {
       usage: vi.fn().mockResolvedValue({ spentUsd: 0.42, capUsd: 2 }),
     },
     substitutions: { ask: vi.fn().mockResolvedValue({ kind: 'missing' }) },
+    sharing: {
+      create: vi.fn(),
+      stop: vi.fn(),
+      read: vi.fn(),
+      photo: vi.fn(),
+      save: vi.fn(),
+    },
     household: {
       createInvite: vi.fn(),
       listInvites: vi.fn(),
@@ -156,6 +163,7 @@ describe('POST /api/trash/purge', () => {
     const tx = vi
       .fn()
       .mockResolvedValueOnce([{ id: 'p1', household_id: 'h1' }])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{ id: 'a' }, { id: 'b' }]);
     const asUser = vi.fn(async (_token: string, fn: (t: typeof tx) => Promise<unknown>) => fn(tx));
     const d = deps({ asUser: asUser as unknown as AppDeps['asUser'] });

@@ -22,6 +22,7 @@ function setup(
     read: vi.fn().mockResolvedValue(Uint8Array.from([9])),
     remove: vi.fn().mockResolvedValue(undefined),
     move: vi.fn().mockResolvedValue(undefined),
+    copy: vi.fn().mockResolvedValue(true),
   };
   const service = createPhotoService({
     asClaims: run as unknown as AsClaims,

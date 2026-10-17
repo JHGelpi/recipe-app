@@ -5,28 +5,34 @@ import { RECIPE_LIMITS } from './limits';
 import type { Step } from './steps';
 import { ingredientSchema, recipeTitleSchema, stepSchema, tagSchema } from './index';
 
-/** FR-27, NFR-2: what a link shows; nothing else of the household. */
-export const shareSnapshotSchema = z.strictObject({
-  title: recipeTitleSchema,
-  servings: z.number().int().min(1).max(999).nullable(),
-  prep_minutes: z.number().int().min(0).max(10000).nullable(),
-  cook_minutes: z.number().int().min(0).max(10000).nullable(),
-  ingredients: z.array(ingredientSchema).max(RECIPE_LIMITS.ingredients),
-  steps: z.array(stepSchema).max(RECIPE_LIMITS.steps),
-  tags: z.array(tagSchema).max(RECIPE_LIMITS.tags),
-  notes: z.string().max(RECIPE_LIMITS.notes),
-  source_url: z.string().max(SOURCE_LIMITS.url).refine(isHttpUrl).nullable(),
-  source_author: z.string().max(SOURCE_LIMITS.author).nullable(),
-  household_name: z.string().min(1).max(200),
-  shared_at: z.iso.datetime({ offset: true }),
-  photo: z
-    .strictObject({
-      bytes: z.number().int().positive(),
-      width: z.number().int().positive(),
-      height: z.number().int().positive(),
-    })
-    .nullable(),
-});
+/**
+ * FR-27, NFR-2: what a link shows; nothing else of the household. Lazy:
+ * index.ts re-exports this file before it defines the recipe schemas used
+ * here, so they are looked up on first use, not at load.
+ */
+export const shareSnapshotSchema = z.lazy(() =>
+  z.strictObject({
+    title: recipeTitleSchema,
+    servings: z.number().int().min(1).max(999).nullable(),
+    prep_minutes: z.number().int().min(0).max(10000).nullable(),
+    cook_minutes: z.number().int().min(0).max(10000).nullable(),
+    ingredients: z.array(ingredientSchema).max(RECIPE_LIMITS.ingredients),
+    steps: z.array(stepSchema).max(RECIPE_LIMITS.steps),
+    tags: z.array(tagSchema).max(RECIPE_LIMITS.tags),
+    notes: z.string().max(RECIPE_LIMITS.notes),
+    source_url: z.string().max(SOURCE_LIMITS.url).refine(isHttpUrl).nullable(),
+    source_author: z.string().max(SOURCE_LIMITS.author).nullable(),
+    household_name: z.string().min(1).max(200),
+    shared_at: z.iso.datetime({ offset: true }),
+    photo: z
+      .strictObject({
+        bytes: z.number().int().positive(),
+        width: z.number().int().positive(),
+        height: z.number().int().positive(),
+      })
+      .nullable(),
+  }),
+);
 export type ShareSnapshot = z.infer<typeof shareSnapshotSchema>;
 
 export type ShareableRecipe = {
