@@ -46,3 +46,13 @@ streams:
              created_at, updated_at, updated_by, deleted_at
       FROM photos
       WHERE household_id = auth.parameter('household_id') AND deleted_at IS NULL
+
+  # Mirrors substitutions_select: household_id = auth_household_id(), narrowed
+  # to rows not deleted.
+  household_substitutions:
+    auto_subscribe: true
+    query: >-
+      SELECT id, household_id, recipe_id, ingredient_id, ingredient_raw, options, note,
+             created_at, updated_at, updated_by, deleted_at
+      FROM substitutions
+      WHERE household_id = auth.parameter('household_id') AND deleted_at IS NULL
