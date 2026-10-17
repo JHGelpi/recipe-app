@@ -4,6 +4,7 @@ import { UNITS } from './ingredients';
 export * from './ingredients';
 export * from './steps';
 export * from './tags';
+export * from './search';
 
 export const TITLE_MAX = 200;
 
