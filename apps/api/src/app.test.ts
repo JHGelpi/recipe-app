@@ -7,6 +7,11 @@ function deps(overrides: Partial<AppDeps> = {}): AppDeps {
     verify: vi.fn().mockResolvedValue({ sub: 'user-1' }),
     asUser: vi.fn().mockResolvedValue([]) as unknown as AppDeps['asUser'],
     ping: vi.fn().mockResolvedValue(undefined),
+    imports: {
+      claim: vi.fn().mockResolvedValue({ outcome: { kind: 'missing' }, claims: { sub: 'user-1' } }),
+      process: vi.fn().mockResolvedValue(undefined),
+      usage: vi.fn().mockResolvedValue({ spentUsd: 0.42, capUsd: 2 }),
+    },
     ...overrides,
   };
 }
@@ -139,5 +144,81 @@ describe('POST /api/trash/purge', () => {
     expect(await response.json()).toEqual({ purged: 2 });
     expect(asUser).toHaveBeenCalledTimes(1);
     expect(asUser.mock.calls[0]?.[0]).toBe('jwt');
+  });
+});
+
+describe('POST /api/imports/:id/parse', () => {
+  const row = {
+    id: ID,
+    household_id: 'h',
+    source_type: 'text' as const,
+    source_text: 'Soup',
+    source_url: null,
+    claim: 'c',
+  };
+  function parse(app: ReturnType<typeof createApp>, id = ID, token: string | null = 'jwt') {
+    return app.request(`/api/imports/${id}/parse`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  }
+  function withClaim(outcome: unknown) {
+    const d = deps();
+    d.imports.claim = vi.fn().mockResolvedValue({ outcome, claims: { sub: 'user-1' } });
+    return d;
+  }
+
+  it('returns 401 without a token', async () => {
+    const d = deps();
+    expect((await parse(createApp(d), ID, null)).status).toBe(401);
+    expect(d.imports.claim).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 for an id that is not a UUID, without touching the database', async () => {
+    const d = deps();
+    expect((await parse(createApp(d), 'nope')).status).toBe(404);
+    expect(d.imports.claim).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [{ kind: 'missing' }, 404, { error: 'not_found' }],
+    [{ kind: 'forbidden' }, 403, { error: 'forbidden' }],
+    [{ kind: 'busy', status: 'ready' }, 409, { status: 'ready' }],
+  ])('answers %j with %i', async (outcome, status, body) => {
+    const d = withClaim(outcome);
+    const response = await parse(createApp(d));
+    expect(response.status).toBe(status);
+    expect(await response.json()).toEqual(body);
+    expect(d.imports.process).not.toHaveBeenCalled();
+  });
+
+  it('answers 202 at once and parses in the background', async () => {
+    const d = withClaim({ kind: 'claimed', row });
+    let finish!: () => void;
+    d.imports.process = vi.fn(() => new Promise<void>((resolve) => (finish = resolve)));
+    const response = await parse(createApp(d));
+    expect(response.status).toBe(202);
+    expect(await response.json()).toEqual({ status: 'parsing' });
+    expect(d.imports.process).toHaveBeenCalledWith({ sub: 'user-1' }, row);
+    finish();
+  });
+
+  it('a background failure does not crash the server', async () => {
+    const d = withClaim({ kind: 'claimed', row });
+    d.imports.process = vi.fn().mockRejectedValue(new Error('db gone'));
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect((await parse(createApp(d))).status).toBe(202);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(error).toHaveBeenCalled();
+    error.mockRestore();
+  });
+});
+
+describe('GET /api/imports/usage', () => {
+  it('returns this month and the cap', async () => {
+    const response = await createApp(deps()).request('/api/imports/usage', {
+      headers: { Authorization: 'Bearer jwt' },
+    });
+    expect(await response.json()).toEqual({ spentUsd: 0.42, capUsd: 2 });
   });
 });

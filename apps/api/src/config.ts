@@ -1,10 +1,28 @@
 import type { VerifierConfig } from './auth/verify';
+import type { AiConfig } from './llm/gateway';
 
-export type Config = { port: number; databaseUrl: string; verifier: VerifierConfig };
+export type Config = {
+  port: number;
+  databaseUrl: string;
+  verifier: VerifierConfig;
+  ai: AiConfig;
+  /** Test-only: hosts the page fetcher may reach without the address check. */
+  fetchAllowHosts: string[];
+};
 
 function required(env: NodeJS.ProcessEnv, name: string): string {
   const value = env[name];
   if (!value) throw new Error(`${name} is not set`);
+  return value;
+}
+
+function amount(env: NodeJS.ProcessEnv, name: string, fallback: number): number {
+  const raw = env[name];
+  if (raw === undefined || raw.trim() === '') return fallback;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error(`${name} must be a number of 0 or more`);
+  }
   return value;
 }
 
@@ -18,5 +36,17 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     verifier: env.JWT_JWKS_URL
       ? { audience, jwksUrl: env.JWT_JWKS_URL }
       : { audience, secret: required(env, 'JWT_SECRET') },
+    ai: {
+      apiKey: env.ANTHROPIC_API_KEY || null,
+      baseUrl: env.ANTHROPIC_BASE_URL || null,
+      model: env.LLM_MODEL_PARSE || 'claude-sonnet-5-5',
+      priceInputPerMTokUsd: amount(env, 'LLM_PRICE_INPUT_PER_MTOK_USD', 3),
+      priceOutputPerMTokUsd: amount(env, 'LLM_PRICE_OUTPUT_PER_MTOK_USD', 15),
+      capUsd: amount(env, 'AI_MONTHLY_CAP_USD', 2),
+    },
+    fetchAllowHosts: (env.IMPORT_FETCH_ALLOW_HOSTS ?? '')
+      .split(',')
+      .map((host) => host.trim().toLowerCase())
+      .filter(Boolean),
   };
 }

@@ -2,12 +2,29 @@ import { serve } from '@hono/node-server';
 import { createApp } from './app';
 import { createVerifier } from './auth/verify';
 import { loadConfig } from './config';
-import { connect, createAsUser, createPing } from './db/asUser';
+import { connect, createAsClaims, createAsUser, createPing } from './db/asUser';
+import { fetchPage, FETCH_DEFAULTS } from './import/fetchPage';
+import { createImportService } from './import/service';
+import { createImportStore } from './import/store';
+import { createGateway } from './llm/gateway';
 
 const config = loadConfig();
 const sql = connect(config.databaseUrl);
 const verify = createVerifier(config.verifier);
-const app = createApp({ verify, asUser: createAsUser(sql, verify), ping: createPing(sql) });
+const imports = createImportService({
+  verify,
+  store: createImportStore(createAsClaims(sql)),
+  gateway: createGateway(config.ai),
+  fetchPage: (url) => fetchPage(url, { ...FETCH_DEFAULTS, allowHosts: config.fetchAllowHosts }),
+  ai: config.ai,
+  log: (event) => console.log(JSON.stringify(event)),
+});
+const app = createApp({
+  verify,
+  asUser: createAsUser(sql, verify),
+  ping: createPing(sql),
+  imports,
+});
 
 const server = serve({ fetch: app.fetch, port: config.port, hostname: '0.0.0.0' });
 console.log(JSON.stringify({ event: 'listening', port: config.port }));
