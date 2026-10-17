@@ -29,13 +29,14 @@ export default tseslint.config(
     rules: { '@typescript-eslint/no-require-imports': 'off' },
   },
   {
-    files: ['scripts/**/*.mjs'],
+    files: ['scripts/**/*.mjs', 'test-support/**/*.mjs'],
     languageOptions: {
       globals: {
         process: 'readonly',
         console: 'readonly',
         fetch: 'readonly',
         setTimeout: 'readonly',
+        URL: 'readonly',
       },
     },
   },

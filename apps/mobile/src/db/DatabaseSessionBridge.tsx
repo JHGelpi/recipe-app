@@ -1,5 +1,6 @@
 import { usePowerSync } from '@powersync/react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useImportKicker } from '../imports/useImportKicker';
 import { canWrite } from '../session/claims';
 import { localDataAction, type SettledSession } from '../session/sessionState';
 import { useSession } from '../session/SessionProvider';
@@ -68,6 +69,9 @@ export function DatabaseSessionBridge({ children }: { children: ReactNode }) {
       })
       .catch((error: unknown) => console.error('Database session change failed', error));
   }, [db, status, userId, hasHousehold, byUser, online, writer]);
+
+  // FR-29: waiting imports are read once this device is online.
+  useImportKicker(writer && online && readyFor === userId && userId !== null);
 
   if (status === 'signedIn' && readyFor !== userId) return null;
   return <>{children}</>;
