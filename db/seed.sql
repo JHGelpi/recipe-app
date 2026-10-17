@@ -91,3 +91,9 @@ insert into public.substitutions (id, household_id, recipe_id, ingredient_id, in
 insert into public.invites (id, household_id, role, token_hash, expires_at, accepted_at) values
   ('00000000-0000-0000-0000-0000000000e7', '00000000-0000-0000-0000-00000000000a', 'member', sha256(convert_to('seed invite a', 'UTF8')), now(), now()),
   ('00000000-0000-0000-0000-0000000000e8', '00000000-0000-0000-0000-00000000000b', 'member', sha256(convert_to('seed invite b', 'UTF8')), now(), now());
+
+-- One stopped share per household, so the isolation suite's shares checks are
+-- not vacuous. Both are stopped, so no link reads them.
+insert into public.shares (id, household_id, recipe_id, token_hash, snapshot, deleted_at) values
+  ('00000000-0000-0000-0000-0000000000e9', '00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-0000000000c1', sha256(convert_to('seed share a', 'UTF8')), '{}', now()),
+  ('00000000-0000-0000-0000-0000000000ea', '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000c2', sha256(convert_to('seed share b', 'UTF8')), '{}', now());
