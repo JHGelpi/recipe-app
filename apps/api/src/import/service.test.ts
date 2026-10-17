@@ -21,6 +21,7 @@ const base = {
       .mockResolvedValue({ input: { title: 'Soup' }, usage: { inputTokens: 0, outputTokens: 0 } }),
   },
   fetchPage: vi.fn(),
+  photos: { read: vi.fn() },
   ai: { capUsd: 2, priceInputPerMTokUsd: 3, priceOutputPerMTokUsd: 15 },
 };
 
@@ -47,6 +48,7 @@ describe('createImportService', () => {
       source_text: 'Soup',
       source_url: null,
       claim: 'c',
+      pages: [],
     };
     const claimed = await service.claim('jwt', 'i1');
     await service.process(claimed.claims, row);

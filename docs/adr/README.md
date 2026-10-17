@@ -16,5 +16,6 @@ Lightweight ADRs ([Michael Nygard format](https://cognitect.com/blog/2011/11/15/
 | [0010](0010-recipe-content-as-json.md) | Recipe content as JSON on the recipe row | Accepted |
 | [0011](0011-in-memory-search.md) | Search with an in-memory index over the local database | Accepted |
 | [0012](0012-imports-as-synced-queue.md) | Imports as a synced queue with server-side parsing | Accepted |
+| [0013](0013-photo-files-on-a-volume.md) | Photo files on a volume behind RLS-checked endpoints | Accepted |
 
 Template: [`template.md`](template.md)

@@ -66,7 +66,7 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 ### Capture & import
 | ID | Requirement | Pri |
 |---|---|---|
-| FR-7 | Import from photo (camera or library), multiple pages per recipe *(sub-project 4b)* | M |
+| FR-7 | Import from photo (camera or library), multiple pages per recipe *(built in 4b: up to 8 pages)* | M |
 | FR-8 | Import from URL via paste; via OS share sheet on native builds only (ADR-0007) | M |
 | FR-9 | Import from pasted text (incl. social media comments) | M |
 | FR-10 | AI parses: title, ingredients (qty / unit / item / prep note), steps, servings, prep & cook time, suggested tags | M |
@@ -78,7 +78,7 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 ### Recipe management
 | ID | Requirement | Pri |
 |---|---|---|
-| FR-15 | Edit all fields; personal notes (shared with the household). Own photo arrives with import (sub-project 4) | M |
+| FR-15 | Edit all fields; personal notes (shared with the household). One dish photo per recipe (4b) | M |
 | FR-16 | Tags: free-form, with suggestions from the household's tags; AI suggestions arrive with import | M |
 | FR-17 | Favorites (per user) | S |
 | FR-18 | 30-day trash before permanent delete | S |

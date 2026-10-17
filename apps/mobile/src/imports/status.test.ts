@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { importFromRow } from './rows';
+import { importFromRow, importPreview, type ImportRecord } from './rows';
 import { formatUsd, importView } from './status';
 
 const base = { id: 'i1', source_type: 'text', source_text: 'Soup', status: 'pending' };
@@ -53,4 +53,51 @@ describe('importView', () => {
 it('formats dollars with two decimals', () => {
   expect(formatUsd(0.4234)).toBe('$0.42');
   expect(formatUsd(2)).toBe('$2.00');
+});
+
+describe('photo imports', () => {
+  const photo = (over: Partial<ImportRecord>): ImportRecord => ({
+    id: 'i1',
+    source_type: 'photo',
+    source_text: null,
+    source_url: null,
+    status: 'pending',
+    error: null,
+    draft: null,
+    parse_started_at: null,
+    created_at: null,
+    pages: 3,
+    uploaded: 2,
+    localPending: 1,
+    firstPage: 'p1',
+    ...over,
+  });
+
+  it('shows upload progress online, and can still be dismissed', () => {
+    expect(importView(photo({}), true)).toEqual({
+      label: 'Uploading photos (2 of 3)',
+      canReview: false,
+      canRetry: false,
+      busy: false,
+    });
+  });
+
+  it('waits to go online when this phone holds the files', () => {
+    expect(importView(photo({}), false).label).toBe('Waiting to go online');
+  });
+
+  it('says when another device holds the files', () => {
+    expect(importView(photo({ localPending: 0 }), true).label).toBe(
+      'Waiting for photos from another device',
+    );
+  });
+
+  it('reads like any import once every page is uploaded', () => {
+    expect(importView(photo({ uploaded: 3, localPending: 0 }), true).label).toBe('Reading…');
+  });
+
+  it('previews as the number of pages', () => {
+    expect(importPreview(photo({}))).toBe('Photo · 3 pages');
+    expect(importPreview(photo({ pages: 1 }))).toBe('Photo · 1 page');
+  });
 });

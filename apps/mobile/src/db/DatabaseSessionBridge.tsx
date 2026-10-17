@@ -1,6 +1,7 @@
 import { usePowerSync } from '@powersync/react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useImportKicker } from '../imports/useImportKicker';
+import { clearPhotos, startPhotos, stopPhotos } from '../photos/queue';
 import { canWrite } from '../session/claims';
 import { localDataAction, type SettledSession } from '../session/sessionState';
 import { useSession } from '../session/SessionProvider';
@@ -23,6 +24,8 @@ const connector = createConnector();
  *   open sync stream does not fail when the network drops, so without this
  *   the app would show Online and wait on PowerSync's backoff to reconnect.
  * - Signed out: disconnect.
+ * - Photos: the attachment queue runs while signed in with a household; its
+ *   files and cache are cleared with the local data.
  */
 export function DatabaseSessionBridge({ children }: { children: ReactNode }) {
   const db = usePowerSync();
@@ -50,6 +53,11 @@ export function DatabaseSessionBridge({ children }: { children: ReactNode }) {
     queue.current = queue.current
       .then(async () => {
         if (localDataAction(session, dbOwner.get()) === 'wipe') {
+          // Photos first: their files live outside the database (Review Focus 4).
+          // A failure here must never stop the database wipe below.
+          await clearPhotos(db).catch((error: unknown) =>
+            console.error('Clearing photos failed', error),
+          );
           await db.disconnectAndClear();
           dbOwner.clear();
         }
@@ -66,6 +74,9 @@ export function DatabaseSessionBridge({ children }: { children: ReactNode }) {
         } else {
           await db.disconnect();
         }
+        // Saving works offline; uploads and downloads wait for the network.
+        if (session.status === 'signedIn' && hasHousehold) await startPhotos(db);
+        else await stopPhotos(db);
       })
       .catch((error: unknown) => console.error('Database session change failed', error));
   }, [db, status, userId, hasHousehold, byUser, online, writer]);

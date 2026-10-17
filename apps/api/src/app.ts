@@ -1,7 +1,10 @@
+import { PHOTO_LIMITS } from '@recipe-app/domain';
 import { Hono } from 'hono';
 import { UnauthorizedError, type VerifyToken } from './auth/verify';
 import type { AsUser } from './db/asUser';
+import { isGuid } from './ids';
 import type { ImportService } from './import/service';
+import type { PhotoService } from './photos/service';
 import { applyOps, parseBody } from './upload/ops';
 
 export type AppDeps = {
@@ -9,10 +12,10 @@ export type AppDeps = {
   asUser: AsUser;
   ping: () => Promise<void>;
   imports: ImportService;
+  photos: PhotoService;
 };
 
 const MAX_BODY_BYTES = 1024 * 1024;
-const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function bearer(header: string | undefined): string | null {
   return /^Bearer (.+)$/.exec(header ?? '')?.[1] ?? null;
@@ -62,18 +65,32 @@ export function createApp(deps: AppDeps): Hono {
     return c.json({ results });
   });
 
-  // FR-18: deletes the caller's household trash older than 30 days. RLS
-  // (recipes_purge) limits it to that household, to admins and members, and
-  // to expired trash.
+  // FR-18: deletes the caller's household trash older than 30 days, photos
+  // first (photos_purge: dismissed or replaced over 30 days ago, or of an
+  // expired recipe), then their files once the rows are gone.
   app.post('/api/trash/purge', async (c) => {
     const token = bearer(c.req.header('Authorization'));
     if (!token) return c.json({ error: 'unauthorized' }, 401);
     await deps.verify(token);
-    const purged = await deps.asUser(token, async (tx) => {
+    const { purged, photos } = await deps.asUser(token, async (tx) => {
+      const photos = await tx<{ id: string; household_id: string }[]>`
+        delete from public.photos
+        where (deleted_at is not null and deleted_at < now() - interval '30 days')
+           or recipe_id in (
+             select id from public.recipes where deleted_at < now() - interval '30 days')
+        returning id, household_id`;
       const rows = await tx`
         delete from public.recipes where deleted_at < now() - interval '30 days' returning id`;
-      return rows.length;
+      return { purged: rows.length, photos };
     });
+    for (const photo of photos) {
+      // A file left behind can no longer be served: its row is gone.
+      await deps.photos.remove(photo.household_id, photo.id).catch((error: unknown) => {
+        console.error(
+          JSON.stringify({ event: 'photo_remove_failed', id: photo.id, message: String(error) }),
+        );
+      });
+    }
     return c.json({ purged });
   });
 
@@ -84,10 +101,11 @@ export function createApp(deps: AppDeps): Hono {
     const token = bearer(c.req.header('Authorization'));
     if (!token) return c.json({ error: 'unauthorized' }, 401);
     const id = c.req.param('id');
-    if (!GUID.test(id)) return c.json({ error: 'not_found' }, 404);
+    if (!isGuid(id)) return c.json({ error: 'not_found' }, 404);
     const { outcome, claims } = await deps.imports.claim(token, id);
     if (outcome.kind === 'missing') return c.json({ error: 'not_found' }, 404);
     if (outcome.kind === 'forbidden') return c.json({ error: 'forbidden' }, 403);
+    if (outcome.kind === 'photos_pending') return c.json({ error: 'photos_pending' }, 409);
     if (outcome.kind === 'busy') return c.json({ status: outcome.status }, 409);
     void deps.imports.process(claims, outcome.row).catch((error: unknown) => {
       console.error(JSON.stringify({ event: 'import_write_failed', id, message: String(error) }));
@@ -100,6 +118,47 @@ export function createApp(deps: AppDeps): Hono {
     const token = bearer(c.req.header('Authorization'));
     if (!token) return c.json({ error: 'unauthorized' }, 401);
     return c.json(await deps.imports.usage(token));
+  });
+
+  const PUT_STATUS = {
+    missing: 404,
+    gone: 410,
+    forbidden: 403,
+    not_jpeg: 415,
+    wrong_size: 422,
+  } as const;
+
+  // FR-7, FR-15: a photo's file. The row must already be visible to the user.
+  app.put('/api/photos/:id', async (c) => {
+    const token = bearer(c.req.header('Authorization'));
+    if (!token) return c.json({ error: 'unauthorized' }, 401);
+    const claims = await deps.verify(token);
+    const id = c.req.param('id');
+    if (!isGuid(id)) return c.json({ error: 'not_found' }, 404);
+    if (Number(c.req.header('Content-Length') ?? 0) > PHOTO_LIMITS.bytes) {
+      return c.json({ error: 'too_large' }, 413);
+    }
+    const bytes = new Uint8Array(await c.req.arrayBuffer());
+    if (bytes.byteLength > PHOTO_LIMITS.bytes) return c.json({ error: 'too_large' }, 413);
+    const outcome = await deps.photos.put(claims, id, bytes);
+    if (outcome === 'stored') return c.body(null, 204);
+    return c.json({ error: outcome }, PUT_STATUS[outcome]);
+  });
+
+  // NFR-2: served only to the photo's household. No browser cache keeps it:
+  // the app holds its own offline copies, cleared on sign-out, and a cached
+  // copy would outlive sign-out and be served without the RLS check.
+  app.get('/api/photos/:id', async (c) => {
+    const token = bearer(c.req.header('Authorization'));
+    if (!token) return c.json({ error: 'unauthorized' }, 401);
+    const id = c.req.param('id');
+    if (!isGuid(id)) return c.json({ error: 'not_found' }, 404);
+    const bytes = await deps.photos.get(token, id);
+    if (!bytes) return c.json({ error: 'not_found' }, 404);
+    return c.body(bytes as Uint8Array<ArrayBuffer>, 200, {
+      'Content-Type': 'image/jpeg',
+      'Cache-Control': 'private, no-store',
+    });
   });
 
   return app;

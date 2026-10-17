@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { syntheticJpeg } from '../../../../test-support/jpeg';
 import { AI_ATTEMPTS, AI_TIMEOUT_MS, AiUnavailableError, type Gateway } from '../llm/gateway';
 import { FETCH_DEFAULTS } from './fetchPage';
 import type { FetchResult } from './fetchPage';
@@ -18,6 +19,7 @@ const textRow: ClaimedImport = {
   source_text: 'Soup\n- 1 onion',
   source_url: null,
   claim: 'c',
+  pages: [],
 };
 const urlRow: ClaimedImport = {
   ...textRow,
@@ -28,7 +30,12 @@ const urlRow: ClaimedImport = {
 const prices = { capUsd: 2, priceInputPerMTokUsd: 3, priceOutputPerMTokUsd: 15 };
 
 function setup(
-  over: { spent?: number; gateway?: Gateway['callTool']; page?: FetchResult | Error } = {},
+  over: {
+    spent?: number;
+    gateway?: Gateway['callTool'];
+    page?: FetchResult | Error;
+    files?: Record<string, Uint8Array | null>;
+  } = {},
 ) {
   const finished: { result: ParseResult; spent: number }[] = [];
   const store: ImportStore = {
@@ -51,11 +58,62 @@ function setup(
     if (page instanceof Error) throw page;
     return page ?? { ok: true, html: '<p>Soup</p>', url: urlRow.source_url! };
   });
-  const deps: ProcessDeps = { store, gateway: { callTool }, fetchPage, ai: prices, log: vi.fn() };
-  return { deps, finished, callTool, fetchPage, store };
+  const photos = { read: vi.fn(async (_h: string, id: string) => over.files?.[id] ?? null) };
+  const deps: ProcessDeps = {
+    store,
+    gateway: { callTool },
+    fetchPage,
+    photos,
+    ai: prices,
+    log: vi.fn(),
+  };
+  return { deps, finished, callTool, fetchPage, store, photos };
 }
 
 describe('processImport', () => {
+  const photoRow: ClaimedImport = {
+    ...textRow,
+    source_type: 'photo',
+    source_text: null,
+    pages: ['p1', 'p2'],
+  };
+
+  it('reads a photo import’s pages in order and sends them as images', async () => {
+    const { deps, finished, callTool, photos } = setup({
+      files: { p1: syntheticJpeg(2, 2, 'a'), p2: syntheticJpeg(2, 2, 'b') },
+    });
+    await processImport(deps, claims, photoRow);
+    expect(photos.read.mock.calls.map((call) => call[1])).toEqual(['p1', 'p2']);
+    const request = callTool.mock.calls[0]![0];
+    expect(
+      (request.user as { type: string }[]).filter((block) => block.type === 'image'),
+    ).toHaveLength(2);
+    expect(finished[0]?.result.status).toBe('ready');
+  });
+
+  it('fails as photo_unreadable when a page is missing or not a JPEG, without calling Claude', async () => {
+    const cases: Record<string, Uint8Array | null>[] = [
+      { p1: syntheticJpeg(2, 2) },
+      { p1: syntheticJpeg(2, 2), p2: Uint8Array.from([1, 2]) },
+    ];
+    for (const files of cases) {
+      const { deps, finished, callTool } = setup({ files });
+      await processImport(deps, claims, photoRow);
+      expect(finished[0]?.result).toEqual({ status: 'failed', error: 'photo_unreadable' });
+      expect(callTool).not.toHaveBeenCalled();
+    }
+  });
+
+  it('checks the cap before sending photos', async () => {
+    const { deps, finished, callTool } = setup({
+      spent: 2_000_000,
+      files: { p1: syntheticJpeg(2, 2), p2: syntheticJpeg(2, 2) },
+    });
+    await processImport(deps, claims, photoRow);
+    expect(finished[0]?.result).toEqual({ status: 'failed', error: 'quota' });
+    expect(callTool).not.toHaveBeenCalled();
+  });
+
   it('parses text into a ready draft and records the spend', async () => {
     const { deps, finished, callTool } = setup();
     await processImport(deps, claims, textRow);

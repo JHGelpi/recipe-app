@@ -1,7 +1,7 @@
 import { useQuery } from '@powersync/react';
 import { useEffect, useMemo, useState } from 'react';
 import { fetchUsage, withSession, type AiUsage } from './api';
-import { IMPORT_SQL, IMPORTS_SQL, READY_COUNT_SQL } from './repository';
+import { IMPORT_SQL, IMPORTS_SQL, PAGES_SQL, READY_COUNT_SQL } from './repository';
 import { importFromRow, type ImportRecord } from './rows';
 
 export function useImports(): ImportRecord[] {
@@ -41,4 +41,10 @@ export function useAiUsage(online: boolean, refreshKey: string): AiUsage | null 
     };
   }, [online, refreshKey]);
   return usage;
+}
+
+/** A photo import's pages, in order. */
+export function usePages(importId: string): { id: string; position: number }[] {
+  const { data } = useQuery<{ id: string; position: number }>(PAGES_SQL, [importId]);
+  return data;
 }

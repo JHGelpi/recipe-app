@@ -8,7 +8,7 @@ type Db = Pick<AbstractPowerSyncDatabase, 'execute' | 'getOptional'>;
 // The list reads recipes and favorites separately, so a star tap does not
 // re-read every recipe or rebuild the search index.
 export const LIST_RECIPES_SQL =
-  'select id, title, tags, ingredients from recipes where deleted_at is null';
+  'select id, title, tags, ingredients, photo_id from recipes where deleted_at is null';
 
 // Only the signed-in user's favorites are on this device (user_favorites stream).
 export const STARRED_IDS_SQL =
@@ -18,6 +18,9 @@ export const RECIPE_SQL = 'select * from recipes where id = ?';
 export const STARRED_SQL =
   'select id from favorites where recipe_id = ? and user_id = ? and deleted_at is null';
 export const TRASH_SQL = 'select id, title, deleted_at from recipes where deleted_at is not null';
+/** FR-12: a photo-import recipe's original pages, in order. */
+export const RECIPE_PAGES_SQL =
+  "select id from photos where recipe_id = ? and kind = 'page' and deleted_at is null order by position";
 export const TAGS_SQL = 'select tags from recipes where deleted_at is null';
 
 function requireWriter(claims: Claims): void {
@@ -47,13 +50,14 @@ export async function createRecipe(
   claims: Claims,
   values: RecipeValues,
   source: RecipeSource = NO_SOURCE,
+  photoId: string | null = null,
 ): Promise<string> {
   requireWriter(claims);
   const id = crypto.randomUUID();
   await db.execute(
     `insert into recipes (id, household_id, title, servings, prep_minutes, cook_minutes,
-       ingredients, steps, tags, notes, source_url, source_author, source_text)
-       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       ingredients, steps, tags, notes, source_url, source_author, source_text, photo_id)
+       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       claims.householdId,
@@ -61,6 +65,7 @@ export async function createRecipe(
       source.source_url,
       source.source_author,
       source.source_text,
+      photoId,
     ],
   );
   return id;

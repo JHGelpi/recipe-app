@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { tagsForTab, toListItems, type ListItem } from './listItems';
 import {
   LIST_RECIPES_SQL,
+  RECIPE_PAGES_SQL,
   RECIPE_SQL,
   STARRED_IDS_SQL,
   STARRED_SQL,
@@ -83,4 +84,10 @@ export function useTrash(): TrashItem[] {
 export function useHouseholdTags(): string[] {
   const { data } = useQuery<{ tags: unknown }>(TAGS_SQL);
   return useMemo(() => [...new Set(data.flatMap((row) => tagsOf(row.tags)))].sort(), [data]);
+}
+
+/** FR-12: a photo-import recipe's original pages, in order. */
+export function useRecipePages(recipeId: string): string[] {
+  const { data } = useQuery<{ id: string }>(RECIPE_PAGES_SQL, [recipeId]);
+  return useMemo(() => data.map((row) => row.id), [data]);
 }

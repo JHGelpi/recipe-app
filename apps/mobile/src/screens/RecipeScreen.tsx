@@ -1,10 +1,12 @@
 import { usePowerSync } from '@powersync/react';
 import { Link, router } from 'expo-router';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import { DishPhoto } from '../components/DishPhoto';
+import { OriginalPhotos } from '../components/OriginalPhotos';
 import { SourceView } from '../components/SourceView';
 import { StarButton } from '../components/StarButton';
 import { confirm } from '../components/confirm';
-import { useRecipe } from '../recipes/hooks';
+import { useRecipe, useRecipePages } from '../recipes/hooks';
 import { restoreRecipe, trashRecipe } from '../recipes/repository';
 import type { RecipeRecord } from '../recipes/rows';
 import { canWrite, type Claims } from '../session/claims';
@@ -25,6 +27,7 @@ export function RecipeScreen({ claims, id }: { claims: Claims; id: string }) {
   const db = usePowerSync();
   const { recipe, starred } = useRecipe(id, claims.userId);
   const writer = canWrite(claims.role);
+  const pages = useRecipePages(id);
   if (recipe === undefined) return null;
 
   return (
@@ -46,6 +49,12 @@ export function RecipeScreen({ claims, id }: { claims: Claims; id: string }) {
             </Text>
             <StarButton claims={claims} recipeId={recipe.id} starred={starred} />
           </View>
+          <DishPhoto
+            claims={claims}
+            recipeId={recipe.id}
+            photoId={recipe.photo_id}
+            editable={!recipe.deleted_at}
+          />
           {recipe.deleted_at ? (
             <View style={{ gap: 8 }}>
               <Text role="alert">This recipe is in the Trash</Text>
@@ -106,6 +115,7 @@ export function RecipeScreen({ claims, id }: { claims: Claims; id: string }) {
             </View>
           ) : null}
           <SourceView source={recipe} />
+          <OriginalPhotos ids={pages} />
           {writer && !recipe.deleted_at ? (
             <View style={{ flexDirection: 'row', gap: 16 }}>
               <Pressable role="button" onPress={() => router.push(`/recipe/${recipe.id}/edit`)}>

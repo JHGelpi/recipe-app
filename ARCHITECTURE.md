@@ -93,7 +93,7 @@ C4Container
   Rel(auth, email, "Sign-in codes, invites", "SMTP")
 ```
 
-Object storage comes with photo import (sub-project 4b); the share landing page with sharing.
+Photo files live on the API's `photos` volume, served only after an RLS check on their row (ADR-0013); the share landing page comes with sharing.
 
 ### Container responsibilities```
 
@@ -119,7 +119,7 @@ C4Component
 
   Container_Boundary(mobile, "Mobile App") {
     Component(nav, "Navigation & Screens", "Expo Router", "Library, Recipe detail, Edit, Import review, Cook mode, Household settings")
-    Component(capture, "Capture Module", "Import screen", "Pasted text and links now (FR-8, FR-9); photos in 4b; writes an imports row")
+    Component(capture, "Capture Module", "Import screen", "Photos (FR-7), pasted text and links (FR-8, FR-9); writes an imports row, and a photos row per page")
     Component(importQ, "Import Queue", "imports table + kicker", "The synced imports table; the kicker asks the server to read waiting imports when online (FR-29, ADR-0012)")
     Component(repo, "Recipe Repository", "TypeScript over PowerSync", "CRUD on local DB; soft delete/trash; role checks for UI")
     Component(search, "Search", "In-memory index over the local DB (ADR-0011)", "Title/ingredient/tag search + tag filters, offline (FR-19/20)")
@@ -167,7 +167,7 @@ C4Component
   }
 
   ContainerDb(db, "Cloud DB")
-  ContainerDb(blob, "Object Storage")
+  ContainerDb(blob, "Photo files (API volume, ADR-0013)")
   System_Ext(llm, "Claude API")
   System_Ext(sites, "Recipe Websites")
 
@@ -197,27 +197,30 @@ sequenceDiagram
   autonumber
   actor U as Member
   participant M as Mobile App
-  participant Q as Import Queue (local)
-  participant S as Object Storage
-  participant F as /import
-  participant L as Claude API
+  participant Q as Attachment queue (IndexedDB)
   participant D as Local DB → Sync → Postgres
+  participant A as API
+  participant V as photos volume
+  participant L as Claude API
 
-  U->>M: Take 1..n photos
-  M->>Q: Enqueue job (photos on device)
+  U->>M: Take or pick 1–8 pages
+  M->>M: Resize to 1568 px, re-encode JPEG
+  M->>D: imports row (photo) + a photos row per page
+  M->>Q: Keep each file until uploaded
   alt Offline
-    Q-->>U: "Queued — will parse when online"
+    M-->>U: "Saved. It'll be read when you're back online."
   end
-  Q->>S: Upload originals (signed URL)
-  Q->>F: POST /import {type: photo, paths}
-  F->>F: Auth guard, quota check
-  F->>L: Images + extraction prompt + JSON schema
-  L-->>F: Structured recipe + confidence
-  F->>F: Validate schema, flag low-confidence
-  F-->>M: Draft recipe
-  M-->>U: Review screen (highlights uncertain fields)
-  U->>M: Edit & Save
-  M->>D: Write locally, sync up
+  D->>A: Rows upload (/api/upload)
+  Q->>A: PUT /api/photos/:id per page
+  A->>V: Store file, set uploaded_at
+  M->>A: POST /api/imports/:id/parse
+  A-->>M: 409 photos_pending until every page is uploaded, then 202
+  A->>V: Read pages
+  A->>L: Pages as images + photo prompt + record_recipe tool
+  L-->>A: Draft + low-confidence fields
+  A->>D: Validated draft on the import (syncs back)
+  M-->>U: Review screen (pages beside the draft)
+  U->>M: Save (pages stay as originals; optional dish photo)
 ```
 
 URL import follows the same flow, with the URL Extractor trying schema.org `Recipe` JSON-LD first and calling the LLM only when structured data is missing or incomplete. That keeps cost down and accuracy up.
@@ -265,6 +268,8 @@ erDiagram
   HOUSEHOLD ||--o{ RECIPE : owns
   RECIPE ||--o{ SOURCE : "imported from"
   RECIPE ||--o{ PHOTO : has
+  IMPORT ||--o{ PHOTO : pages
+  HOUSEHOLD ||--o{ IMPORT : queues
   USER ||--o{ FAVORITE : marks
   RECIPE ||--o{ FAVORITE : "starred as"
   RECIPE ||--o{ SHARE : "shared as"
@@ -278,6 +283,7 @@ Conventions for every tenant table:
 - `created_at`, `updated_at`, `updated_by`, `deleted_at` (soft delete → 30-day trash, FR-18)
 - Ingredients and steps are JSON arrays on the recipe row (ADR-0010), each element with a stable id; ingredients keep the typed line (`raw`) plus parsed `quantity`, `quantity_max`, `unit`, `item`, `note`, so scaling, search, and the Phase 2 shopping list can use them
 - Favorites are a per-user table (`favorites`), synced only to that user
+- `PHOTO` (`photos`): `kind` (page or dish), `import_id` and `position` for pages, `recipe_id`, `media_type`, `bytes`, `width`, `height`, `uploaded_at`; the bytes are on the `photos` volume. A recipe's dish photo is `recipes.photo_id` (ADR-0013)
 
 `SHARE` stores an immutable JSON **snapshot** of the recipe. Recipients import from the snapshot, never from the sender's live row.
 
@@ -291,7 +297,7 @@ Conventions for every tenant table:
 | **AI** | All prompts versioned in `apps/api/src/llm/prompts/`; output validated against a JSON schema; usage metered per household | NFR-3, NFR-7 |
 | **Secrets** | The web app ships no keys. Database passwords, the token signing key, and the Claude API key live in .env on the server | NFR-3 |
 | **Observability** | Structured logs in the API; Sentry for app crashes; AI latency/cost dashboard from `ai_usage` | NFR-6, NFR-7 |
-| **Backups** | Off-site Postgres backups with point-in-time recovery, set up in the hosting sub-project; household JSON export | NFR-9, NFR-10 |
+| **Backups** | Off-site Postgres backups with point-in-time recovery, plus the `photos` volume, set up in the hosting sub-project; household JSON export | NFR-9, NFR-10 |
 | **Accessibility** | Dynamic type, screen-reader labels, contrast checks in review | NFR-11 |
 
 ## 8. Future evolution

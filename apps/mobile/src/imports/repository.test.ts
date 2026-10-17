@@ -53,10 +53,11 @@ describe('import writes', () => {
     await expect(saveImportedRecipe(db, viewer, ready, values)).rejects.toThrow();
   });
 
-  it('dismisses with deleted_at', async () => {
+  it('dismisses with deleted_at, releasing any pages', async () => {
     const { db, calls } = fakeDb();
     await dismissImport(db, member, 'i1');
-    expect(calls[0]?.sql).toBe('update imports set deleted_at = ? where id = ?');
+    expect(calls[1]?.sql).toBe('update imports set deleted_at = ? where id = ?');
+    expect(calls[1]?.params[1]).toBe('i1');
     expect(calls[0]?.params[1]).toBe('i1');
   });
 
@@ -64,8 +65,8 @@ describe('import writes', () => {
     const { db, calls } = fakeDb();
     const recipeId = await saveImportedRecipe(db, member, ready, values);
     expect(calls[0]?.sql).toMatch(/^insert into recipes/);
-    expect(calls[0]?.params.slice(-3)).toEqual(['https://example.com/soup', 'Jane', null]);
-    expect(calls[1]).toEqual({
+    expect(calls[0]?.params.slice(-4)).toEqual(['https://example.com/soup', 'Jane', null, null]);
+    expect(calls[2]).toEqual({
       sql: 'update imports set recipe_id = ?, deleted_at = ? where id = ?',
       params: [recipeId, expect.any(String), 'i1'],
     });

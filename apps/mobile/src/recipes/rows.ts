@@ -22,6 +22,8 @@ export type RecipeRecord = RecipeSource & {
   tags: string[];
   notes: string;
   deleted_at: string | null;
+  /** FR-15: the dish photo. */
+  photo_id: string | null;
 };
 
 /** A Postgres text[] literal such as {quick,"two words"}. */
@@ -60,6 +62,7 @@ export function rowToRecipe(row: Record<string, unknown>): RecipeRecord | null {
       source_url: row.source_url ?? null,
       source_author: row.source_author ?? null,
       source_text: row.source_text ?? null,
+      photo_id: row.photo_id ?? null,
     });
     if (!parsed.success) return null;
     const recipe = parsed.data;
@@ -78,6 +81,7 @@ export function rowToRecipe(row: Record<string, unknown>): RecipeRecord | null {
       source_url: recipe.source_url ?? null,
       source_author: recipe.source_author ?? null,
       source_text: recipe.source_text ?? null,
+      photo_id: recipe.photo_id ?? null,
     };
   } catch {
     return null;
@@ -107,7 +111,7 @@ export function trashDaysLeft(deletedAt: string, now: number): number {
   return Math.max(0, Math.ceil((deleted + TRASH_DAYS * DAY_MS - now) / DAY_MS));
 }
 
-export type ListRow = SearchSource & { starred: boolean };
+export type ListRow = SearchSource & { starred: boolean; photoId: string | null };
 
 function listOf(value: unknown): unknown[] {
   try {
@@ -133,5 +137,6 @@ export function listRowFrom(row: Record<string, unknown>): ListRow {
       return typeof raw === 'string' ? [raw] : [];
     }),
     starred: Boolean(row.starred),
+    photoId: typeof row.photo_id === 'string' ? row.photo_id : null,
   };
 }

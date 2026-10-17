@@ -17,6 +17,8 @@ FROM node:22-slim
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /repo/apps/api/dist/server.cjs ./server.cjs
+# The photos volume takes this directory's owner when first created.
+RUN mkdir -p /data/photos && chown node:node /data/photos
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=2s --timeout=5s --retries=30 \

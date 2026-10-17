@@ -15,6 +15,7 @@ Offline-first, multi-tenant recipe app: web first, iOS + Android later from the 
 - `db/` — SQL migrations (dbmate), first-boot role script, seed data
 - `packages/domain` — shared TS: recipe schema (zod), scaling, unit conversion. Pure functions, no I/O.
 - `docker-compose.yml` — the whole backend: Caddy proxy, API, GoTrue auth, Postgres, PowerSync (ADR-0008)
+- Photo files: the `photos` volume behind `PUT`/`GET /api/photos/:id` (ADR-0013); back it up with the database
 - AI: Claude API, called **only** from the API via `apps/api/src/llm/`
 
 ## Commands
@@ -30,7 +31,9 @@ pnpm dev:backend:test        # stack with the fake Claude and fixture pages; tes
 pnpm test:api                # upload and import tests (needs dev:backend:test + seed)
 pnpm test:e2e                # Playwright against the built app at PUBLIC_URL; starts test mode itself
 pnpm eval:import             # parse eval against the real Claude API (needs ANTHROPIC_API_KEY; manual)
+pnpm photos:samples          # regenerate the photo fixtures and eval samples (Playwright's Chromium)
 # After test runs, `pnpm dev:backend` switches the stack back to the real AI service.
+# After changing powersync/sync-config.yaml, restart sync: `docker compose restart sync` (it reads the file only at start).
 pnpm lint && pnpm typecheck
 ```
 

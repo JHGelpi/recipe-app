@@ -12,6 +12,11 @@ function deps(overrides: Partial<AppDeps> = {}): AppDeps {
       process: vi.fn().mockResolvedValue(undefined),
       usage: vi.fn().mockResolvedValue({ spentUsd: 0.42, capUsd: 2 }),
     },
+    photos: {
+      put: vi.fn().mockResolvedValue('stored'),
+      get: vi.fn().mockResolvedValue(null),
+      remove: vi.fn().mockResolvedValue(undefined),
+    },
     ...overrides,
   };
 }
@@ -135,19 +140,37 @@ describe('POST /api/trash/purge', () => {
     expect(d.asUser).not.toHaveBeenCalled();
   });
 
-  it('runs one delete as the user and returns how many rows it removed', async () => {
-    const tx = vi.fn().mockResolvedValue([{ id: 'a' }, { id: 'b' }]);
+  it('purges photos then recipes as the user, then removes the photos’ files', async () => {
+    const tx = vi
+      .fn()
+      .mockResolvedValueOnce([{ id: 'p1', household_id: 'h1' }])
+      .mockResolvedValueOnce([{ id: 'a' }, { id: 'b' }]);
     const asUser = vi.fn(async (_token: string, fn: (t: typeof tx) => Promise<unknown>) => fn(tx));
     const d = deps({ asUser: asUser as unknown as AppDeps['asUser'] });
     const response = await purge(createApp(d));
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ purged: 2 });
     expect(asUser).toHaveBeenCalledTimes(1);
-    expect(asUser.mock.calls[0]?.[0]).toBe('jwt');
+    expect(d.photos.remove).toHaveBeenCalledWith('h1', 'p1');
   });
 });
 
 describe('POST /api/imports/:id/parse', () => {
+  it('answers 409 photos_pending while a photo import’s pages are still uploading', async () => {
+    const d = deps();
+    vi.mocked(d.imports.claim).mockResolvedValue({
+      outcome: { kind: 'photos_pending' },
+      claims: { sub: 'user-1' },
+    } as never);
+    const response = await createApp(d).request(`/api/imports/${ID}/parse`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer jwt' },
+    });
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ error: 'photos_pending' });
+    expect(d.imports.process).not.toHaveBeenCalled();
+  });
+
   const row = {
     id: ID,
     household_id: 'h',
@@ -155,6 +178,7 @@ describe('POST /api/imports/:id/parse', () => {
     source_text: 'Soup',
     source_url: null,
     claim: 'c',
+    pages: [],
   };
   function parse(app: ReturnType<typeof createApp>, id = ID, token: string | null = 'jwt') {
     return app.request(`/api/imports/${id}/parse`, {
@@ -220,5 +244,65 @@ describe('GET /api/imports/usage', () => {
       headers: { Authorization: 'Bearer jwt' },
     });
     expect(await response.json()).toEqual({ spentUsd: 0.42, capUsd: 2 });
+  });
+});
+
+describe('/api/photos/:id', () => {
+  const put = (
+    app: ReturnType<typeof createApp>,
+    body: Uint8Array<ArrayBuffer>,
+    token: string | null = 'jwt',
+  ) =>
+    app.request(`/api/photos/${ID}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'image/jpeg',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body,
+    });
+
+  it('answers 401 without a token, and 404 for an id that is not a UUID', async () => {
+    const d = deps();
+    expect((await put(createApp(d), Uint8Array.from([1]), null)).status).toBe(401);
+    const response = await createApp(d).request('/api/photos/nope', {
+      headers: { Authorization: 'Bearer jwt' },
+    });
+    expect(response.status).toBe(404);
+    expect(d.photos.get).not.toHaveBeenCalled();
+  });
+
+  it('maps each upload outcome to its status', async () => {
+    const statuses: Record<string, number> = {
+      stored: 204,
+      missing: 404,
+      gone: 410,
+      forbidden: 403,
+      not_jpeg: 415,
+      wrong_size: 422,
+    };
+    for (const [outcome, status] of Object.entries(statuses)) {
+      const d = deps();
+      vi.mocked(d.photos.put).mockResolvedValue(outcome as never);
+      expect((await put(createApp(d), Uint8Array.from([1]))).status).toBe(status);
+    }
+  });
+
+  it('refuses a body over 3 MB without asking the service', async () => {
+    const d = deps();
+    expect((await put(createApp(d), new Uint8Array(3_000_001))).status).toBe(413);
+    expect(d.photos.put).not.toHaveBeenCalled();
+  });
+
+  it('serves a photo as a JPEG no browser cache keeps (NFR-2)', async () => {
+    const d = deps();
+    vi.mocked(d.photos.get).mockResolvedValue(Uint8Array.from([0xff, 0xd8]));
+    const response = await createApp(d).request(`/api/photos/${ID}`, {
+      headers: { Authorization: 'Bearer jwt' },
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toBe('image/jpeg');
+    expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+    expect([...new Uint8Array(await response.arrayBuffer())]).toEqual([0xff, 0xd8]);
   });
 });

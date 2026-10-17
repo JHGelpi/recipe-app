@@ -9,6 +9,7 @@ export const TENANT_TABLES = [
   'favorites',
   'imports',
   'ai_usage',
+  'photos',
 ] as const;
 
 /** The column that holds the tenant id in each table. */
@@ -19,4 +20,5 @@ export const TENANT_COLUMN: Record<(typeof TENANT_TABLES)[number], string> = {
   favorites: 'household_id',
   imports: 'household_id',
   ai_usage: 'household_id',
+  photos: 'household_id',
 };

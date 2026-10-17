@@ -8,6 +8,7 @@ export const IMPORT_ERROR_MESSAGES: Record<ImportError, string> = {
   blocked_address: "That link can't be imported",
   not_a_recipe: "This doesn't look like a recipe",
   invalid_output: "Couldn't read this recipe",
+  photo_unreadable: "Couldn't read the photos",
 };
 
 export type ImportView = { label: string; canReview: boolean; canRetry: boolean; busy: boolean };
@@ -15,6 +16,20 @@ export type ImportView = { label: string; canReview: boolean; canRetry: boolean;
 /** What the Imports list shows for one import (spec §6). */
 export function importView(record: ImportRecord, online: boolean): ImportView {
   const none = { canReview: false, canRetry: false, busy: false };
+  // Spec §6: a photo import's pages upload before it is read. Dismiss stays
+  // available, so a page the server refuses never strands the import.
+  if (
+    record.source_type === 'photo' &&
+    record.status === 'pending' &&
+    record.uploaded < record.pages
+  ) {
+    if (record.localPending === 0) {
+      return { ...none, label: 'Waiting for photos from another device' };
+    }
+    return online
+      ? { ...none, label: `Uploading photos (${record.uploaded} of ${record.pages})` }
+      : { ...none, label: 'Waiting to go online' };
+  }
   if (record.status === 'ready') {
     return record.draft
       ? { ...none, label: 'Ready to review', canReview: true }

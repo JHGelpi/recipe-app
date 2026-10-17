@@ -95,6 +95,7 @@ describe('formFromRecipe', () => {
       tags: ['bread', 'easy'],
       notes: '',
       deleted_at: null,
+      photo_id: null,
       ...NO_SOURCE,
     });
     expect(form).toEqual({

@@ -3,6 +3,8 @@ import {
   favoriteSchema,
   importPatchSchema,
   importPutSchema,
+  photoPatchSchema,
+  photoPutSchema,
   recipePatchSchema,
   recipeSchema,
 } from '@recipe-app/domain';
@@ -10,7 +12,7 @@ import { z } from 'zod';
 import type { UserTx } from '../db/asUser';
 
 export const MAX_OPS = 500;
-const ALLOWED_TABLES = new Set(['recipes', 'favorites', 'imports']);
+const ALLOWED_TABLES = new Set(['recipes', 'favorites', 'imports', 'photos']);
 // jsonb columns: sent with tx.json so postgres.js does not build an array literal.
 const JSON_COLUMNS = new Set(['ingredients', 'steps']);
 
@@ -136,11 +138,34 @@ async function applyImport(
   return rows.length === 0 ? rejected(op, 'not_found_or_forbidden') : applied(op);
 }
 
+async function applyPhoto(tx: UserTx, op: Op, candidate: Record<string, unknown>): Promise<Result> {
+  if (op.op === 'put') {
+    const parsed = photoPutSchema.safeParse(candidate);
+    if (!parsed.success) return rejected(op, 'invalid');
+    const { id, ...fields } = parsed.data;
+    const row = { ...fields, deleted_at: fields.deleted_at ?? null };
+    // As for imports: a retried put changes nothing, and a dismissal stays.
+    // A page of another household's import breaks the composite foreign key
+    // (23503) and is refused.
+    await tx`
+      insert into public.photos ${tx({ id, ...row })}
+      on conflict (id) do update
+      set deleted_at = coalesce(public.photos.deleted_at, excluded.deleted_at)`;
+    return applied(op);
+  }
+  const parsed = photoPatchSchema.safeParse(candidate);
+  if (!parsed.success) return rejected(op, 'invalid');
+  const { id, ...fields } = parsed.data;
+  const rows = await tx`update public.photos set ${tx(fields)} where id = ${id} returning id`;
+  return rows.length === 0 ? rejected(op, 'not_found_or_forbidden') : applied(op);
+}
+
 type Apply = (tx: UserTx, op: Op, candidate: Record<string, unknown>) => Promise<Result>;
 const APPLY: Record<string, Apply> = {
   recipes: applyRecipe,
   favorites: applyFavorite,
   imports: applyImport,
+  photos: applyPhoto,
 };
 
 async function applyOne(tx: UserTx, op: Op): Promise<Result> {

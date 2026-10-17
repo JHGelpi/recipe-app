@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { env } from '../../../../test-support/env';
 import { SEED, signInAs, signInFresh, type Actor } from '../../../../test-support/auth';
+import { syntheticJpeg } from '../../../../test-support/jpeg';
 import { adminSql, as } from '../helpers/db';
 
 type Row = {
@@ -228,5 +229,68 @@ describe('POST /api/imports/:id/parse', () => {
       (tx) => tx<{ status: string }[]>`select status from public.imports where id = ${id}`,
     );
     expect(row?.status).toBe('pending');
+  });
+});
+
+describe('fake Claude, photo pages', () => {
+  it('reads the comments of image blocks in page order', async () => {
+    const page = (text: string) => ({
+      type: 'image',
+      source: {
+        type: 'base64',
+        media_type: 'image/jpeg',
+        data: Buffer.from(syntheticJpeg(4, 4, text)).toString('base64'),
+      },
+    });
+    const response = await fetch(`${env.fakeAiUrl}/v1/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'x',
+        tool_choice: { type: 'auto' },
+        messages: [
+          {
+            role: 'user',
+            content: [
+              page('Card Cake\n- 1 egg'),
+              page('1. Bake.'),
+              { type: 'text', text: 'Tags: none' },
+            ],
+          },
+        ],
+      }),
+    });
+    const body = (await response.json()) as {
+      content: { input: { title: string; steps: string[] } }[];
+    };
+    expect(body.content[0]?.input).toMatchObject({ title: 'Card Cake', steps: ['Bake.'] });
+    expect((await fakeRequests()).at(-1)).toBe('images:2\nCard Cake\n- 1 egg\n1. Bake.');
+  });
+
+  it('knows the e2e fixture pages by size, since the phone re-encodes away their comments', async () => {
+    const page = (width: number, height: number) => ({
+      type: 'image',
+      source: {
+        type: 'base64',
+        media_type: 'image/jpeg',
+        data: Buffer.from(syntheticJpeg(width, height)).toString('base64'),
+      },
+    });
+    const response = await fetch(`${env.fakeAiUrl}/v1/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'x',
+        tool_choice: { type: 'auto' },
+        messages: [{ role: 'user', content: [page(1000, 750), page(1000, 760)] }],
+      }),
+    });
+    const body = (await response.json()) as {
+      content: { input: { title: string; steps: string[] } }[];
+    };
+    expect(body.content[0]?.input).toMatchObject({
+      title: 'Photo Fixture Bread',
+      steps: ['Mix.', 'Bake.'],
+    });
   });
 });

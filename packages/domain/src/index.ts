@@ -11,6 +11,7 @@ export * from './search';
 export * from './importDraft';
 export * from './html';
 export * from './jsonLd';
+export * from './photos';
 export { RECIPE_LIMITS, TITLE_MAX } from './limits';
 
 export const recipeTitleSchema = z
@@ -90,6 +91,8 @@ export const recipeSchema = z.strictObject({
     .optional(),
   source_author: z.string().max(SOURCE_LIMITS.author).nullable().optional(),
   source_text: z.string().max(SOURCE_LIMITS.text).nullable().optional(),
+  // FR-15: the dish photo, a photos row of this household.
+  photo_id: z.guid().nullable().optional(),
   deleted_at: timestampSchema.nullable().optional(),
 });
 
@@ -112,6 +115,7 @@ export const RECIPE_CLIENT_FIELDS = [
   'source_url',
   'source_author',
   'source_text',
+  'photo_id',
   'deleted_at',
 ] as const;
 

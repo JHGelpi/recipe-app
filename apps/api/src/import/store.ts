@@ -10,16 +10,19 @@ import type { AsClaims } from '../db/asUser';
 export type ClaimedImport = {
   id: string;
   household_id: string;
-  source_type: 'text' | 'url';
+  source_type: 'text' | 'url' | 'photo';
   source_text: string | null;
   source_url: string | null;
   /** parse_started_at as text: the final write lands only if no one reclaimed the row. */
   claim: string;
+  /** Page photo ids in order, for a photo import; [] otherwise. */
+  pages: string[];
 };
 export type ClaimOutcome =
   | { kind: 'claimed'; row: ClaimedImport }
   | { kind: 'busy'; status: string }
   | { kind: 'missing' }
+  | { kind: 'photos_pending' }
   | { kind: 'forbidden' };
 export type ParseResult =
   { status: 'ready'; draft: ImportDraft } | { status: 'failed'; error: ImportError };
@@ -44,7 +47,20 @@ export function createImportStore(asClaims: AsClaims): ImportStore {
   return {
     claim: (claims, id) =>
       asClaims(claims, async (tx): Promise<ClaimOutcome> => {
-        const claimed = await tx<ClaimedImport[]>`
+        // A photo import is read only once every live page has its file
+        // (spec §4); until then the phone tries again later.
+        const [shape] = await tx<{ source_type: string; pages: number; uploaded: number }[]>`
+          select i.source_type, count(p.id)::int as pages, count(p.uploaded_at)::int as uploaded
+          from public.imports i
+          left join public.photos p
+            on p.import_id = i.id and p.kind = 'page' and p.deleted_at is null
+          where i.id = ${id} and i.deleted_at is null
+          group by i.source_type`;
+        if (!shape) return { kind: 'missing' };
+        if (shape.source_type === 'photo' && (shape.pages === 0 || shape.uploaded < shape.pages)) {
+          return { kind: 'photos_pending' };
+        }
+        const claimed = await tx<Omit<ClaimedImport, 'pages'>[]>`
           update public.imports
           set status = 'parsing', parse_started_at = now(), error = null
           where id = ${id} and deleted_at is null
@@ -54,10 +70,20 @@ export function createImportStore(asClaims: AsClaims): ImportStore {
                 and parse_started_at < now() - make_interval(secs => ${STALE_PARSE_SECONDS})))
           returning id, household_id, source_type, source_text, source_url,
                     parse_started_at::text as claim`;
-        if (claimed[0]) return { kind: 'claimed', row: claimed[0] };
-        const seen = await tx<{ status: string }[]>`
-          select status from public.imports where id = ${id} and deleted_at is null`;
-        return seen[0] ? { kind: 'busy', status: seen[0].status } : { kind: 'missing' };
+        const row = claimed[0];
+        if (!row) {
+          const seen = await tx<{ status: string }[]>`
+            select status from public.imports where id = ${id} and deleted_at is null`;
+          return seen[0] ? { kind: 'busy', status: seen[0].status } : { kind: 'missing' };
+        }
+        const pages =
+          row.source_type === 'photo'
+            ? await tx<{ id: string }[]>`
+                select id from public.photos
+                where import_id = ${id} and kind = 'page' and deleted_at is null
+                order by position`
+            : [];
+        return { kind: 'claimed', row: { ...row, pages: pages.map((page) => page.id) } };
       }),
 
     context: (claims) =>
