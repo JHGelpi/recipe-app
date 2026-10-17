@@ -8,6 +8,7 @@ export const IMPORT_ERROR_MESSAGES: Record<ImportError, string> = {
   blocked_address: "That link can't be imported",
   not_a_recipe: "This doesn't look like a recipe",
   invalid_output: "Couldn't read this recipe",
+  photo_unreadable: "Couldn't read the photos",
 };
 
 export type ImportView = { label: string; canReview: boolean; canRetry: boolean; busy: boolean };

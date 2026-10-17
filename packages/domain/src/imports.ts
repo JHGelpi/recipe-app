@@ -13,6 +13,7 @@ export const IMPORT_ERRORS = [
   'blocked_address',
   'not_a_recipe',
   'invalid_output',
+  'photo_unreadable',
 ] as const;
 export type ImportError = (typeof IMPORT_ERRORS)[number];
 
@@ -22,6 +23,7 @@ export const RETRYABLE_IMPORT_ERRORS: readonly ImportError[] = [
   'ai_unavailable',
   'fetch_failed',
   'invalid_output',
+  'photo_unreadable',
 ];
 
 /**
@@ -74,6 +76,12 @@ export const importPutSchema = z.discriminatedUnion('source_type', [
     household_id: z.guid(),
     source_type: z.literal('url'),
     source_url: importUrlSchema,
+    deleted_at: timestampSchema.nullable().optional(),
+  }),
+  z.strictObject({
+    id: z.guid(),
+    household_id: z.guid(),
+    source_type: z.literal('photo'),
     deleted_at: timestampSchema.nullable().optional(),
   }),
 ]);
