@@ -4,16 +4,18 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { BuildFooter } from '../components/BuildFooter';
 import { StarButton } from '../components/StarButton';
 import { StatusLine } from '../components/StatusLine';
-import { useRecipeList } from '../recipes/hooks';
+import { useRecipeSearch } from '../recipes/hooks';
 import { canWrite, type Claims } from '../session/claims';
 import { useSession } from '../session/SessionProvider';
 
 const link = { textDecorationLine: 'underline' } as const;
+// Temporary until the search box lands: a stable array for the hook's memo.
+const NO_TAGS: string[] = [];
 
 export function RecipeListScreen({ claims }: { claims: Claims }) {
   const { signOut } = useSession();
   const [favoritesOnly, setFavoritesOnly] = useState(false);
-  const recipes = useRecipeList(claims.userId, favoritesOnly);
+  const { items: recipes } = useRecipeSearch(claims.userId, favoritesOnly, '', NO_TAGS);
   const writer = canWrite(claims.role);
 
   return (

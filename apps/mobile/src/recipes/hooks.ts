@@ -1,4 +1,5 @@
 import { useQuery } from '@powersync/react';
+import { buildSearchIndex, searchRecipes } from '@recipe-app/domain';
 import { useMemo } from 'react';
 import {
   LIST_FAVORITES_SQL,
@@ -8,38 +9,43 @@ import {
   TAGS_SQL,
   TRASH_SQL,
 } from './repository';
-import { parseTimestamp, rowToRecipe, TRASH_DAYS, type RecipeRecord } from './rows';
+import { listRowFrom, parseTimestamp, rowToRecipe, TRASH_DAYS, type RecipeRecord } from './rows';
 
 export type ListItem = { id: string; title: string; tags: string[]; starred: boolean };
 export type TrashItem = { id: string; title: string; deleted_at: string };
 
 function tagsOf(value: unknown): string[] {
-  return (
-    rowToRecipe({
-      id: '00000000-0000-0000-0000-000000000000',
-      household_id: '00000000-0000-0000-0000-000000000000',
-      title: 'x',
-      tags: value,
-    })?.tags ?? []
-  );
+  return listRowFrom({ id: '', title: '', tags: value }).tags;
 }
 
-/** The household's recipes, or the user's favorites, live from the local database. */
-export function useRecipeList(userId: string, favoritesOnly: boolean): ListItem[] {
-  const { data } = useQuery<{ id: string; title: string; tags: unknown; starred: unknown }>(
+/**
+ * The current tab's recipes matching the search, best first, live from the
+ * local database. The index is rebuilt only when the rows change, never per
+ * keystroke.
+ */
+export function useRecipeSearch(
+  userId: string,
+  favoritesOnly: boolean,
+  query: string,
+  selectedTags: string[],
+): { items: ListItem[]; total: number; tags: string[] } {
+  const { data } = useQuery<Record<string, unknown>>(
     favoritesOnly ? LIST_FAVORITES_SQL : LIST_RECIPES_SQL,
     [userId],
   );
-  return useMemo(
+  const rows = useMemo(() => data.map(listRowFrom), [data]);
+  const index = useMemo(() => buildSearchIndex(rows), [rows]);
+  const byId = useMemo(() => new Map(rows.map((row) => [row.id, row])), [rows]);
+  const tags = useMemo(() => [...new Set(rows.flatMap((row) => row.tags))].sort(), [rows]);
+  const items = useMemo(
     () =>
-      data.map((row) => ({
-        id: row.id,
-        title: row.title,
-        tags: tagsOf(row.tags),
-        starred: Boolean(row.starred),
-      })),
-    [data],
+      searchRecipes(index, query, selectedTags).flatMap((id) => {
+        const row = byId.get(id);
+        return row ? [{ id: row.id, title: row.title, tags: row.tags, starred: row.starred }] : [];
+      }),
+    [index, byId, query, selectedTags],
   );
+  return { items, total: rows.length, tags };
 }
 
 /** undefined while loading; null when missing or unreadable. */

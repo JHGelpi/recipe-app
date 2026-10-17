@@ -7,14 +7,14 @@ type Db = Pick<AbstractPowerSyncDatabase, 'execute' | 'getOptional'>;
 // Live lists. The current user's id is the first parameter of the favorites
 // joins; only that user's favorites are on this device anyway.
 export const LIST_RECIPES_SQL = `
-  select r.id, r.title, r.tags, f.id is not null as starred
+  select r.id, r.title, r.tags, r.ingredients, f.id is not null as starred
   from recipes r
   left join favorites f on f.recipe_id = r.id and f.user_id = ? and f.deleted_at is null
   where r.deleted_at is null
   order by r.title collate nocase, r.id`;
 
 export const LIST_FAVORITES_SQL = `
-  select r.id, r.title, r.tags, 1 as starred
+  select r.id, r.title, r.tags, r.ingredients, 1 as starred
   from recipes r
   join favorites f on f.recipe_id = r.id and f.user_id = ? and f.deleted_at is null
   where r.deleted_at is null
