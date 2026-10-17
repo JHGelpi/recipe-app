@@ -217,3 +217,42 @@ describe('displayIngredient', () => {
     expect(show(line({ raw: 'a handful of basil' }), 3)).toBe('a handful of basil');
   });
 });
+
+describe('review fixes', () => {
+  it('scales a line with an amount and unit but no item, keeping its unit word (Important 1)', () => {
+    const oz = line({ raw: '12 oz', quantity: 12, unit: 'oz', item: '' });
+    expect(show(oz, 1.5)).toBe('18 oz');
+    expect(show(line({ raw: '2 cups', quantity: 2, unit: 'cup', item: '' }), 1, 'metric')).toBe(
+      '2 cups',
+    );
+    expect(show(line({ raw: '1 tsp', quantity: 1, unit: 'tsp', item: '' }), 0.1)).toBe('⅛ tsp');
+  });
+
+  it('steps litres and kilograms below 1 down to ml and g (Important 2)', () => {
+    expect(
+      show(line({ raw: '0.25 l milk', quantity: 0.25, unit: 'l', item: 'milk' }), 1, 'metric'),
+    ).toBe('250 ml milk');
+    expect(
+      show(line({ raw: '0.5 kg flour', quantity: 0.5, unit: 'kg', item: 'flour' }), 0.25),
+    ).toBe('125 g flour');
+  });
+
+  it('never converts fluid ounces as weight (Important 5)', () => {
+    const milk = line({ raw: '8 fl oz milk', quantity: 8, unit: 'oz', item: 'milk' });
+    expect(show(milk, 1, 'metric')).toBe('8 fl oz milk');
+    expect(show(milk, 2)).toBe('16 fl oz milk');
+  });
+
+  it('drops a bracketed equivalent that would contradict the shown amount (Important 6)', () => {
+    const milk = line({
+      raw: '1½ cups (360 ml) milk',
+      quantity: 1.5,
+      unit: 'cup',
+      item: '(360 ml) milk',
+    });
+    expect(show(milk, 2)).toBe('3 cups milk');
+    expect(show(milk, 1)).toBe('1½ cups (360 ml) milk');
+    const cans = line({ raw: '1 (14 oz) can tomatoes', quantity: 1, item: '(14 oz) can tomatoes' });
+    expect(show(cans, 2)).toBe('2 (14 oz) can tomatoes');
+  });
+});

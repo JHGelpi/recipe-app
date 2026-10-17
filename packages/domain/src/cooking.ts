@@ -34,6 +34,8 @@ const PLURAL: Partial<Record<Unit, string>> = {
   pinch: 'pinches',
   dash: 'dashes',
 };
+// The amount at the start of a typed line, as the parser reads it.
+const LEADING_AMOUNT = /^\s*[\d½¼¾⅓⅔⅛⅜⅝⅞.,/\s–-]+/;
 const EIGHTHS: [number, string][] = [
   [0, ''],
   [1 / 8, '⅛'],
@@ -117,6 +119,8 @@ export function stepUnits(amount: Amount): Amount | 'pinch' {
       max: current.max === null ? null : current.max / per,
       unit,
     });
+  if (current.unit === 'l' && current.value < 1) down(1000, 'ml');
+  if (current.unit === 'kg' && current.value < 1) down(1000, 'g');
   if (current.unit === 'cup' && current.value < 0.25) down(16, 'tbsp');
   if (current.unit === 'tbsp' && current.value < 1) down(3, 'tsp');
   if (current.unit === 'tsp' && current.value < 0.125) return 'pinch';
@@ -167,25 +171,34 @@ export function displayIngredient(
   if (ingredient.heading || ingredient.quantity === null) return ingredient.raw;
   if (options.factor === 1 && options.units === 'as_written') return ingredient.raw;
   const scaled = scaleIngredient(ingredient, options.factor);
-  const converted = convertAmount(
-    { value: scaled.quantity!, max: scaled.quantity_max, unit: scaled.unit },
-    options.units,
-  );
+  const written: Amount = { value: scaled.quantity!, max: scaled.quantity_max, unit: scaled.unit };
+  // A line with no item ("2 cups"), or in fluid ounces (stored as "oz", which
+  // is weight), keeps its written unit: only the leading number changes.
+  const fluid = ingredient.unit === 'oz' && /\bfl\.?\s*oz\b|fluid\s+ounce/i.test(ingredient.raw);
+  if (!ingredient.item || fluid) {
+    const value = formatAmount(written.value, written.unit);
+    const amount =
+      written.max === null ? value : `${value}–${formatAmount(written.max, written.unit)}`;
+    return ingredient.raw.replace(LEADING_AMOUNT, `${amount} `).trim();
+  }
+  const converted = convertAmount(written, options.units);
   const stepped =
     converted.unit !== null && (US_UNITS.has(converted.unit) || METRIC_UNITS.has(converted.unit))
       ? stepUnits(converted)
       : converted;
   const note = ingredient.note ? `, ${ingredient.note}` : '';
-  if (stepped === 'pinch') return `a pinch of ${ingredient.item}${note}`;
+  // A bracketed equivalent ("(360 ml) milk") would contradict the new amount.
+  // A package size with no unit ("(14 oz) can tomatoes") stays.
+  const item =
+    stepped !== 'pinch' && stepped.unit !== null
+      ? ingredient.item.replace(/^\([^)]*\d[^)]*\)\s*/, '')
+      : ingredient.item;
+  if (stepped === 'pinch') return `a pinch of ${item}${note}`;
   const value = formatAmount(stepped.value, stepped.unit);
   const amount =
     stepped.max === null ? value : `${value}–${formatAmount(stepped.max, stepped.unit)}`;
-  if (!ingredient.item) {
-    // Parsed an amount but no item: swap only the leading number of the typed line.
-    return ingredient.raw.replace(/^\s*[\d½¼¾⅓⅔⅛⅜⅝⅞.,/\s-]+/, `${amount} `);
-  }
   const unit = stepped.unit
     ? ` ${unitLabel(stepped.unit, stepped.max === null ? value : 'range')}`
     : '';
-  return `${amount}${unit} ${ingredient.item}${note}`;
+  return `${amount}${unit} ${item}${note}`;
 }
