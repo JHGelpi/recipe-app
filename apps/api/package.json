@@ -4,10 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "esbuild src/server.ts --bundle --platform=node --target=node22 --format=cjs --outfile=dist/server.cjs",
+    "build": "esbuild src/server.ts --bundle --platform=node --target=node22 --format=cjs --loader:.md=text --outfile=dist/server.cjs",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0",
     "@hono/node-server": "^2.1.5",
     "@recipe-app/domain": "workspace:*",
     "hono": "^4.13.13",
