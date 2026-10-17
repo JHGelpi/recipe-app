@@ -73,9 +73,9 @@ describe('import uploads', () => {
   });
 
   it('a patch may only set recipe_id or deleted_at, and must set one', () => {
-    expect(importPatchSchema.safeParse({ id: ID, deleted_at: '2026-10-17T10:00:00Z' }).success).toBe(
-      true,
-    );
+    expect(
+      importPatchSchema.safeParse({ id: ID, deleted_at: '2026-10-17T10:00:00Z' }).success,
+    ).toBe(true);
     expect(importPatchSchema.safeParse({ id: ID, recipe_id: HOUSEHOLD }).success).toBe(true);
     expect(importPatchSchema.safeParse({ id: ID }).success).toBe(false);
     expect(importPatchSchema.safeParse({ id: ID, status: 'pending' }).success).toBe(false);
