@@ -102,7 +102,7 @@ Object storage and the share landing page are not built yet; they are decided in
 | Container | Owns | Notes |
 |---|---|---|
 | **Mobile App** | All UI; cook mode; scaling & unit conversion (pure functions, offline); PDF/text rendering for sharing (FR-26); offline import queue (FR-29) | Never holds AI or service-role keys (NFR-3); a service worker precaches the app's files so it opens offline (ADR-0009) |
-| **On-device DB** | Local copy of the household's data; FTS index for search (FR-19/20) | Writes go here first, then upload queue → API |
+| **On-device DB** | Local copy of the household's data; source for the in-memory search index (FR-19/20, ADR-0011) | Writes go here first, then upload queue → API |
 | **Sync Service** | Change streaming, per-household sync rules | Sync rules mirror RLS; a device only receives its household's rows |
 | **API** | Business logic that must be server-side: import pipeline, AI, invites, share tokens, write validation | Stateless; verifies the JWT, then runs every statement as the user through asUser |
 | **Auth** | Identity; JWT custom claims `household_id`, `household_role` (added by an access-token hook) | Sign in with Apple required on iOS (NFR-12) |
@@ -122,7 +122,7 @@ C4Component
     Component(capture, "Capture Module", "expo-camera / image-picker / share intent", "Collects photos, URLs, pasted text; enqueues import jobs")
     Component(importQ, "Import Queue", "TypeScript", "Persists pending imports; retries when online (FR-29)")
     Component(repo, "Recipe Repository", "TypeScript over PowerSync", "CRUD on local DB; soft delete/trash; role checks for UI")
-    Component(search, "Search", "SQLite FTS5", "Title/ingredient/tag search + filters, offline (FR-19/20)")
+    Component(search, "Search", "In-memory index over the local DB (ADR-0011)", "Title/ingredient/tag search + tag filters, offline (FR-19/20)")
     Component(cook, "Cook Engine", "Pure TS", "Scaling, unit conversion, step state, keep-awake (FR-21–23)")
     Component(shareOut, "Share Builder", "expo-print / expo-sharing", "Formats PDF/text; requests share links (FR-26/27)")
     Component(apiClient, "API Client", "fetch", "Typed calls to the API; attaches JWT")
@@ -303,4 +303,4 @@ Conventions for every tenant table:
 
 ## 9. Decision log
 
-See [`docs/adr/`](docs/adr/). Current: ADR-0001 through ADR-0009.
+See [`docs/adr/`](docs/adr/). Current: ADR-0001 through ADR-0011.

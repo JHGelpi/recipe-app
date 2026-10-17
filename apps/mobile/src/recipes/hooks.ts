@@ -1,45 +1,57 @@
 import { useQuery } from '@powersync/react';
+import { buildSearchIndex, searchRecipes } from '@recipe-app/domain';
 import { useMemo } from 'react';
+import { tagsForTab, toListItems, type ListItem } from './listItems';
 import {
-  LIST_FAVORITES_SQL,
   LIST_RECIPES_SQL,
   RECIPE_SQL,
+  STARRED_IDS_SQL,
   STARRED_SQL,
   TAGS_SQL,
   TRASH_SQL,
 } from './repository';
-import { parseTimestamp, rowToRecipe, TRASH_DAYS, type RecipeRecord } from './rows';
+import { listRowFrom, parseTimestamp, rowToRecipe, TRASH_DAYS, type RecipeRecord } from './rows';
 
-export type ListItem = { id: string; title: string; tags: string[]; starred: boolean };
 export type TrashItem = { id: string; title: string; deleted_at: string };
 
 function tagsOf(value: unknown): string[] {
-  return (
-    rowToRecipe({
-      id: '00000000-0000-0000-0000-000000000000',
-      household_id: '00000000-0000-0000-0000-000000000000',
-      title: 'x',
-      tags: value,
-    })?.tags ?? []
-  );
+  return listRowFrom({ id: '', title: '', tags: value }).tags;
 }
 
-/** The household's recipes, or the user's favorites, live from the local database. */
-export function useRecipeList(userId: string, favoritesOnly: boolean): ListItem[] {
-  const { data } = useQuery<{ id: string; title: string; tags: unknown; starred: unknown }>(
-    favoritesOnly ? LIST_FAVORITES_SQL : LIST_RECIPES_SQL,
-    [userId],
+export type { ListItem } from './listItems';
+
+/**
+ * The current tab's recipes matching the search, best first, live from the
+ * local database. The index is rebuilt only when recipes change: favorites
+ * are a separate query, so a star tap recomputes only the visible items.
+ */
+export function useRecipeSearch(
+  userId: string,
+  favoritesOnly: boolean,
+  query: string,
+  selectedTags: string[],
+): { items: ListItem[]; tags: string[] } {
+  const { data: recipeRows } = useQuery<Record<string, unknown>>(LIST_RECIPES_SQL);
+  const { data: starredRows } = useQuery<{ recipe_id: string }>(STARRED_IDS_SQL, [userId]);
+  const rows = useMemo(
+    () => new Map(recipeRows.map((row) => [String(row.id), listRowFrom(row)])),
+    [recipeRows],
   );
-  return useMemo(
-    () =>
-      data.map((row) => ({
-        id: row.id,
-        title: row.title,
-        tags: tagsOf(row.tags),
-        starred: Boolean(row.starred),
-      })),
-    [data],
+  const index = useMemo(() => buildSearchIndex([...rows.values()]), [rows]);
+  const starred = useMemo(() => new Set(starredRows.map((row) => row.recipe_id)), [starredRows]);
+  const ids = useMemo(
+    () => searchRecipes(index, query, selectedTags),
+    [index, query, selectedTags],
   );
+  const items = useMemo(
+    () => toListItems(ids, rows, starred, favoritesOnly),
+    [ids, rows, starred, favoritesOnly],
+  );
+  const tags = useMemo(
+    () => tagsForTab(rows, starred, favoritesOnly),
+    [rows, starred, favoritesOnly],
+  );
+  return { items, tags };
 }
 
 /** undefined while loading; null when missing or unreadable. */

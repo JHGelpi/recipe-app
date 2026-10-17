@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { env } from '../test-support/env';
 import { watchMailbox } from '../test-support/mail';
-import { addRecipe, freshEmail, requestCode, signIn } from './helpers';
+import { addRecipe, expectNotListed, freshEmail, requestCode, signIn } from './helpers';
 
 test('a new email signs in with a code and lands on an empty recipe list', async ({ page }) => {
   await signIn(page, freshEmail('new'));
@@ -55,5 +55,5 @@ test('signing out wipes the local database', async ({ page }) => {
 
   await signIn(page, freshEmail('second'));
   await expect(page.getByText('No recipes yet')).toBeVisible();
-  await expect(page.getByText('Secret stew')).toHaveCount(0);
+  await expectNotListed(page, 'Secret stew');
 });

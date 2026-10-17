@@ -14,5 +14,6 @@ Lightweight ADRs ([Michael Nygard format](https://cognitect.com/blog/2011/11/15/
 | [0008](0008-self-hosted-containerized-backend.md) | Self-hosted, containerized backend | Accepted |
 | [0009](0009-installable-web-app-with-workbox.md) | Installable web app with a Workbox-generated service worker | Accepted |
 | [0010](0010-recipe-content-as-json.md) | Recipe content as JSON on the recipe row | Accepted |
+| [0011](0011-in-memory-search.md) | Search with an in-memory index over the local database | Accepted |
 
 Template: [`template.md`](template.md)

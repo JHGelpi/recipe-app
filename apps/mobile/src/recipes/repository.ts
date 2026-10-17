@@ -4,21 +4,14 @@ import type { RecipeValues } from './form';
 
 type Db = Pick<AbstractPowerSyncDatabase, 'execute' | 'getOptional'>;
 
-// Live lists. The current user's id is the first parameter of the favorites
-// joins; only that user's favorites are on this device anyway.
-export const LIST_RECIPES_SQL = `
-  select r.id, r.title, r.tags, f.id is not null as starred
-  from recipes r
-  left join favorites f on f.recipe_id = r.id and f.user_id = ? and f.deleted_at is null
-  where r.deleted_at is null
-  order by r.title collate nocase, r.id`;
+// The list reads recipes and favorites separately, so a star tap does not
+// re-read every recipe or rebuild the search index.
+export const LIST_RECIPES_SQL =
+  'select id, title, tags, ingredients from recipes where deleted_at is null';
 
-export const LIST_FAVORITES_SQL = `
-  select r.id, r.title, r.tags, 1 as starred
-  from recipes r
-  join favorites f on f.recipe_id = r.id and f.user_id = ? and f.deleted_at is null
-  where r.deleted_at is null
-  order by r.title collate nocase, r.id`;
+// Only the signed-in user's favorites are on this device (user_favorites stream).
+export const STARRED_IDS_SQL =
+  'select recipe_id from favorites where user_id = ? and deleted_at is null';
 
 export const RECIPE_SQL = 'select * from recipes where id = ?';
 export const STARRED_SQL =

@@ -1,4 +1,4 @@
-import { recipeSchema, type Ingredient, type Step } from '@recipe-app/domain';
+import { recipeSchema, type Ingredient, type SearchSource, type Step } from '@recipe-app/domain';
 
 export const TRASH_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -92,4 +92,33 @@ export function trashDaysLeft(deletedAt: string, now: number): number {
   const deleted = parseTimestamp(deletedAt);
   if (deleted === null) return 0;
   return Math.max(0, Math.ceil((deleted + TRASH_DAYS * DAY_MS - now) / DAY_MS));
+}
+
+export type ListRow = SearchSource & { starred: boolean };
+
+function listOf(value: unknown): unknown[] {
+  try {
+    const list = jsonList(value);
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * A list row for display and search. Lighter than rowToRecipe (no schema
+ * check per row): it keeps what it can read and drops the rest, so an odd row
+ * still lists by its title.
+ */
+export function listRowFrom(row: Record<string, unknown>): ListRow {
+  return {
+    id: String(row.id),
+    title: typeof row.title === 'string' ? row.title : '',
+    tags: listOf(row.tags).filter((tag): tag is string => typeof tag === 'string'),
+    ingredients: listOf(row.ingredients).flatMap((item) => {
+      const raw = (item as { raw?: unknown } | null)?.raw;
+      return typeof raw === 'string' ? [raw] : [];
+    }),
+    starred: Boolean(row.starred),
+  };
 }

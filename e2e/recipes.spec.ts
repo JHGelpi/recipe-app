@@ -1,5 +1,14 @@
 import { expect, test } from '@playwright/test';
-import { createRecipe, fillEditor, freshEmail, SEED, session, signIn, unique } from './helpers';
+import {
+  createRecipe,
+  fillEditor,
+  findRecipe,
+  freshEmail,
+  SEED,
+  session,
+  signIn,
+  unique,
+} from './helpers';
 
 const NFR5_MS = 10_000;
 
@@ -34,7 +43,7 @@ test('a recipe typed in full shows every field as typed and reaches another memb
   }
 
   // The other session reads synced JSON ingredients and the text[] tags.
-  await admin.getByText(title, { exact: true }).click({ timeout: NFR5_MS });
+  await (await findRecipe(admin, title)).click({ timeout: NFR5_MS });
   await expect(admin.getByText('2 1/2 cups flour, sifted', { exact: true })).toBeVisible();
   await expect(admin.getByText('weekend', { exact: true })).toBeVisible();
 });
@@ -49,7 +58,7 @@ test('editing ingredients and steps reaches the other session', async ({ browser
   await member.getByRole('button', { name: 'Save' }).click();
   await expect(member.getByText('1 carrot', { exact: true })).toBeVisible();
 
-  await admin.getByText(title, { exact: true }).click({ timeout: NFR5_MS });
+  await (await findRecipe(admin, title)).click({ timeout: NFR5_MS });
   await expect(admin.getByText('Simmer', { exact: true })).toBeVisible({ timeout: NFR5_MS });
   await expect(admin.getByText('1 onion', { exact: true })).toHaveCount(0);
 });
@@ -90,13 +99,13 @@ test('a double tap on Save creates one recipe', async ({ page }) => {
   await page.getByRole('button', { name: 'Save' }).dblclick();
   await expect(page.getByRole('heading', { name: 'Only once', level: 1 })).toBeVisible();
   await page.getByRole('link', { name: 'All recipes' }).click();
-  await expect(page.getByText('Only once', { exact: true })).toHaveCount(1);
+  await expect(await findRecipe(page, 'Only once')).toHaveCount(1);
 });
 
 test('a recipe created and edited offline syncs once back online', async ({ browser }) => {
   const member = await session(browser, SEED.memberA);
   const admin = await session(browser, SEED.adminA);
-  await expect(member.getByText('Seed pancakes', { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(await findRecipe(member, 'Seed pancakes')).toBeVisible({ timeout: 30_000 });
   await member.context().setOffline(true);
   const title = unique('Offline casserole');
   await createRecipe(member, { title, ingredients: '1 can soup' });
@@ -105,7 +114,7 @@ test('a recipe created and edited offline syncs once back online', async ({ brow
   await member.getByRole('button', { name: 'Save' }).click();
   await member.context().setOffline(false);
 
-  await admin.getByText(title, { exact: true }).click({ timeout: 45_000 });
+  await (await findRecipe(admin, title)).click({ timeout: 45_000 });
   await expect(admin.getByText('2 cans soup', { exact: true })).toBeVisible({ timeout: 45_000 });
 });
 
@@ -121,10 +130,10 @@ test('tag chips offer tags the household already uses', async ({ page }) => {
 
 test('a viewer sees recipes but no New recipe, Edit, Move to Trash, or Trash', async ({ page }) => {
   await signIn(page, SEED.viewerA);
-  await expect(page.getByText('Seed pancakes', { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(await findRecipe(page, 'Seed pancakes')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole('button', { name: 'New recipe' })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Trash' })).toHaveCount(0);
-  await page.getByText('Seed pancakes', { exact: true }).click();
+  await (await findRecipe(page, 'Seed pancakes')).click();
   await expect(page.getByRole('heading', { name: 'Seed pancakes', level: 1 })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Edit' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Move to Trash' })).toHaveCount(0);

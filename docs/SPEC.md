@@ -86,7 +86,7 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 ### Search
 | ID | Requirement | Pri |
 |---|---|---|
-| FR-19 | Search by title, ingredient, tag; combinable filters | M |
+| FR-19 | Search by title, ingredient, tag; combinable filters. Steps and notes are not searched yet | M |
 | FR-20 | Search works offline | M |
 
 ### Cooking

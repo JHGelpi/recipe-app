@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseTimestamp, rowToRecipe, trashDaysLeft } from './rows';
+import { listRowFrom, parseTimestamp, rowToRecipe, trashDaysLeft } from './rows';
 
 const base = {
   id: '6f1c2f0e-8f0a-4a3b-9d5e-2b7c1a9e4d10',
@@ -82,5 +82,48 @@ describe('trashDaysLeft', () => {
     expect(trashDaysLeft('2026-10-17T12:00:00.000Z', now)).toBe(30);
     expect(trashDaysLeft('2026-09-18T11:00:00.000Z', now)).toBe(1); // 23 hours left
     expect(trashDaysLeft('2026-09-17T11:00:00.000Z', now)).toBe(0);
+  });
+});
+
+describe('listRowFrom', () => {
+  it('reads tags and ingredient lines from JSON text', () => {
+    expect(
+      listRowFrom({
+        id: 'r1',
+        title: 'Bread',
+        tags: '["bread","easy"]',
+        ingredients: JSON.stringify([{ raw: '2 cups flour' }, { raw: '1 tsp salt' }]),
+        starred: 1,
+      }),
+    ).toEqual({
+      id: 'r1',
+      title: 'Bread',
+      tags: ['bread', 'easy'],
+      ingredients: ['2 cups flour', '1 tsp salt'],
+      starred: true,
+    });
+  });
+
+  it('accepts tags as a Postgres array literal', () => {
+    expect(listRowFrom({ id: 'r1', title: 'x', tags: '{quick,"two words"}' }).tags).toEqual([
+      'quick',
+      'two words',
+    ]);
+  });
+
+  it('keeps the title and drops what it cannot read', () => {
+    expect(
+      listRowFrom({
+        id: 'r1',
+        title: 'Odd',
+        tags: '[',
+        ingredients: JSON.stringify([{ raw: 3 }, 'loose', null, { raw: 'ok' }]),
+        starred: 0,
+      }),
+    ).toEqual({ id: 'r1', title: 'Odd', tags: [], ingredients: ['ok'], starred: false });
+    expect(listRowFrom({ id: 'r2', title: 'Old', tags: null, ingredients: null })).toMatchObject({
+      tags: [],
+      ingredients: [],
+    });
   });
 });
