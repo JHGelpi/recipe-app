@@ -24,6 +24,7 @@ const imports = createImportService({
   store: createImportStore(createAsClaims(sql)),
   gateway: createGateway(config.ai),
   fetchPage: (url) => fetchPage(url, { ...FETCH_DEFAULTS, allowHosts: config.fetchAllowHosts }),
+  photos: photoStore,
   ai: config.ai,
   log: (event) => console.log(JSON.stringify(event)),
 });

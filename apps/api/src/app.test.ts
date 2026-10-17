@@ -156,6 +156,21 @@ describe('POST /api/trash/purge', () => {
 });
 
 describe('POST /api/imports/:id/parse', () => {
+  it('answers 409 photos_pending while a photo import’s pages are still uploading', async () => {
+    const d = deps();
+    vi.mocked(d.imports.claim).mockResolvedValue({
+      outcome: { kind: 'photos_pending' },
+      claims: { sub: 'user-1' },
+    } as never);
+    const response = await createApp(d).request(`/api/imports/${ID}/parse`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer jwt' },
+    });
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ error: 'photos_pending' });
+    expect(d.imports.process).not.toHaveBeenCalled();
+  });
+
   const row = {
     id: ID,
     household_id: 'h',
@@ -163,6 +178,7 @@ describe('POST /api/imports/:id/parse', () => {
     source_text: 'Soup',
     source_url: null,
     claim: 'c',
+    pages: [],
   };
   function parse(app: ReturnType<typeof createApp>, id = ID, token: string | null = 'jwt') {
     return app.request(`/api/imports/${id}/parse`, {

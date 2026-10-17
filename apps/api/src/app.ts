@@ -105,6 +105,7 @@ export function createApp(deps: AppDeps): Hono {
     const { outcome, claims } = await deps.imports.claim(token, id);
     if (outcome.kind === 'missing') return c.json({ error: 'not_found' }, 404);
     if (outcome.kind === 'forbidden') return c.json({ error: 'forbidden' }, 403);
+    if (outcome.kind === 'photos_pending') return c.json({ error: 'photos_pending' }, 409);
     if (outcome.kind === 'busy') return c.json({ status: outcome.status }, 409);
     void deps.imports.process(claims, outcome.row).catch((error: unknown) => {
       console.error(JSON.stringify({ event: 'import_write_failed', id, message: String(error) }));

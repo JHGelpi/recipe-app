@@ -5,7 +5,8 @@ import prompt from './prompts/parse-recipe.v1.md';
 export const PARSE_PROMPT_VERSION = 'parse-recipe.v1';
 const SOURCE_MAX = 30_000;
 
-export type ParseRequest = { system: string; user: string };
+/** A text source sends a string; photos send content blocks (parsePhoto.ts). */
+export type ParseRequest = { system: string; user: string | Anthropic.ContentBlockParam[] };
 
 const nullable = (type: string) => ({ type: [type, 'null'] });
 
@@ -69,7 +70,7 @@ export const RECORD_RECIPE_TOOL: Anthropic.Tool = {
 export function buildParseRequest(
   source: { text: string; url: string | null },
   householdTags: string[],
-): ParseRequest {
+): ParseRequest & { user: string } {
   // The source must not be able to end its own block and talk to the model.
   const text = source.text.slice(0, SOURCE_MAX).replace(/<\/source>/gi, '</ source>');
   const tags = householdTags.length > 0 ? householdTags.join(', ') : '(none yet)';
