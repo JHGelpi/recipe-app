@@ -1,6 +1,8 @@
 import {
   favoritePatchSchema,
   favoriteSchema,
+  importPatchSchema,
+  importPutSchema,
   recipePatchSchema,
   recipeSchema,
 } from '@recipe-app/domain';
@@ -8,7 +10,7 @@ import { z } from 'zod';
 import type { UserTx } from '../db/asUser';
 
 export const MAX_OPS = 500;
-const ALLOWED_TABLES = new Set(['recipes', 'favorites']);
+const ALLOWED_TABLES = new Set(['recipes', 'favorites', 'imports']);
 // jsonb columns: sent with tx.json so postgres.js does not build an array literal.
 const JSON_COLUMNS = new Set(['ingredients', 'steps']);
 
@@ -108,11 +110,44 @@ async function applyFavorite(
   return rows.length === 0 ? rejected(op, 'not_found_or_forbidden') : applied(op);
 }
 
+async function applyImport(
+  tx: UserTx,
+  op: Op,
+  candidate: Record<string, unknown>,
+): Promise<Result> {
+  if (op.op === 'put') {
+    const parsed = importPutSchema.safeParse(candidate);
+    if (!parsed.success) return rejected(op, 'invalid');
+    const { id, ...fields } = parsed.data;
+    const row = { ...fields, deleted_at: fields.deleted_at ?? null };
+    // A repeated put (a retried upload) changes nothing: an import's source
+    // never changes, and a dismissal already made stays. DO UPDATE (not DO
+    // NOTHING) so another household's row still raises 42501 under RLS.
+    await tx`
+      insert into public.imports ${tx({ id, ...row })}
+      on conflict (id) do update
+      set deleted_at = coalesce(public.imports.deleted_at, excluded.deleted_at)`;
+    return applied(op);
+  }
+  const parsed = importPatchSchema.safeParse(candidate);
+  if (!parsed.success) return rejected(op, 'invalid');
+  const { id, ...fields } = parsed.data;
+  const rows = await tx`update public.imports set ${tx(fields)} where id = ${id} returning id`;
+  return rows.length === 0 ? rejected(op, 'not_found_or_forbidden') : applied(op);
+}
+
+type Apply = (tx: UserTx, op: Op, candidate: Record<string, unknown>) => Promise<Result>;
+const APPLY: Record<string, Apply> = {
+  recipes: applyRecipe,
+  favorites: applyFavorite,
+  imports: applyImport,
+};
+
 async function applyOne(tx: UserTx, op: Op): Promise<Result> {
   if (!ALLOWED_TABLES.has(op.table)) return rejected(op, 'table_not_allowed');
   if (op.op === 'delete') return rejected(op, 'delete_not_allowed');
   const candidate = { ...(op.data ?? {}), id: op.id };
-  return op.table === 'recipes' ? applyRecipe(tx, op, candidate) : applyFavorite(tx, op, candidate);
+  return APPLY[op.table]!(tx, op, candidate);
 }
 
 /**

@@ -66,7 +66,7 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 ### Capture & import
 | ID | Requirement | Pri |
 |---|---|---|
-| FR-7 | Import from photo (camera or library), multiple pages per recipe | M |
+| FR-7 | Import from photo (camera or library), multiple pages per recipe *(sub-project 4b)* | M |
 | FR-8 | Import from URL via paste; via OS share sheet on native builds only (ADR-0007) | M |
 | FR-9 | Import from pasted text (incl. social media comments) | M |
 | FR-10 | AI parses: title, ingredients (qty / unit / item / prep note), steps, servings, prep & cook time, suggested tags | M |
@@ -123,7 +123,7 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 | NFR-4 | Offline | All read, search, create, edit work with no connectivity. AI features degrade gracefully with a clear message. |
 | NFR-5 | Sync latency | Online edits visible on other household devices within ~10 s. |
 | NFR-6 | Performance | Cold start < 2 s on a mid-range phone; local search < 300 ms over 2,000 recipes; photo parse < 30 s p90. |
-| NFR-7 | AI cost | Per-household monthly AI usage tracked and capped (quota configurable). |
+| NFR-7 | AI cost | Per-household monthly AI spend tracked and capped: $2.00 by default (`AI_MONTHLY_CAP_USD`). |
 | NFR-8 | Availability | Backend 99.5% monthly (best effort for a family-scale app). |
 | NFR-9 | Data durability | Daily backups with point-in-time recovery; no data loss on device reinstall once synced. |
 | NFR-10 | Portability | Household can export all recipes (JSON + PDFs). |
@@ -135,6 +135,6 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 
 1. Confirm one-household-per-user for v1.
 2. Confirm or cut the *(proposed)* FRs.
-3. Review NFR targets, especially AI quota per household.
+3. Review NFR targets. The AI cap is set at $2.00 per household per month; revisit with monetization.
 4. Working app name.
 5. Monetization, if any, once other households join (affects AI quota design).

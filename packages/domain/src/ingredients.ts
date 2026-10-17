@@ -181,21 +181,24 @@ export function parseIngredientLine(input: string): ParsedIngredient {
   return { raw, quantity, quantity_max: quantityMax, unit, item, note, heading: false };
 }
 
-/** One ingredient per non-empty line; an unchanged line keeps its id. */
+/**
+ * One ingredient per non-empty line. An unchanged line keeps its earlier
+ * reading whole, id included, so an import's AI reading survives editing.
+ */
 export function ingredientsFromText(
   text: string,
   previous: Ingredient[],
   newId: () => string,
 ): Ingredient[] {
-  const unused = new Map<string, string[]>();
+  const unused = new Map<string, Ingredient[]>();
   for (const ingredient of previous) {
-    unused.set(ingredient.raw, [...(unused.get(ingredient.raw) ?? []), ingredient.id]);
+    unused.set(ingredient.raw, [...(unused.get(ingredient.raw) ?? []), ingredient]);
   }
   return text
     .split(/\r?\n/)
     .map((line) => parseIngredientLine(line))
     .filter((parsed) => parsed.raw !== '')
-    .map((parsed) => ({ ...parsed, id: unused.get(parsed.raw)?.shift() ?? newId() }));
+    .map((parsed) => unused.get(parsed.raw)?.shift() ?? { ...parsed, id: newId() });
 }
 
 export function ingredientsToText(ingredients: Ingredient[]): string {

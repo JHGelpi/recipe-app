@@ -1,15 +1,18 @@
 import { Hono } from 'hono';
 import { UnauthorizedError, type VerifyToken } from './auth/verify';
 import type { AsUser } from './db/asUser';
+import type { ImportService } from './import/service';
 import { applyOps, parseBody } from './upload/ops';
 
 export type AppDeps = {
   verify: VerifyToken;
   asUser: AsUser;
   ping: () => Promise<void>;
+  imports: ImportService;
 };
 
 const MAX_BODY_BYTES = 1024 * 1024;
+const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function bearer(header: string | undefined): string | null {
   return /^Bearer (.+)$/.exec(header ?? '')?.[1] ?? null;
@@ -72,6 +75,31 @@ export function createApp(deps: AppDeps): Hono {
       return rows.length;
     });
     return c.json({ purged });
+  });
+
+  // FR-29, ADR-0012: claims the import as the user and answers at once; the
+  // parse continues even if the phone goes away. A crash leaves the row
+  // "parsing", which the next call reclaims after 5 minutes.
+  app.post('/api/imports/:id/parse', async (c) => {
+    const token = bearer(c.req.header('Authorization'));
+    if (!token) return c.json({ error: 'unauthorized' }, 401);
+    const id = c.req.param('id');
+    if (!GUID.test(id)) return c.json({ error: 'not_found' }, 404);
+    const { outcome, claims } = await deps.imports.claim(token, id);
+    if (outcome.kind === 'missing') return c.json({ error: 'not_found' }, 404);
+    if (outcome.kind === 'forbidden') return c.json({ error: 'forbidden' }, 403);
+    if (outcome.kind === 'busy') return c.json({ status: outcome.status }, 409);
+    void deps.imports.process(claims, outcome.row).catch((error: unknown) => {
+      console.error(JSON.stringify({ event: 'import_write_failed', id, message: String(error) }));
+    });
+    return c.json({ status: 'parsing' }, 202);
+  });
+
+  // NFR-7: this month's AI spend for the caller's household, and the cap.
+  app.get('/api/imports/usage', async (c) => {
+    const token = bearer(c.req.header('Authorization'));
+    if (!token) return c.json({ error: 'unauthorized' }, 401);
+    return c.json(await deps.imports.usage(token));
   });
 
   return app;

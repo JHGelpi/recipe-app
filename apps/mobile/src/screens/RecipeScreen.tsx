@@ -1,6 +1,7 @@
 import { usePowerSync } from '@powersync/react';
 import { Link, router } from 'expo-router';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import { SourceView } from '../components/SourceView';
 import { StarButton } from '../components/StarButton';
 import { confirm } from '../components/confirm';
 import { useRecipe } from '../recipes/hooks';
@@ -104,6 +105,7 @@ export function RecipeScreen({ claims, id }: { claims: Claims; id: string }) {
               <Text>{recipe.notes}</Text>
             </View>
           ) : null}
+          <SourceView source={recipe} />
           {writer && !recipe.deleted_at ? (
             <View style={{ flexDirection: 'row', gap: 16 }}>
               <Pressable role="button" onPress={() => router.push(`/recipe/${recipe.id}/edit`)}>

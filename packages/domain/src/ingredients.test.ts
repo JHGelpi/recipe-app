@@ -106,3 +106,21 @@ describe('ingredientsFromText', () => {
     expect(ingredientsToText(list)).toBe('2 cups flour\nFor the top:\n1 egg');
   });
 });
+
+it('keeps an unchanged line exactly as it was read before, not re-read', () => {
+  const previous = [
+    {
+      id: 'a',
+      raw: '2 cups flour, sifted',
+      quantity: 2,
+      quantity_max: null,
+      unit: 'cup' as const,
+      item: 'bread flour',
+      note: 'sifted',
+      heading: false,
+    },
+  ];
+  const result = ingredientsFromText('2 cups flour, sifted\n1 egg', previous, () => 'new');
+  expect(result[0]).toEqual(previous[0]);
+  expect(result[1]).toMatchObject({ id: 'new', raw: '1 egg', item: 'egg' });
+});

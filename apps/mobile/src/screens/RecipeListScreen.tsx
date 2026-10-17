@@ -4,6 +4,7 @@ import { FlatList, Pressable, ScrollView, Text, TextInput, View } from 'react-na
 import { BuildFooter } from '../components/BuildFooter';
 import { StarButton } from '../components/StarButton';
 import { StatusLine } from '../components/StatusLine';
+import { useReadyCount } from '../imports/hooks';
 import { useRecipeSearch } from '../recipes/hooks';
 import { canWrite, type Claims } from '../session/claims';
 import { useSession } from '../session/SessionProvider';
@@ -20,6 +21,7 @@ export function RecipeListScreen({ claims }: { claims: Claims }) {
   const deferredQuery = useDeferredValue(query);
   const { items, tags } = useRecipeSearch(claims.userId, favoritesOnly, deferredQuery, selected);
   const writer = canWrite(claims.role);
+  const ready = useReadyCount();
   const filtering = query.trim() !== '' || selected.length > 0;
   const chips = [...selected, ...tags.filter((tag) => !selected.includes(tag))];
 
@@ -129,13 +131,25 @@ export function RecipeListScreen({ claims }: { claims: Claims }) {
       </View>
       {/* Viewers cannot write: RLS refuses it, and these controls are not rendered. */}
       {writer ? (
-        <Pressable
-          role="button"
-          onPress={() => router.push('/recipe/new')}
-          style={{ backgroundColor: green, borderRadius: 6, padding: 12 }}
-        >
-          <Text style={{ color: '#fff', fontSize: 16, textAlign: 'center' }}>New recipe</Text>
-        </Pressable>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Pressable
+            role="button"
+            onPress={() => router.push('/recipe/new')}
+            style={{ backgroundColor: green, borderRadius: 6, padding: 12, flex: 1 }}
+          >
+            <Text style={{ color: '#fff', fontSize: 16, textAlign: 'center' }}>New recipe</Text>
+          </Pressable>
+          <Pressable
+            role="button"
+            aria-label={ready > 0 ? `Import, ${ready} ready` : 'Import'}
+            onPress={() => router.push('/import')}
+            style={{ borderWidth: 1, borderColor: green, borderRadius: 6, padding: 12, flex: 1 }}
+          >
+            <Text style={{ color: green, fontSize: 16, textAlign: 'center' }}>
+              {ready > 0 ? `Import · ${ready} ready` : 'Import'}
+            </Text>
+          </Pressable>
+        </View>
       ) : null}
       <FlatList
         style={{ flex: 1 }}

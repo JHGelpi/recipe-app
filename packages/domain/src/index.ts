@@ -1,22 +1,17 @@
 import { z } from 'zod';
+import { isHttpUrl, SOURCE_LIMITS } from './imports';
 import { UNITS } from './ingredients';
+import { RECIPE_LIMITS, TITLE_MAX } from './limits';
 
+export * from './imports';
 export * from './ingredients';
 export * from './steps';
 export * from './tags';
 export * from './search';
-
-export const TITLE_MAX = 200;
-
-export const RECIPE_LIMITS = {
-  servings: [1, 999],
-  minutes: [0, 10000],
-  ingredients: 200,
-  steps: 100,
-  tags: 30,
-  tagLength: 40,
-  notes: 10000,
-} as const;
+export * from './importDraft';
+export * from './html';
+export * from './jsonLd';
+export { RECIPE_LIMITS, TITLE_MAX } from './limits';
 
 export const recipeTitleSchema = z
   .string()
@@ -86,6 +81,15 @@ export const recipeSchema = z.strictObject({
     .string()
     .max(RECIPE_LIMITS.notes, `Notes must be ${RECIPE_LIMITS.notes} characters or fewer`)
     .optional(),
+  // FR-12, NFR-13: where an imported recipe came from. Set once, on save from review.
+  source_url: z
+    .string()
+    .max(SOURCE_LIMITS.url)
+    .refine(isHttpUrl, 'A source link must start with http:// or https://')
+    .nullable()
+    .optional(),
+  source_author: z.string().max(SOURCE_LIMITS.author).nullable().optional(),
+  source_text: z.string().max(SOURCE_LIMITS.text).nullable().optional(),
   deleted_at: timestampSchema.nullable().optional(),
 });
 
@@ -105,6 +109,9 @@ export const RECIPE_CLIENT_FIELDS = [
   'steps',
   'tags',
   'notes',
+  'source_url',
+  'source_author',
+  'source_text',
   'deleted_at',
 ] as const;
 

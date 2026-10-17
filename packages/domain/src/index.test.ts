@@ -231,3 +231,30 @@ describe('favoriteSchema', () => {
     );
   });
 });
+
+describe('recipe source (FR-12, NFR-13)', () => {
+  const base = {
+    id: '11111111-1111-4111-8111-111111111111',
+    household_id: '22222222-2222-4222-8222-222222222222',
+    title: 'Soup',
+  };
+
+  it('accepts a source link, author and original text', () => {
+    const parsed = recipeSchema.safeParse({
+      ...base,
+      source_url: 'https://example.com/soup',
+      source_author: 'Jane Doe',
+      source_text: 'Soup\n- 1 onion',
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it('refuses a source link that is not http(s), and text over 20,000 characters', () => {
+    expect(recipeSchema.safeParse({ ...base, source_url: 'javascript:alert(1)' }).success).toBe(
+      false,
+    );
+    expect(recipeSchema.safeParse({ ...base, source_text: 'x'.repeat(20_001) }).success).toBe(
+      false,
+    );
+  });
+});

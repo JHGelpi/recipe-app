@@ -40,6 +40,10 @@ export const env = {
   get jwtSecret() {
     return required('JWT_SECRET');
   },
+  /** The fake Claude and fixture pages (test mode only). */
+  get fakeAiUrl() {
+    return `http://127.0.0.1:${process.env.FAKE_AI_HOST_PORT ?? '4010'}`;
+  },
   get corsDevOrigin() {
     return required('CORS_DEV_ORIGIN');
   },

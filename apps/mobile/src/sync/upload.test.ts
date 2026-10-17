@@ -173,3 +173,40 @@ describe('toUploadOps for recipe details and favorites', () => {
     });
   });
 });
+
+it('uploads only the client fields of an import', () => {
+  const ops = toUploadOps([
+    {
+      op: 'PUT',
+      table: 'imports',
+      id: 'i1',
+      opData: {
+        household_id: 'h1',
+        source_type: 'text',
+        source_text: 'Soup',
+        status: 'pending',
+        created_at: '2026-10-17T10:00:00Z',
+      },
+    },
+    {
+      op: 'PATCH',
+      table: 'imports',
+      id: 'i1',
+      opData: { recipe_id: 'r1', deleted_at: '2026-10-17T10:01:00Z' },
+    },
+  ]);
+  expect(ops).toEqual([
+    {
+      op: 'put',
+      table: 'imports',
+      id: 'i1',
+      data: { household_id: 'h1', source_type: 'text', source_text: 'Soup' },
+    },
+    {
+      op: 'patch',
+      table: 'imports',
+      id: 'i1',
+      data: { recipe_id: 'r1', deleted_at: '2026-10-17T10:01:00Z' },
+    },
+  ]);
+});

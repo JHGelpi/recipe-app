@@ -1,0 +1,26 @@
+# Test mode: the API talks to a fake Claude and may fetch the fixture pages.
+# `pnpm dev:backend:test` starts the stack with this file added;
+# `pnpm dev:backend` switches back to the real AI service.
+services:
+  fake-ai:
+    image: node:22-alpine
+    command: ['node', '/srv/server.mjs']
+    volumes:
+      - ./test-support/fake-ai:/srv:ro
+    ports:
+      - '127.0.0.1:${FAKE_AI_HOST_PORT:-4010}:4010'
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://127.0.0.1:4010/healthz']
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  api:
+    depends_on:
+      fake-ai:
+        condition: service_healthy
+    environment:
+      ANTHROPIC_API_KEY: fake-key
+      ANTHROPIC_BASE_URL: http://fake-ai:4010
+      # Test-only: lets the importer fetch the fixture pages on the Docker network.
+      IMPORT_FETCH_ALLOW_HOSTS: fake-ai
