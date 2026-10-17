@@ -1,15 +1,20 @@
 import { usePowerSync } from '@powersync/react';
+import { scaleFactor } from '@recipe-app/domain';
 import { Link, router } from 'expo-router';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { DishPhoto } from '../components/DishPhoto';
+import { IngredientList } from '../components/IngredientList';
 import { OriginalPhotos } from '../components/OriginalPhotos';
+import { ServingsBar } from '../components/ServingsBar';
 import { SourceView } from '../components/SourceView';
 import { StarButton } from '../components/StarButton';
 import { confirm } from '../components/confirm';
+import { useCookPlace } from '../cooking/useCookPlace';
 import { useRecipe, useRecipePages } from '../recipes/hooks';
 import { restoreRecipe, trashRecipe } from '../recipes/repository';
 import type { RecipeRecord } from '../recipes/rows';
 import { canWrite, type Claims } from '../session/claims';
+import { useSubstitutions } from '../substitutions/hooks';
 
 function summary(recipe: RecipeRecord): string {
   return [
@@ -78,20 +83,23 @@ export function RecipeScreen({ claims, id }: { claims: Claims; id: string }) {
               ))}
             </View>
           ) : null}
+          {!recipe.deleted_at ? (
+            <Pressable
+              role="button"
+              onPress={() => router.push(`/recipe/${recipe.id}/cook`)}
+              style={{
+                backgroundColor: '#1a5d3a',
+                borderRadius: 8,
+                minHeight: 44,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ color: '#fff', fontSize: 18 }}>Cook</Text>
+            </Pressable>
+          ) : null}
           {recipe.ingredients.length > 0 ? (
-            <View style={{ gap: 4 }}>
-              <Text role="heading" aria-level={2} style={{ fontSize: 18, fontWeight: '600' }}>
-                Ingredients
-              </Text>
-              {recipe.ingredients.map((ingredient) => (
-                <Text
-                  key={ingredient.id}
-                  style={ingredient.heading ? { fontWeight: '600', marginTop: 6 } : undefined}
-                >
-                  {ingredient.raw}
-                </Text>
-              ))}
-            </View>
+            <IngredientsSection claims={claims} recipe={recipe} />
           ) : null}
           {recipe.steps.length > 0 ? (
             <View style={{ gap: 6 }}>
@@ -137,5 +145,31 @@ export function RecipeScreen({ claims, id }: { claims: Claims; id: string }) {
         </>
       )}
     </ScrollView>
+  );
+}
+
+/**
+ * FR-22–24: the ingredients with servings and units, shared with cook mode
+ * through the cook's place, and Substitute on each line.
+ */
+function IngredientsSection({ claims, recipe }: { claims: Claims; recipe: RecipeRecord }) {
+  const { place, update } = useCookPlace(recipe);
+  const substitutions = useSubstitutions(recipe.id);
+  const factor = scaleFactor(recipe.servings, place.servings, place.scale);
+  return (
+    <View style={{ gap: 8 }}>
+      <Text role="heading" aria-level={2} style={{ fontSize: 18, fontWeight: '600' }}>
+        Ingredients
+      </Text>
+      <ServingsBar recipeServings={recipe.servings} place={place} onChange={update} />
+      <IngredientList
+        claims={claims}
+        recipeId={recipe.id}
+        ingredients={recipe.ingredients}
+        factor={factor}
+        units={place.units}
+        substitutions={substitutions}
+      />
+    </View>
   );
 }
