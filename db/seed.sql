@@ -78,3 +78,10 @@ insert into public.ai_usage (household_id, month, spent_microusd) values
 insert into public.photos (id, household_id, kind, recipe_id, media_type, bytes, width, height) values
   ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-00000000000a', 'dish', '00000000-0000-0000-0000-0000000000c1', 'image/jpeg', 1, 1, 1),
   ('00000000-0000-0000-0000-0000000000f2', '00000000-0000-0000-0000-00000000000b', 'dish', '00000000-0000-0000-0000-0000000000c2', 'image/jpeg', 1, 1, 1);
+
+-- One remembered substitution per household, so the isolation suite's
+-- substitutions checks are not vacuous. The ingredient id matches no line,
+-- so no screen shows them.
+insert into public.substitutions (id, household_id, recipe_id, ingredient_id, ingredient_raw, options, note) values
+  ('00000000-0000-0000-0000-0000000000e3', '00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-0000000000c1', '00000000-0000-0000-0000-0000000000e5', 'Seed line', '[]', 'Seed note'),
+  ('00000000-0000-0000-0000-0000000000e4', '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000c2', '00000000-0000-0000-0000-0000000000e6', 'Seed line', '[]', 'Seed note');

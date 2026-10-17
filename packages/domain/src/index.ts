@@ -12,6 +12,8 @@ export * from './importDraft';
 export * from './html';
 export * from './jsonLd';
 export * from './photos';
+export * from './cooking';
+export * from './substitutions';
 export { RECIPE_LIMITS, TITLE_MAX } from './limits';
 
 export const recipeTitleSchema = z

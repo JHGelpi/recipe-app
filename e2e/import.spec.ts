@@ -46,7 +46,7 @@ test('pasted text becomes a reviewed recipe that keeps its original (FR-9, FR-11
   await page.getByRole('button', { name: 'Save' }).click();
 
   await expect(page.getByRole('heading', { name: title, level: 1 })).toBeVisible();
-  await expect(page.getByText('Serves 6')).toBeVisible();
+  await expect(page.getByText('Serves 6', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: /^Original text/ }).click();
   await expect(page.getByText('- 2 carrots', { exact: false })).toBeVisible();
 

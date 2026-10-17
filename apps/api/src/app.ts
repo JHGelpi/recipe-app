@@ -1,10 +1,11 @@
-import { PHOTO_LIMITS } from '@recipe-app/domain';
+import { PHOTO_LIMITS, substitutionAskSchema } from '@recipe-app/domain';
 import { Hono } from 'hono';
 import { UnauthorizedError, type VerifyToken } from './auth/verify';
 import type { AsUser } from './db/asUser';
 import { isGuid } from './ids';
 import type { ImportService } from './import/service';
 import type { PhotoService } from './photos/service';
+import type { SubstitutionService } from './substitutions/service';
 import { applyOps, parseBody } from './upload/ops';
 
 export type AppDeps = {
@@ -13,6 +14,7 @@ export type AppDeps = {
   ping: () => Promise<void>;
   imports: ImportService;
   photos: PhotoService;
+  substitutions: SubstitutionService;
 };
 
 const MAX_BODY_BYTES = 1024 * 1024;
@@ -159,6 +161,40 @@ export function createApp(deps: AppDeps): Hono {
       'Content-Type': 'image/jpeg',
       'Cache-Control': 'private, no-store',
     });
+  });
+
+  const ASK_STATUS = {
+    forbidden: 403,
+    missing: 404,
+    quota: 402,
+    ai_unavailable: 503,
+    invalid_output: 422,
+  } as const;
+  const ASK_ERROR = {
+    forbidden: 'forbidden',
+    missing: 'not_found',
+    quota: 'quota',
+    ai_unavailable: 'ai_unavailable',
+    invalid_output: 'invalid_output',
+  } as const;
+
+  // FR-24: substitutes for one ingredient, asked live and remembered.
+  app.post('/api/substitutions', async (c) => {
+    const token = bearer(c.req.header('Authorization'));
+    if (!token) return c.json({ error: 'unauthorized' }, 401);
+    let payload: unknown;
+    try {
+      payload = await c.req.json();
+    } catch {
+      return c.json({ error: 'invalid_body' }, 400);
+    }
+    const parsed = substitutionAskSchema.safeParse(payload);
+    if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
+    const outcome = await deps.substitutions.ask(token, parsed.data);
+    if (outcome.kind === 'answer') {
+      return c.json({ ...outcome.answer, ingredient_raw: outcome.ingredient_raw }, 200);
+    }
+    return c.json({ error: ASK_ERROR[outcome.kind] }, ASK_STATUS[outcome.kind]);
   });
 
   return app;

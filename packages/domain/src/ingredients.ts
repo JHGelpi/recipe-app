@@ -111,7 +111,7 @@ const VULGAR: Record<string, number> = {
   '⅞': 7 / 8,
 };
 const VULGAR_CHARS = Object.keys(VULGAR).join('');
-const NUMBER = `(?:\\d+\\s+\\d+/\\d+|\\d+/\\d+|\\d*[${VULGAR_CHARS}]|\\d+(?:\\.\\d+)?|\\.\\d+)`;
+const NUMBER = `(?:\\d+\\s+[${VULGAR_CHARS}]|\\d+\\s+\\d+/\\d+|\\d+/\\d+|\\d*[${VULGAR_CHARS}]|\\d+(?:\\.\\d+)?|\\.\\d+)`;
 const QUANTITY = new RegExp(`^(${NUMBER})(?:\\s*(?:-|–|\\bto\\b)\\s*(${NUMBER}))?(?=\\s|$)\\s*`);
 const UNIT_WORD = /^([A-Za-z]+)\.?(?=\s|$)\s*/;
 
@@ -124,6 +124,8 @@ function toNumber(text: string): number | null {
 function rawNumber(value: string): number | null {
   const mixed = /^(\d+)\s+(\d+)\/(\d+)$/.exec(value);
   if (mixed) return Number(mixed[1]) + Number(mixed[2]) / Number(mixed[3]);
+  const spaced = new RegExp(`^(\\d+)\\s+([${VULGAR_CHARS}])$`).exec(value);
+  if (spaced) return Number(spaced[1]) + (VULGAR[spaced[2] ?? ''] ?? 0);
   const fraction = /^(\d+)\/(\d+)$/.exec(value);
   if (fraction) return Number(fraction[1]) / Number(fraction[2]);
   const vulgar = new RegExp(`^(\\d*)([${VULGAR_CHARS}])$`).exec(value);
@@ -161,7 +163,9 @@ export function parseIngredientLine(input: string): ParsedIngredient {
   const raw = input.trim().replace(/\s+/g, ' ');
   const plain = { raw, quantity: null, quantity_max: null, unit: null, note: null };
 
-  const match = QUANTITY.exec(raw);
+  // "250g butter": read a metric unit glued to its number as if spaced.
+  const text = raw.replace(/^(\d+(?:\.\d+)?)(kg|g|ml|l)(?=\s|$)/i, '$1 $2');
+  const match = QUANTITY.exec(text);
   const quantity = match ? toNumber(match[1] ?? '') : null;
   const quantityMax = match?.[2] ? toNumber(match[2]) : null;
   if (!match || quantity === null || (match[2] && quantityMax === null)) {
@@ -170,7 +174,7 @@ export function parseIngredientLine(input: string): ParsedIngredient {
     return { ...plain, item, note, heading: false };
   }
 
-  let rest = raw.slice(match[0].length);
+  let rest = text.slice(match[0].length);
   let unit: Unit | null = null;
   const word = UNIT_WORD.exec(rest);
   if (word) {
@@ -184,6 +188,7 @@ export function parseIngredientLine(input: string): ParsedIngredient {
 /**
  * One ingredient per non-empty line. An unchanged line keeps its earlier
  * reading whole, id included, so an import's AI reading survives editing.
+ * A changed line keeps only the id of the line at its position.
  */
 export function ingredientsFromText(
   text: string,
@@ -194,11 +199,29 @@ export function ingredientsFromText(
   for (const ingredient of previous) {
     unused.set(ingredient.raw, [...(unused.get(ingredient.raw) ?? []), ingredient]);
   }
-  return text
+  const lines = text
     .split(/\r?\n/)
     .map((line) => parseIngredientLine(line))
-    .filter((parsed) => parsed.raw !== '')
-    .map((parsed) => unused.get(parsed.raw)?.shift() ?? { ...parsed, id: newId() });
+    .filter((parsed) => parsed.raw !== '');
+  const taken = new Set<Ingredient>();
+  const exact = lines.map((parsed) => {
+    const hit = unused.get(parsed.raw)?.shift() ?? null;
+    if (hit) taken.add(hit);
+    return hit;
+  });
+  // A changed line keeps the id of the line it replaced (same position), so
+  // what is remembered for it (a substitution) stays attached, but it gets a
+  // fresh reading.
+  return lines.map((parsed, index) => {
+    const hit = exact[index];
+    if (hit) return hit;
+    const before = previous[index];
+    if (before && !taken.has(before)) {
+      taken.add(before);
+      return { ...parsed, id: before.id };
+    }
+    return { ...parsed, id: newId() };
+  });
 }
 
 export function ingredientsToText(ingredients: Ingredient[]): string {

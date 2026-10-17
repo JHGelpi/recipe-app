@@ -133,6 +133,36 @@ async function messages(res, body) {
   }
   if (text.includes('FAKE_SLOW')) await new Promise((resolve) => setTimeout(resolve, 3000));
 
+  // FR-24: substitutions are asked with the record_substitutes tool.
+  if (body.tools?.[0]?.name === 'record_substitutes') {
+    let answer = {
+      options: [
+        { substitute: 'Fake yogurt', amount: '1 cup fake yogurt', how: '', effect: 'Fake effect.' },
+        {
+          substitute: 'Fake milk and lemon',
+          amount: '1 cup fake milk + 1 tbsp lemon',
+          how: 'Rest 5 minutes.',
+          effect: 'Slightly thinner.',
+        },
+      ],
+      note: null,
+    };
+    if (text.includes('FAKE_NO_SUBSTITUTE'))
+      answer = { options: [], note: 'Nothing works here (fake).' };
+    if (text.includes('FAKE_INVALID'))
+      answer = { options: [{ ...answer.options[0], substitute: '' }], note: null };
+    return send(res, 200, {
+      id: 'msg_fake',
+      type: 'message',
+      role: 'assistant',
+      model: body.model,
+      content: [{ type: 'tool_use', id: 'toolu_fake', name: 'record_substitutes', input: answer }],
+      stop_reason: 'tool_use',
+      stop_sequence: null,
+      usage: { input_tokens: 800, output_tokens: 200 },
+    });
+  }
+
   let input = recipeFrom(text);
   if (text.includes('FAKE_NOT_RECIPE')) input = { ...input, is_recipe: false };
   if (text.includes('FAKE_INVALID')) input = { ...input, title: '' };

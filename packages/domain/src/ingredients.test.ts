@@ -87,11 +87,12 @@ describe('ingredientsFromText', () => {
     expect(list.map((ingredient) => ingredient.raw)).toEqual(['2 cups flour', '1 egg']);
   });
 
-  it('keeps the id of an unchanged line and gives a new one to a changed line', () => {
+  it('keeps an unchanged line whole, and a changed line keeps only its id', () => {
     const first = ingredientsFromText('2 cups flour\n1 egg', [], newId);
     const second = ingredientsFromText('2 cups flour\n2 eggs', first, newId);
-    expect(second[0]?.id).toBe(first[0]?.id);
-    expect(second[1]?.id).not.toBe(first[1]?.id);
+    expect(second[0]).toBe(first[0]);
+    expect(second[1]?.id).toBe(first[1]?.id);
+    expect(second[1]).toMatchObject({ raw: '2 eggs', quantity: 2 });
   });
 
   it('keeps distinct ids for the same line typed twice, across an edit', () => {
@@ -123,4 +124,46 @@ it('keeps an unchanged line exactly as it was read before, not re-read', () => {
   const result = ingredientsFromText('2 cups flour, sifted\n1 egg', previous, () => 'new');
   expect(result[0]).toEqual(previous[0]);
   expect(result[1]).toMatchObject({ id: 'new', raw: '1 egg', item: 'egg' });
+});
+
+describe('review fixes: amounts the parser missed (Important 4)', () => {
+  it('reads a whole number and a separate vulgar fraction', () => {
+    expect(parseIngredientLine('1 ½ cups (360ml) milk')).toMatchObject({
+      quantity: 1.5,
+      unit: 'cup',
+      item: '(360ml) milk',
+    });
+  });
+
+  it('reads a metric unit glued to its number, keeping the typed line', () => {
+    expect(parseIngredientLine('250g butter')).toMatchObject({
+      raw: '250g butter',
+      quantity: 250,
+      unit: 'g',
+      item: 'butter',
+    });
+    expect(parseIngredientLine('1.5kg potatoes')).toMatchObject({
+      quantity: 1.5,
+      unit: 'kg',
+      item: 'potatoes',
+    });
+    expect(parseIngredientLine('2 large eggs')).toMatchObject({
+      quantity: 2,
+      unit: null,
+      item: 'large eggs',
+    });
+  });
+});
+
+describe('review fixes: an edited line keeps its id (Important 3)', () => {
+  it('gives a changed line the id of the line it replaced, with a fresh reading', () => {
+    let n = 0;
+    const newId = () => `new-${++n}`;
+    const before = ingredientsFromText('1 cup buttermilk\n2 eggs', [], newId);
+    const after = ingredientsFromText('2 cups buttermilk\n2 eggs', before, newId);
+    expect(after.map((i) => i.id)).toEqual(before.map((i) => i.id));
+    expect(after[0]).toMatchObject({ raw: '2 cups buttermilk', quantity: 2 });
+    const added = ingredientsFromText('2 cups buttermilk\n2 eggs\n1 tsp salt', after, newId);
+    expect(added[2]?.id).toMatch(/^new-/);
+  });
 });

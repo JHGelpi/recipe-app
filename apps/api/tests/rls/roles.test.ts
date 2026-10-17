@@ -58,6 +58,7 @@ describe('database roles (spec §4)', () => {
       imports: ['INSERT', 'SELECT', 'UPDATE'],
       ai_usage: ['INSERT', 'SELECT', 'UPDATE'],
       photos: ['DELETE', 'INSERT', 'SELECT', 'UPDATE'],
+      substitutions: ['INSERT', 'SELECT', 'UPDATE'],
     });
   });
 
