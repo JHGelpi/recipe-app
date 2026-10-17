@@ -2,6 +2,9 @@ import { PHOTO_LIMITS, substitutionAskSchema } from '@recipe-app/domain';
 import { Hono } from 'hono';
 import { UnauthorizedError, type VerifyToken } from './auth/verify';
 import type { AsUser } from './db/asUser';
+import { bearer } from './bearer';
+import { registerHouseholdRoutes } from './household/routes';
+import type { HouseholdService } from './household/service';
 import { isGuid } from './ids';
 import type { ImportService } from './import/service';
 import type { PhotoService } from './photos/service';
@@ -15,13 +18,10 @@ export type AppDeps = {
   imports: ImportService;
   photos: PhotoService;
   substitutions: SubstitutionService;
+  household: HouseholdService;
 };
 
 const MAX_BODY_BYTES = 1024 * 1024;
-
-function bearer(header: string | undefined): string | null {
-  return /^Bearer (.+)$/.exec(header ?? '')?.[1] ?? null;
-}
 
 export function createApp(deps: AppDeps): Hono {
   const app = new Hono();
@@ -196,6 +196,8 @@ export function createApp(deps: AppDeps): Hono {
     }
     return c.json({ error: ASK_ERROR[outcome.kind] }, ASK_STATUS[outcome.kind]);
   });
+
+  registerHouseholdRoutes(app, deps);
 
   return app;
 }

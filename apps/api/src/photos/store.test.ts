@@ -39,4 +39,15 @@ describe('createDiskPhotoStore', () => {
     await expect(store.put('../etc', ID, Uint8Array.from([1]))).rejects.toThrow('UUID');
     await expect(store.read(H, '../../passwd')).rejects.toThrow('UUID');
   });
+
+  it('moves a file to another household, and a missing file is not an error', async () => {
+    root = await mkdtemp(join(tmpdir(), 'photos-'));
+    const store = createDiskPhotoStore(root);
+    const OTHER = '00000000-0000-0000-0000-00000000000b';
+    await store.put(H, ID, Uint8Array.from([7]));
+    await store.move(H, OTHER, ID);
+    expect(await store.read(H, ID)).toBeNull();
+    expect([...((await store.read(OTHER, ID)) ?? [])]).toEqual([7]);
+    await store.move(H, OTHER, ID);
+  });
 });

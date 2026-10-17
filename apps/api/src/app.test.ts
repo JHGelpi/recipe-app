@@ -13,6 +13,17 @@ function deps(overrides: Partial<AppDeps> = {}): AppDeps {
       usage: vi.fn().mockResolvedValue({ spentUsd: 0.42, capUsd: 2 }),
     },
     substitutions: { ask: vi.fn().mockResolvedValue({ kind: 'missing' }) },
+    household: {
+      createInvite: vi.fn(),
+      listInvites: vi.fn(),
+      cancelInvite: vi.fn(),
+      previewInvite: vi.fn(),
+      acceptInvite: vi.fn(),
+      setRole: vi.fn(),
+      removeMember: vi.fn(),
+      leave: vi.fn(),
+      rename: vi.fn(),
+    },
     photos: {
       put: vi.fn().mockResolvedValue('stored'),
       get: vi.fn().mockResolvedValue(null),
