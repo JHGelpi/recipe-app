@@ -74,7 +74,7 @@ Let anyone in a household send a recipe to someone else, in three ways:
 
 ## 4. Database functions (ADR-0016; `SECURITY DEFINER`, owner `app_owner`, `search_path = ''`)
 
-### `create_share(recipe uuid, snapshot jsonb, photo boolean)` → `(id, token)`
+### `create_share(share_id uuid, recipe uuid, snapshot jsonb, photo boolean)` → `(id, token)`
 
 - **Who:** any member of the recipe's household, viewers included. The recipe must be live, and in the caller's household (live membership).
 - **The code:** generated like an invite's (32 random bytes, base64url); only its hash is stored.
@@ -122,7 +122,7 @@ Let anyone in a household send a recipe to someone else, in three ways:
 3. Calls `create_share`.
 4. If the recipe has a dish photo whose file exists, copies the file to `photos/<household>/<share id>.jpg` and passes `photo = true`.
 
-The copy happens before the call, keyed by the id that `create_share` returns. So the API generates the share id itself and passes it as a fourth argument (`share_id uuid`).
+The copy happens before the call, so the API generates the share id itself and passes it as `create_share`'s first argument.
 
 **Reading a share, signed out:**
 - Unauthenticated reads use a new `asAnonymous(fn)`: `asClaims({}, fn)`, the authenticated role with no claims, so every RLS policy denies.
