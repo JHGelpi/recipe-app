@@ -100,11 +100,11 @@ describe('POST /api/imports/:id/parse', () => {
       tags: ['fake-suggested'],
       low_confidence: ['servings'],
     });
-    expect(await spent(cook)).toBe(10_500);
+    expect(await spent(cook)).toBe(7_000);
     const usage = await fetch(`${env.apiUrl}/imports/usage`, {
       headers: { Authorization: `Bearer ${cook.accessToken}` },
     });
-    expect(await usage.json()).toEqual({ spentUsd: 0.0105, capUsd: 2 });
+    expect(await usage.json()).toEqual({ spentUsd: 0.007, capUsd: 2 });
   });
 
   it('a second call while parsing answers 409, and a ready import is not parsed again', async () => {
@@ -143,7 +143,7 @@ describe('POST /api/imports/:id/parse', () => {
     const id = await textImport(cook, `${SOUP}\nFAKE_INVALID`);
     await parse(cook, id);
     expect(await settled(cook, id)).toMatchObject({ status: 'failed', error: 'invalid_output' });
-    expect(await spent(cook)).toBe(10_500);
+    expect(await spent(cook)).toBe(7_000);
   });
 
   it('a non-recipe cannot be retried; an AI outage can', async () => {

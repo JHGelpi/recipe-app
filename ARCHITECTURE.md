@@ -70,7 +70,7 @@ C4Container
     ContainerDb(localDb, "On-device Database", "SQLite in the browser (OPFS, via PowerSync web SDK)", "Household's recipes; full-text index; pending-upload queue")
     Container(proxy, "Proxy", "Caddy", "Single entry point; serves the built web app; routes /auth, /api, /sync")
     Container(syncSvc, "Sync Service", "PowerSync service (self-hosted container)", "Streams household-scoped changes between Postgres and devices")
-    Container(api, "API", "Node / TypeScript (Hono)", "Upload of local writes now; import pipeline, AI calls, invites, share links later")
+    Container(api, "API", "Node / TypeScript (Hono)", "Upload of local writes; import pipeline and AI calls (ADR-0012); invites and share links later")
     Container(auth, "Auth", "GoTrue (self-hosted container)", "Sign-in (email one-time code); issues JWTs with household_id and household_role claims")
     ContainerDb(db, "Database", "PostgreSQL 17 with RLS", "System of record: households, users, recipes; also holds the sync service's storage database")
   }
@@ -88,12 +88,12 @@ C4Container
   Rel(syncSvc, db, "Replicates household-scoped data", "Postgres logical replication")
   Rel(api, db, "Reads/writes as the user (RLS applies)")
   Rel(auth, db, "Users, sessions; reads memberships for claims")
-  Rel(api, llm, "Parse / substitute (later)", "HTTPS")
-  Rel(api, sites, "Fetch page HTML (later)", "HTTPS")
+  Rel(api, llm, "Parse (substitute later)", "HTTPS")
+  Rel(api, sites, "Fetch page HTML", "HTTPS")
   Rel(auth, email, "Sign-in codes, invites", "SMTP")
 ```
 
-Object storage and the share landing page are not built yet; they are decided in the import and sharing sub-projects.
+Object storage comes with photo import (sub-project 4b); the share landing page with sharing.
 
 ### Container responsibilities```
 
@@ -119,8 +119,8 @@ C4Component
 
   Container_Boundary(mobile, "Mobile App") {
     Component(nav, "Navigation & Screens", "Expo Router", "Library, Recipe detail, Edit, Import review, Cook mode, Household settings")
-    Component(capture, "Capture Module", "expo-camera / image-picker / share intent", "Collects photos, URLs, pasted text; enqueues import jobs")
-    Component(importQ, "Import Queue", "TypeScript", "Persists pending imports; retries when online (FR-29)")
+    Component(capture, "Capture Module", "Import screen", "Pasted text and links now (FR-8, FR-9); photos in 4b; writes an imports row")
+    Component(importQ, "Import Queue", "imports table + kicker", "The synced imports table; the kicker asks the server to read waiting imports when online (FR-29, ADR-0012)")
     Component(repo, "Recipe Repository", "TypeScript over PowerSync", "CRUD on local DB; soft delete/trash; role checks for UI")
     Component(search, "Search", "In-memory index over the local DB (ADR-0011)", "Title/ingredient/tag search + tag filters, offline (FR-19/20)")
     Component(cook, "Cook Engine", "Pure TS", "Scaling, unit conversion, step state, keep-awake (FR-21–23)")
@@ -155,11 +155,11 @@ C4Component
 
   Container_Boundary(api, "API") {
     Component(guard, "Auth Guard", "Middleware", "Verifies JWT; resolves household_id and role; rejects Viewer writes")
-    Component(importFn, "Import Orchestrator", "Function: /import", "Routes by source type; stores original; returns draft for review")
-    Component(urlX, "URL Extractor", "Module", "Fetches HTML; uses schema.org Recipe JSON-LD when present; else cleaned text → LLM")
+    Component(importFn, "Import Orchestrator", "Route: /api/imports/:id/parse", "Claims the import as the user; reads JSON-LD or asks the AI parser; writes the draft to the row (ADR-0012)")
+    Component(urlX, "URL Extractor", "Module", "Fetches HTML with address checks after DNS and on redirects; schema.org Recipe JSON-LD when present; else cleaned text → LLM")
     Component(parser, "AI Parser", "Module", "Prompts LLM with image(s)/text; validates against Recipe JSON schema; flags low-confidence fields (FR-10/11)")
     Component(subFn, "Substitution Service", "Function: /substitute", "Ingredient + recipe context → options with amounts & effects (FR-24)")
-    Component(quota, "AI Usage Meter", "Module", "Records tokens per household; enforces quota (NFR-7)")
+    Component(quota, "AI Usage Meter", "ai_usage table", "Records spend per household per month; enforces the cap (NFR-7)")
     Component(llmGw, "LLM Gateway", "Module", "Single place for model choice, retries, timeouts, prompt versions")
     Component(writeFn, "Write Upload Handler", "Route: /api/upload", "Applies queued local writes; last-write-wins on updated_at (FR-30)")
     Component(inviteFn, "Invite Service", "Function: /invites", "Household invites & new-household invites (FR-3, FR-6)")
@@ -303,4 +303,4 @@ Conventions for every tenant table:
 
 ## 9. Decision log
 
-See [`docs/adr/`](docs/adr/). Current: ADR-0001 through ADR-0011.
+See [`docs/adr/`](docs/adr/). Current: ADR-0001 through ADR-0012.

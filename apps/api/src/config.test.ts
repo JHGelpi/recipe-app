@@ -10,8 +10,8 @@ describe('loadConfig', () => {
       apiKey: null,
       baseUrl: null,
       model: 'claude-sonnet-5-5',
-      priceInputPerMTokUsd: 3,
-      priceOutputPerMTokUsd: 15,
+      priceInputPerMTokUsd: 2,
+      priceOutputPerMTokUsd: 10,
       capUsd: 2,
     });
     expect(config.fetchAllowHosts).toEqual([]);

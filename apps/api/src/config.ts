@@ -40,8 +40,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       apiKey: env.ANTHROPIC_API_KEY || null,
       baseUrl: env.ANTHROPIC_BASE_URL || null,
       model: env.LLM_MODEL_PARSE || 'claude-sonnet-5-5',
-      priceInputPerMTokUsd: amount(env, 'LLM_PRICE_INPUT_PER_MTOK_USD', 3),
-      priceOutputPerMTokUsd: amount(env, 'LLM_PRICE_OUTPUT_PER_MTOK_USD', 15),
+      priceInputPerMTokUsd: amount(env, 'LLM_PRICE_INPUT_PER_MTOK_USD', 2),
+      priceOutputPerMTokUsd: amount(env, 'LLM_PRICE_OUTPUT_PER_MTOK_USD', 10),
       capUsd: amount(env, 'AI_MONTHLY_CAP_USD', 2),
     },
     fetchAllowHosts: (env.IMPORT_FETCH_ALLOW_HOSTS ?? '')

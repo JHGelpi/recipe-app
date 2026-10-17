@@ -26,13 +26,16 @@ pnpm dev:web                 # Expo web dev server at http://localhost:8081
 pnpm test                    # unit tests
 pnpm test:stack              # auth and token checks (needs dev:backend)
 pnpm test:rls                # tenant isolation suite (needs dev:backend + seed)
-pnpm test:api                # /api/upload tests (needs dev:backend + seed)
-pnpm test:e2e                # Playwright against the built app at PUBLIC_URL (default http://localhost:8080)
+pnpm dev:backend:test        # stack with the fake Claude and fixture pages; test:api and test:e2e need it
+pnpm test:api                # upload and import tests (needs dev:backend:test + seed)
+pnpm test:e2e                # Playwright against the built app at PUBLIC_URL; starts test mode itself
+pnpm eval:import             # parse eval against the real Claude API (needs ANTHROPIC_API_KEY; manual)
+# After test runs, `pnpm dev:backend` switches the stack back to the real AI service.
 pnpm lint && pnpm typecheck
 ```
 
 ## Non-negotiable rules
-1. **Tenant isolation.** Every tenant table has `household_id NOT NULL` + RLS enabled + policies in the same migration. Add the table to the RLS test suite in the same PR. The API connects only as `api_login` and only through `asUser`; no code path may use a role that owns tables or bypasses RLS. New tables must also be added to `apps/api/tests/rls/registry.ts`; the coverage guard fails otherwise.
+1. **Tenant isolation.** Every tenant table has `household_id NOT NULL` + RLS enabled + policies in the same migration. Add the table to the RLS test suite in the same PR. The API connects only as `api_login` and only through `asUser` (or `asClaims`, with claims `asUser` verified in the same request, for background work; ADR-0012); no code path may use a role that owns tables or bypasses RLS. New tables must also be added to `apps/api/tests/rls/registry.ts`; the coverage guard fails otherwise.
 2. **No secrets on device.** The web app ships no keys at all, only relative service paths. Database passwords, the signing key, and AI keys live in .env on the server.
 3. **Offline-first.** UI reads/writes the local DB, never the network directly. Features needing the network (AI, import) must queue or degrade gracefully with a clear message.
 4. **Viewers can't change household data.** Enforce in RLS *and* hide controls in the UI. Their own favorites are the exception.
