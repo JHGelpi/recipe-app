@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
   addRecipe,
+  expectNotListed,
   expireSavedSession,
   findRecipe,
   freshEmail,
@@ -66,7 +67,7 @@ test('when the server ends the session and a different user signs in, the old da
   }, title);
   await signIn(page, freshEmail('next'));
   await expect(page.getByText('No recipes yet')).toBeVisible({ timeout: 30_000 });
-  await expect(await findRecipe(page, title)).toHaveCount(0);
+  await expectNotListed(page, title);
   expect(await page.evaluate(() => sessionStorage.getItem('sawOld'))).toBeNull();
 });
 
@@ -83,5 +84,5 @@ test('signing out while offline still wipes the local data', async ({ browser })
   await page.context().setOffline(false);
   await signIn(page, freshEmail('after-offline-out'));
   await expect(page.getByText('No recipes yet')).toBeVisible({ timeout: 30_000 });
-  await expect(await findRecipe(page, title)).toHaveCount(0);
+  await expectNotListed(page, title);
 });

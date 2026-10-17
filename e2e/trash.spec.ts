@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import postgres from 'postgres';
 import { env } from '../test-support/env';
-import { createRecipe, findRecipe, SEED, session, unique } from './helpers';
+import { createRecipe, expectNotListed, findRecipe, SEED, session, unique } from './helpers';
 
 test('Move to Trash, then Restore, on two sessions', async ({ browser }) => {
   const member = await session(browser, SEED.memberA);
@@ -12,7 +12,7 @@ test('Move to Trash, then Restore, on two sessions', async ({ browser }) => {
   member.once('dialog', (dialog) => void dialog.accept());
   await member.getByRole('button', { name: 'Move to Trash' }).click();
   await expect(member.getByRole('heading', { name: 'Recipes', level: 1 })).toBeVisible();
-  await expect(await findRecipe(member, title)).toHaveCount(0);
+  await expectNotListed(member, title);
 
   await admin.getByRole('link', { name: 'Trash' }).click();
   await expect(admin.getByText(title, { exact: true })).toBeVisible({ timeout: 10_000 });

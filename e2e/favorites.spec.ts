@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import postgres from 'postgres';
 import { env } from '../test-support/env';
-import { createRecipe, findRecipe, SEED, session, unique } from './helpers';
+import { createRecipe, expectNotListed, findRecipe, SEED, session, unique } from './helpers';
 
 // From db/seed.sql.
 const VIEWER_A_ID = '00000000-0000-0000-0000-0000000000a3';
@@ -19,11 +19,11 @@ test('starring shows a recipe under Favorites, only for the user who starred it'
   await member.getByRole('link', { name: 'All recipes' }).click();
   await member.getByRole('tab', { name: 'Favorites' }).click();
   await expect(await findRecipe(member, title)).toBeVisible();
-  await expect(await findRecipe(member, 'Seed pancakes')).toHaveCount(0);
+  await expectNotListed(member, 'Seed pancakes');
 
   await expect(await findRecipe(admin, title)).toBeVisible({ timeout: 10_000 });
   await admin.getByRole('tab', { name: 'Favorites' }).click();
-  await expect(await findRecipe(admin, title)).toHaveCount(0);
+  await expectNotListed(admin, title);
 });
 
 test('a viewer can star a recipe', async ({ browser }) => {

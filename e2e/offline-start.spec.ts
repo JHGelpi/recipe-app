@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
   addRecipe,
+  expectNotListed,
   expireSavedSession,
   findRecipe,
   freshEmail,
@@ -122,5 +123,5 @@ test('signing out offline with an expired token signs out and wipes the local da
   await page.context().setOffline(false);
   await signIn(page, freshEmail('after-stale-out'));
   await expect(page.getByText('No recipes yet')).toBeVisible({ timeout: 30_000 });
-  await expect(await findRecipe(page, title)).toHaveCount(0);
+  await expectNotListed(page, title);
 });

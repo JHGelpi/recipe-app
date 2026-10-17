@@ -153,3 +153,14 @@ export async function reloadOffline(page: Page): Promise<void> {
   await page.context().setOffline(false);
   await page.context().setOffline(true);
 }
+
+/**
+ * Asserts a recipe is not on the Recipes list. Waits for the search to have
+ * filtered the list ("No recipes match") before counting, so a match outside
+ * the virtualized window of an unfiltered list cannot slip through.
+ */
+export async function expectNotListed(page: Page, title: string): Promise<void> {
+  await page.getByLabel('Search recipes').fill(title);
+  await expect(page.getByText('No recipes match')).toBeVisible();
+  await expect(page.getByText(title, { exact: true })).toHaveCount(0);
+}
