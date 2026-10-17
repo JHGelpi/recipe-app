@@ -1,7 +1,9 @@
 import { AuthApiError, AuthRetryableFetchError, type Session } from '@supabase/auth-js';
 import { describe, expect, it } from 'vitest';
 import {
+  householdChanged,
   localDataAction,
+  ownerKey,
   provisionalSession,
   resolveSession,
   sessionFromAuth,
@@ -100,14 +102,42 @@ describe('localDataAction', () => {
   });
 
   it('keeps data when the owner signs back in', () => {
-    expect(localDataAction({ status: 'signedIn', userId: 'user-1' }, 'user-1')).toBe('keep');
+    expect(
+      localDataAction({ status: 'signedIn', userId: 'user-1', householdId: null }, 'user-1'),
+    ).toBe('keep');
   });
 
   it('wipes when a different user signs in', () => {
-    expect(localDataAction({ status: 'signedIn', userId: 'user-2' }, 'user-1')).toBe('wipe');
+    expect(
+      localDataAction({ status: 'signedIn', userId: 'user-2', householdId: null }, 'user-1'),
+    ).toBe('wipe');
   });
 
   it('keeps data when no owner is recorded', () => {
-    expect(localDataAction({ status: 'signedIn', userId: 'user-2' }, null)).toBe('keep');
+    expect(localDataAction({ status: 'signedIn', userId: 'user-2', householdId: null }, null)).toBe(
+      'keep',
+    );
+  });
+});
+
+describe('local data keyed by user and household', () => {
+  const inA = { status: 'signedIn' as const, userId: 'user-1', householdId: 'h-a' };
+  const inB = { ...inA, householdId: 'h-b' };
+
+  it('keeps data for the same user and household, and for the old owner format (Review Focus 4)', () => {
+    expect(ownerKey('user-1', 'h-a')).toBe('user-1:h-a');
+    expect(localDataAction(inA, 'user-1:h-a')).toBe('keep');
+    expect(localDataAction(inA, 'user-1')).toBe('keep');
+    expect(householdChanged(inA, 'user-1')).toBe(false);
+  });
+
+  it('wipes when the same user’s household changed, and says so', () => {
+    expect(localDataAction(inB, 'user-1:h-a')).toBe('wipe');
+    expect(householdChanged(inB, 'user-1:h-a')).toBe(true);
+  });
+
+  it('still wipes for a different user, without calling it a household change', () => {
+    expect(localDataAction({ ...inA, userId: 'user-2' }, 'user-1:h-a')).toBe('wipe');
+    expect(householdChanged({ ...inA, userId: 'user-2' }, 'user-1:h-a')).toBe(false);
   });
 });

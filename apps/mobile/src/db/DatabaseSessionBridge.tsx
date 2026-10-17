@@ -1,10 +1,17 @@
 import { usePowerSync } from '@powersync/react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { clearAllPlaces } from '../cooking/place';
+import { hasNotice, setNotice } from '../household/notice';
+import { useMembershipWatch } from '../household/useMembershipWatch';
 import { useImportKicker } from '../imports/useImportKicker';
 import { clearPhotos, startPhotos, stopPhotos } from '../photos/queue';
 import { canWrite } from '../session/claims';
-import { localDataAction, type SettledSession } from '../session/sessionState';
+import {
+  householdChanged,
+  localDataAction,
+  ownerKey,
+  type SettledSession,
+} from '../session/sessionState';
 import { useSession } from '../session/SessionProvider';
 import { createConnector } from '../sync/connector';
 import { purgeTrashIfDue } from '../sync/purge';
@@ -34,6 +41,8 @@ export function DatabaseSessionBridge({ children }: { children: ReactNode }) {
   const online = useNetworkOnline();
   const status = state.status;
   const userId = state.status === 'signedIn' ? state.userId : null;
+  const householdId = state.status === 'signedIn' ? (state.claims?.householdId ?? null) : null;
+  const owner = userId !== null ? ownerKey(userId, householdId) : null;
   const hasHousehold = state.status === 'signedIn' && state.claims !== null;
   const byUser = state.status === 'signedOut' && state.byUser;
   const writer =
@@ -49,11 +58,15 @@ export function DatabaseSessionBridge({ children }: { children: ReactNode }) {
     if (status === 'loading') return;
     const session: SettledSession =
       status === 'signedIn' && userId !== null
-        ? { status: 'signedIn', userId }
+        ? { status: 'signedIn', userId, householdId }
         : { status: 'signedOut', byUser };
     queue.current = queue.current
       .then(async () => {
         if (localDataAction(session, dbOwner.get()) === 'wipe') {
+          // FR-5: a move gets a one-time notice; a Join set its own already.
+          if (householdChanged(session, dbOwner.get()) && !hasNotice()) {
+            setNotice({ kind: 'moved', name: null });
+          }
           // Photos first: their files live outside the database (Review Focus 4).
           // A failure here must never stop the database wipe below.
           await clearPhotos(db).catch((error: unknown) =>
@@ -64,8 +77,8 @@ export function DatabaseSessionBridge({ children }: { children: ReactNode }) {
           dbOwner.clear();
         }
         if (session.status === 'signedIn') {
-          dbOwner.set(session.userId);
-          setReadyFor(session.userId);
+          dbOwner.set(ownerKey(session.userId, session.householdId));
+          setReadyFor(ownerKey(session.userId, session.householdId));
         } else {
           setReadyFor(null);
         }
@@ -81,11 +94,17 @@ export function DatabaseSessionBridge({ children }: { children: ReactNode }) {
         else await stopPhotos(db);
       })
       .catch((error: unknown) => console.error('Database session change failed', error));
-  }, [db, status, userId, hasHousehold, byUser, online, writer]);
+  }, [db, status, userId, householdId, hasHousehold, byUser, online, writer]);
 
   // FR-29: waiting imports are read once this device is online.
-  useImportKicker(writer && online && readyFor === userId && userId !== null);
+  useImportKicker(writer && online && readyFor === owner && owner !== null);
 
-  if (status === 'signedIn' && readyFor !== userId) return null;
+  // FR-4, FR-5: a role or household change reaches this phone by sync.
+  useMembershipWatch(
+    state.status === 'signedIn' ? state.claims : null,
+    online && readyFor !== null,
+  );
+
+  if (status === 'signedIn' && readyFor !== owner) return null;
   return <>{children}</>;
 }
