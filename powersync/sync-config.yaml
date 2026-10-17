@@ -10,6 +10,7 @@ streams:
     query: >-
       SELECT id, household_id, title, servings, prep_minutes, cook_minutes,
              ingredients, steps, tags, notes, source_url, source_author, source_text,
+             photo_id,
              created_at, updated_at, updated_by, deleted_at
       FROM recipes
       WHERE household_id = auth.parameter('household_id')
@@ -33,4 +34,15 @@ streams:
              error, parse_started_at, recipe_id,
              created_at, updated_at, updated_by, deleted_at
       FROM imports
+      WHERE household_id = auth.parameter('household_id') AND deleted_at IS NULL
+
+  # Mirrors photos_select: household_id = auth_household_id(), narrowed to
+  # rows not deleted, so dismissed and replaced photos leave the phone.
+  household_photos:
+    auto_subscribe: true
+    query: >-
+      SELECT id, household_id, kind, import_id, position, recipe_id, media_type,
+             bytes, width, height, uploaded_at,
+             created_at, updated_at, updated_by, deleted_at
+      FROM photos
       WHERE household_id = auth.parameter('household_id') AND deleted_at IS NULL
