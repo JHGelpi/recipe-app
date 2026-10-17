@@ -8,6 +8,8 @@ export type Config = {
   ai: AiConfig;
   /** Test-only: hosts the page fetcher may reach without the address check. */
   fetchAllowHosts: string[];
+  /** Where photo files live (ADR-0013). */
+  photosDir: string;
 };
 
 function required(env: NodeJS.ProcessEnv, name: string): string {
@@ -48,5 +50,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       .split(',')
       .map((host) => host.trim().toLowerCase())
       .filter(Boolean),
+    photosDir: env.PHOTOS_DIR || '/data/photos',
   };
 }

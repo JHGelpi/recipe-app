@@ -138,11 +138,7 @@ async function applyImport(
   return rows.length === 0 ? rejected(op, 'not_found_or_forbidden') : applied(op);
 }
 
-async function applyPhoto(
-  tx: UserTx,
-  op: Op,
-  candidate: Record<string, unknown>,
-): Promise<Result> {
+async function applyPhoto(tx: UserTx, op: Op, candidate: Record<string, unknown>): Promise<Result> {
   if (op.op === 'put') {
     const parsed = photoPutSchema.safeParse(candidate);
     if (!parsed.success) return rejected(op, 'invalid');
