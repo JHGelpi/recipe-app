@@ -54,7 +54,10 @@ export function DatabaseSessionBridge({ children }: { children: ReactNode }) {
       .then(async () => {
         if (localDataAction(session, dbOwner.get()) === 'wipe') {
           // Photos first: their files live outside the database (Review Focus 4).
-          await clearPhotos(db);
+          // A failure here must never stop the database wipe below.
+          await clearPhotos(db).catch((error: unknown) =>
+            console.error('Clearing photos failed', error),
+          );
           await db.disconnectAndClear();
           dbOwner.clear();
         }

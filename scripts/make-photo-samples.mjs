@@ -1,7 +1,9 @@
 // Makes the photos the tests and the eval use (Task 5 of the photo plan).
 // Run by hand when they need to change: `pnpm photos:samples`. The outputs
 // are committed. Chromium renders a card and saves a JPEG screenshot; test
-// fixtures get their text in a JPEG comment, which the fake Claude reads.
+// fixtures get their text in a JPEG comment, which the fake Claude reads in
+// the server tests. The phone re-encodes photos, dropping comments, so the
+// fake also knows these fixtures by size (FIXTURE_PAGES in its server.mjs).
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { chromium } from '@playwright/test';
 
@@ -38,7 +40,7 @@ mkdirSync(SAMPLES, { recursive: true });
 
 const fixtures = [
   ['page-1.jpg', 1000, 750, 'Photo Fixture Bread\n- 500 g flour\n- 10 g salt'],
-  ['page-2.jpg', 1000, 750, '1. Mix.\n2. Bake.'],
+  ['page-2.jpg', 1000, 760, '1. Mix.\n2. Bake.'],
   ['big-page.jpg', 3000, 2250, 'Big Card Soup\n- 1 onion'],
 ];
 for (const [name, width, height, text] of fixtures) {

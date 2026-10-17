@@ -266,4 +266,31 @@ describe('fake Claude, photo pages', () => {
     expect(body.content[0]?.input).toMatchObject({ title: 'Card Cake', steps: ['Bake.'] });
     expect((await fakeRequests()).at(-1)).toBe('images:2\nCard Cake\n- 1 egg\n1. Bake.');
   });
+
+  it('knows the e2e fixture pages by size, since the phone re-encodes away their comments', async () => {
+    const page = (width: number, height: number) => ({
+      type: 'image',
+      source: {
+        type: 'base64',
+        media_type: 'image/jpeg',
+        data: Buffer.from(syntheticJpeg(width, height)).toString('base64'),
+      },
+    });
+    const response = await fetch(`${env.fakeAiUrl}/v1/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'x',
+        tool_choice: { type: 'auto' },
+        messages: [{ role: 'user', content: [page(1000, 750), page(1000, 760)] }],
+      }),
+    });
+    const body = (await response.json()) as {
+      content: { input: { title: string; steps: string[] } }[];
+    };
+    expect(body.content[0]?.input).toMatchObject({
+      title: 'Photo Fixture Bread',
+      steps: ['Mix.', 'Bake.'],
+    });
+  });
 });

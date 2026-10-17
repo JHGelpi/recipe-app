@@ -20,14 +20,21 @@ export function PhotoImage({
   const view = usePhotoUri(id);
   // testIDs let end-to-end tests tell a loaded photo from its placeholder.
   if (view.state === 'ready' && view.uri) {
+    // The wrapper owns the role, name and testID, as the placeholder does;
+    // react-native-web's Image would put them on different elements.
     return (
-      <Image
+      <View
         testID="photo-shown"
-        source={{ uri: view.uri }}
-        accessibilityLabel={label}
-        resizeMode={fit}
-        style={style}
-      />
+        role="img"
+        aria-label={label}
+        style={[style, { overflow: 'hidden' }]}
+      >
+        <Image
+          source={{ uri: view.uri }}
+          resizeMode={fit}
+          style={{ width: '100%', height: '100%' }}
+        />
+      </View>
     );
   }
   return (

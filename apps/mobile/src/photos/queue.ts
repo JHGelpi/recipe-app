@@ -68,7 +68,10 @@ export async function stopPhotos(db: AbstractPowerSyncDatabase): Promise<void> {
 /** On sign-out or a different user: no photo of this household stays in the browser. */
 export async function clearPhotos(db: AbstractPowerSyncDatabase): Promise<void> {
   await stopPhotos(db);
-  await current(db).queue.clearQueue();
+  const { queue } = current(db);
+  // A fresh page load has not opened the file store yet; clear needs it open.
+  await queue.localStorage.initialize();
+  await queue.clearQueue();
   await globalThis.caches?.delete(PHOTO_CACHE);
 }
 

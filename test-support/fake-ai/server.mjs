@@ -32,12 +32,41 @@ function jpegComments(bytes) {
   return out.join('\n');
 }
 
+// The e2e fixture pages (test-support/photos) by their size after the phone
+// resizes them. The phone re-encodes every photo, which drops JPEG comments,
+// so these are recognised by size instead. Keep in step with
+// scripts/make-photo-samples.mjs.
+const FIXTURE_PAGES = {
+  '1000x750': 'Photo Fixture Bread\n- 500 g flour\n- 10 g salt',
+  '1000x760': '1. Mix.\n2. Bake.',
+  '1568x1176': 'Big Card Soup\n- 1 onion',
+};
+
+function jpegSize(bytes) {
+  let i = 2;
+  while (i + 9 <= bytes.length && bytes[i] === 0xff) {
+    const marker = bytes[i + 1];
+    const length = (bytes[i + 2] << 8) | bytes[i + 3];
+    if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
+      return `${(bytes[i + 7] << 8) | bytes[i + 8]}x${(bytes[i + 5] << 8) | bytes[i + 6]}`;
+    }
+    if (marker === 0xda || marker === 0xd9) break;
+    i += 2 + length;
+  }
+  return '';
+}
+
+// A page's "reading": its comment if a test wrote one, else a known fixture.
+function pageText(bytes) {
+  return jpegComments(bytes) || FIXTURE_PAGES[jpegSize(bytes)] || '';
+}
+
 // String content as is; for content blocks, the comments of the image pages.
 function userText(content) {
   if (typeof content === 'string') return content;
   if (!Array.isArray(content)) return '';
   const images = content.filter((block) => block.type === 'image');
-  const comments = images.map((block) => jpegComments(Buffer.from(block.source.data, 'base64')));
+  const comments = images.map((block) => pageText(Buffer.from(block.source.data, 'base64')));
   return `images:${images.length}\n${comments.join('\n')}`;
 }
 

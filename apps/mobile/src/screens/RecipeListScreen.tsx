@@ -1,6 +1,7 @@
 import { Link, router } from 'expo-router';
 import { useDeferredValue, useState } from 'react';
 import { FlatList, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { PhotoImage } from '../components/PhotoImage';
 import { BuildFooter } from '../components/BuildFooter';
 import { StarButton } from '../components/StarButton';
 import { StatusLine } from '../components/StatusLine';
@@ -158,6 +159,13 @@ export function RecipeListScreen({ claims }: { claims: Claims }) {
         keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => (
           <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, gap: 8 }}>
+            {item.photoId ? (
+              <PhotoImage
+                id={item.photoId}
+                label={`Photo of ${item.title}`}
+                style={{ width: 48, height: 48, borderRadius: 4 }}
+              />
+            ) : null}
             <Pressable style={{ flex: 1 }} onPress={() => router.push(`/recipe/${item.id}`)}>
               <Text style={{ fontSize: 18 }}>{item.title}</Text>
               {item.tags.length > 0 ? (
