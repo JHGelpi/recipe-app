@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import {
   addRecipe,
   expireSavedSession,
+  findRecipe,
   freshEmail,
   reloadOffline,
   SEED,
@@ -15,13 +16,13 @@ test('the app opens with no network once it has been loaded, and offline writes 
   browser,
 }) => {
   const member = await session(browser, SEED.memberA);
-  await expect(member.getByText('Seed pancakes', { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(await findRecipe(member, 'Seed pancakes')).toBeVisible({ timeout: 30_000 });
   await waitForServiceWorker(member);
 
   await member.context().setOffline(true);
   await reloadOffline(member);
   await expect(member.getByRole('heading', { name: 'Recipes' })).toBeVisible();
-  await expect(member.getByText('Seed pancakes', { exact: true })).toBeVisible();
+  await expect(await findRecipe(member, 'Seed pancakes')).toBeVisible();
   await expect(member.getByText(/^Offline · /)).toBeVisible();
 
   const title = unique('Cold start pie');
@@ -30,7 +31,7 @@ test('the app opens with no network once it has been loaded, and offline writes 
 
   const admin = await session(browser, SEED.adminA);
   await member.context().setOffline(false);
-  await expect(admin.getByText(title, { exact: true })).toBeVisible({ timeout: 45_000 });
+  await expect(await findRecipe(admin, title)).toBeVisible({ timeout: 45_000 });
 });
 
 test('an expired token offline keeps the user signed in, and it renews once online', async ({
@@ -45,7 +46,7 @@ test('an expired token offline keeps the user signed in, and it renews once onli
   await page.context().setOffline(true);
   await expireSavedSession(page);
   await reloadOffline(page);
-  await expect(page.getByText(first, { exact: true })).toBeVisible();
+  await expect(await findRecipe(page, first)).toBeVisible();
   await expect(page.getByLabel('Email')).toHaveCount(0);
 
   const second = unique('Stale-token soup');
@@ -113,7 +114,7 @@ test('signing out offline with an expired token signs out and wipes the local da
   await page.context().setOffline(true);
   await expireSavedSession(page);
   await reloadOffline(page);
-  await expect(page.getByText(title, { exact: true })).toBeVisible();
+  await expect(await findRecipe(page, title)).toBeVisible();
 
   await page.getByRole('button', { name: 'Sign out' }).click();
   await expect(page.getByLabel('Email')).toBeVisible({ timeout: 10_000 });
@@ -121,5 +122,5 @@ test('signing out offline with an expired token signs out and wipes the local da
   await page.context().setOffline(false);
   await signIn(page, freshEmail('after-stale-out'));
   await expect(page.getByText('No recipes yet')).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText(title)).toHaveCount(0);
+  await expect(await findRecipe(page, title)).toHaveCount(0);
 });

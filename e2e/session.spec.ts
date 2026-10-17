@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import {
   addRecipe,
   expireSavedSession,
+  findRecipe,
   freshEmail,
   revokeSession,
   session,
@@ -30,12 +31,12 @@ test('when the server ends the session, unsynced recipes survive and upload afte
 
   await context.unroute('**/api/upload');
   await signIn(page, email);
-  await expect(page.getByText(title, { exact: true })).toBeVisible();
+  await expect(await findRecipe(page, title)).toBeVisible();
   await expect(page.getByText('Online · 0 unsynced')).toBeVisible({ timeout: 45_000 });
 
   // The server has it: a fresh device for the same user receives it.
   const other = await session(browser, email);
-  await expect(other.getByText(title, { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(await findRecipe(other, title)).toBeVisible({ timeout: 30_000 });
 });
 
 test('when the server ends the session and a different user signs in, the old data is wiped first', async ({
@@ -65,7 +66,7 @@ test('when the server ends the session and a different user signs in, the old da
   }, title);
   await signIn(page, freshEmail('next'));
   await expect(page.getByText('No recipes yet')).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText(title)).toHaveCount(0);
+  await expect(await findRecipe(page, title)).toHaveCount(0);
   expect(await page.evaluate(() => sessionStorage.getItem('sawOld'))).toBeNull();
 });
 
@@ -82,5 +83,5 @@ test('signing out while offline still wipes the local data', async ({ browser })
   await page.context().setOffline(false);
   await signIn(page, freshEmail('after-offline-out'));
   await expect(page.getByText('No recipes yet')).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText(title)).toHaveCount(0);
+  await expect(await findRecipe(page, title)).toHaveCount(0);
 });

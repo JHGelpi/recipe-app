@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addRecipe, freshEmail, signIn } from './helpers';
+import { addRecipe, findRecipe, freshEmail, signIn } from './helpers';
 
 const CANNOT_STORE =
   "This browser can't store recipes on this device. Private browsing isn't supported.";
@@ -26,11 +26,11 @@ test('two tabs of the app share the database', async ({ context }) => {
 
   const second = await context.newPage();
   await second.goto('/');
-  await expect(second.getByText('First tab tart', { exact: true })).toBeVisible({
+  await expect(await findRecipe(second, 'First tab tart')).toBeVisible({
     timeout: 30_000,
   });
   await addRecipe(second, 'Second tab tart');
-  await expect(first.getByText('Second tab tart', { exact: true })).toBeVisible({
+  await expect(await findRecipe(first, 'Second tab tart')).toBeVisible({
     timeout: 30_000,
   });
 });

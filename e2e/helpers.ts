@@ -1,4 +1,4 @@
-import { expect, type Browser, type Page } from '@playwright/test';
+import { expect, type Browser, type Locator, type Page } from '@playwright/test';
 import { env } from '../test-support/env';
 import { watchMailbox } from '../test-support/mail';
 
@@ -75,10 +75,27 @@ export async function createRecipe(page: Page, input: RecipeInput): Promise<void
 }
 
 /** Creates a title-only recipe and returns to the list (the walking-skeleton flow). */
+/**
+ * Types a title into the Recipes list's search box and returns the title in
+ * the results. The list is virtualized, so a recipe far down a long list is
+ * not in the page until it is searched for; absence checks must search too.
+ */
+export async function findRecipe(page: Page, title: string): Promise<Locator> {
+  await page.getByLabel('Search recipes').fill(title);
+  return page.getByText(title, { exact: true });
+}
+
+/** Empties the search box, if it has text. */
+export async function clearSearch(page: Page): Promise<void> {
+  const clear = page.getByRole('button', { name: 'Clear search text' });
+  if (await clear.isVisible()) await clear.click();
+}
+
 export async function addRecipe(page: Page, title: string): Promise<void> {
   await createRecipe(page, { title });
   await page.getByRole('link', { name: 'All recipes' }).click();
-  await expect(page.getByText(title, { exact: true })).toBeVisible();
+  await expect(await findRecipe(page, title)).toBeVisible();
+  await clearSearch(page);
 }
 
 const AUTH_STORAGE_KEY = 'supabase.auth.token';
