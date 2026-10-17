@@ -1,5 +1,6 @@
 import { usePowerSync } from '@powersync/react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { clearAllPlaces } from '../cooking/place';
 import { useImportKicker } from '../imports/useImportKicker';
 import { clearPhotos, startPhotos, stopPhotos } from '../photos/queue';
 import { canWrite } from '../session/claims';
@@ -58,6 +59,7 @@ export function DatabaseSessionBridge({ children }: { children: ReactNode }) {
           await clearPhotos(db).catch((error: unknown) =>
             console.error('Clearing photos failed', error),
           );
+          if (globalThis.localStorage) clearAllPlaces(globalThis.localStorage);
           await db.disconnectAndClear();
           dbOwner.clear();
         }
