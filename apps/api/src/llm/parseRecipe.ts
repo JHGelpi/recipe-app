@@ -35,7 +35,8 @@ export const RECORD_RECIPE_TOOL: Anthropic.Tool = {
             raw: { type: 'string' },
             quantity: nullable('number'),
             quantity_max: nullable('number'),
-            unit: { type: ['string', 'null'], enum: [...UNITS, null] },
+            // Strict mode rejects an enum on a list of types, so null is its own branch.
+            unit: { anyOf: [{ type: 'string', enum: [...UNITS] }, { type: 'null' }] },
             item: { type: 'string' },
             note: nullable('string'),
             heading: { type: 'boolean' },

@@ -67,3 +67,16 @@ it('the tool is strict: no fields beyond the schema, at the top or in an ingredi
   expect(schema.additionalProperties).toBe(false);
   expect(schema.properties.ingredients.items.additionalProperties).toBe(false);
 });
+
+it('no enum sits on a list of types, which strict mode rejects with a 400', () => {
+  const offenders: string[] = [];
+  const walk = (node: unknown, path: string): void => {
+    if (Array.isArray(node)) return node.forEach((item, i) => walk(item, `${path}[${i}]`));
+    if (typeof node !== 'object' || node === null) return;
+    const record = node as Record<string, unknown>;
+    if ('enum' in record && Array.isArray(record.type)) offenders.push(path);
+    for (const [key, value] of Object.entries(record)) walk(value, `${path}.${key}`);
+  };
+  walk(RECORD_RECIPE_TOOL.input_schema, 'input_schema');
+  expect(offenders).toEqual([]);
+});
