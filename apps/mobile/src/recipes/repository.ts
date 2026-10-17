@@ -1,6 +1,7 @@
 import type { AbstractPowerSyncDatabase } from '@powersync/web';
 import { canWrite, type Claims } from '../session/claims';
 import type { RecipeValues } from './form';
+import { NO_SOURCE, type RecipeSource } from './rows';
 
 type Db = Pick<AbstractPowerSyncDatabase, 'execute' | 'getOptional'>;
 
@@ -38,15 +39,29 @@ function columns(values: RecipeValues): unknown[] {
 
 /**
  * Writes to the local database only. PowerSync queues the row for upload.
- * created_at, updated_at, and updated_by are set by the server.
+ * created_at, updated_at, and updated_by are set by the server. `source` is
+ * set only by an import (FR-12); the editor never changes it.
  */
-export async function createRecipe(db: Db, claims: Claims, values: RecipeValues): Promise<string> {
+export async function createRecipe(
+  db: Db,
+  claims: Claims,
+  values: RecipeValues,
+  source: RecipeSource = NO_SOURCE,
+): Promise<string> {
   requireWriter(claims);
   const id = crypto.randomUUID();
   await db.execute(
     `insert into recipes (id, household_id, title, servings, prep_minutes, cook_minutes,
-       ingredients, steps, tags, notes) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [id, claims.householdId, ...columns(values)],
+       ingredients, steps, tags, notes, source_url, source_author, source_text)
+       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      id,
+      claims.householdId,
+      ...columns(values),
+      source.source_url,
+      source.source_author,
+      source.source_text,
+    ],
   );
   return id;
 }

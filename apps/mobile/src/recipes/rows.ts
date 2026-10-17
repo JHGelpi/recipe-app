@@ -3,7 +3,14 @@ import { recipeSchema, type Ingredient, type SearchSource, type Step } from '@re
 export const TRASH_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-export type RecipeRecord = {
+export type RecipeSource = {
+  source_url: string | null;
+  source_author: string | null;
+  source_text: string | null;
+};
+export const NO_SOURCE: RecipeSource = { source_url: null, source_author: null, source_text: null };
+
+export type RecipeRecord = RecipeSource & {
   id: string;
   household_id: string;
   title: string;
@@ -50,6 +57,9 @@ export function rowToRecipe(row: Record<string, unknown>): RecipeRecord | null {
       steps: jsonList(row.steps),
       tags: jsonList(row.tags),
       notes: row.notes ?? '',
+      source_url: row.source_url ?? null,
+      source_author: row.source_author ?? null,
+      source_text: row.source_text ?? null,
     });
     if (!parsed.success) return null;
     const recipe = parsed.data;
@@ -65,6 +75,9 @@ export function rowToRecipe(row: Record<string, unknown>): RecipeRecord | null {
       tags: recipe.tags ?? [],
       notes: recipe.notes ?? '',
       deleted_at: typeof row.deleted_at === 'string' ? row.deleted_at : null,
+      source_url: recipe.source_url ?? null,
+      source_author: recipe.source_author ?? null,
+      source_text: recipe.source_text ?? null,
     };
   } catch {
     return null;

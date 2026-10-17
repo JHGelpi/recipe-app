@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { emptyForm, formFromRecipe, valuesFromForm } from './form';
-import type { RecipeRecord } from './rows';
+import { NO_SOURCE, type RecipeRecord } from './rows';
 
 let counter = 0;
 const newId = () => `00000000-0000-4000-8000-${String(++counter).padStart(12, '0')}`;
@@ -95,6 +95,7 @@ describe('formFromRecipe', () => {
       tags: ['bread', 'easy'],
       notes: '',
       deleted_at: null,
+      ...NO_SOURCE,
     });
     expect(form).toEqual({
       title: 'Bread',

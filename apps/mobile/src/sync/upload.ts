@@ -1,4 +1,8 @@
-import { FAVORITE_CLIENT_FIELDS, RECIPE_CLIENT_FIELDS } from '@recipe-app/domain';
+import {
+  FAVORITE_CLIENT_FIELDS,
+  IMPORT_CLIENT_FIELDS,
+  RECIPE_CLIENT_FIELDS,
+} from '@recipe-app/domain';
 
 export type UploadOp = {
   op: 'put' | 'patch' | 'delete';
@@ -26,6 +30,7 @@ export type SendDeps = { fetch: typeof fetch; url: string; token: string };
 const CLIENT_FIELDS: Record<string, readonly string[]> = {
   recipes: RECIPE_CLIENT_FIELDS,
   favorites: FAVORITE_CLIENT_FIELDS,
+  imports: IMPORT_CLIENT_FIELDS,
 };
 
 // The local database stores these as JSON text; the API expects arrays.

@@ -45,6 +45,9 @@ describe('rowToRecipe', () => {
       tags: [],
       notes: '',
       deleted_at: null,
+      source_url: null,
+      source_author: null,
+      source_text: null,
     });
   });
 
@@ -125,5 +128,26 @@ describe('listRowFrom', () => {
       tags: [],
       ingredients: [],
     });
+  });
+});
+
+it('reads a recipe source, and an old row without one', () => {
+  const base = {
+    id: '11111111-1111-4111-8111-111111111111',
+    household_id: '22222222-2222-4222-8222-222222222222',
+    title: 'Soup',
+  };
+  expect(
+    rowToRecipe({
+      ...base,
+      source_url: 'https://example.com',
+      source_author: 'Jane',
+      source_text: null,
+    }),
+  ).toMatchObject({ source_url: 'https://example.com', source_author: 'Jane', source_text: null });
+  expect(rowToRecipe(base)).toMatchObject({
+    source_url: null,
+    source_author: null,
+    source_text: null,
   });
 });

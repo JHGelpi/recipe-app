@@ -13,6 +13,9 @@ const recipes = new Table(
     steps: column.text,
     tags: column.text,
     notes: column.text,
+    source_url: column.text,
+    source_author: column.text,
+    source_text: column.text,
     created_at: column.text,
     updated_at: column.text,
     updated_by: column.text,
@@ -35,8 +38,30 @@ const favorites = new Table(
   { indexes: { recipe: ['recipe_id'] } },
 );
 
-export const AppSchema = new Schema({ recipes, favorites });
+// The household's imports that are not dismissed (household_imports stream).
+// draft holds JSON text; status, draft and error are written by the server.
+const imports = new Table(
+  {
+    household_id: column.text,
+    source_type: column.text,
+    source_text: column.text,
+    source_url: column.text,
+    status: column.text,
+    draft: column.text,
+    error: column.text,
+    parse_started_at: column.text,
+    recipe_id: column.text,
+    created_at: column.text,
+    updated_at: column.text,
+    updated_by: column.text,
+    deleted_at: column.text,
+  },
+  { indexes: { household: ['household_id'] } },
+);
+
+export const AppSchema = new Schema({ recipes, favorites, imports });
 
 export type Database = (typeof AppSchema)['types'];
 export type RecipeRow = Database['recipes'];
 export type FavoriteRow = Database['favorites'];
+export type ImportRow = Database['imports'];

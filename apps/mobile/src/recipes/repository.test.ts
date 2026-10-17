@@ -36,7 +36,21 @@ describe('recipe writes', () => {
     const { db, calls } = fakeDb();
     const id = await createRecipe(db, member, values);
     expect(calls[0]?.sql).toMatch(/^insert into recipes/);
-    expect(calls[0]?.params).toEqual([id, 'h1', 'Bread', 2, null, 30, '[]', '[]', '["bread"]', '']);
+    expect(calls[0]?.params).toEqual([
+      id,
+      'h1',
+      'Bread',
+      2,
+      null,
+      30,
+      '[]',
+      '[]',
+      '["bread"]',
+      '',
+      null,
+      null,
+      null,
+    ]);
   });
 
   it('updates every field but never deleted_at', async () => {
