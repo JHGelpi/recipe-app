@@ -187,7 +187,7 @@ For a photo import:
 - the original pages sit on top as thumbnails; tapping one opens it full screen, with pinch-zoom from the browser;
 - a **"Use page n as the dish photo"** choice;
 - **Save** sets the pages' `recipe_id` (and `photo_id` if chosen) in the same local transaction as the recipe;
-- **Discard** soft-deletes the import and its pages.
+- **Discard** here, or **Dismiss** in the import list, soft-deletes the import and its pages in one transaction, so their files are purged after 30 days.
 
 ### Recipe screen and editor
 
