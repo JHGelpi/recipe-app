@@ -48,6 +48,7 @@ describe('rowToRecipe', () => {
       source_url: null,
       source_author: null,
       source_text: null,
+      photo_id: null,
     });
   });
 
@@ -104,6 +105,7 @@ describe('listRowFrom', () => {
       tags: ['bread', 'easy'],
       ingredients: ['2 cups flour', '1 tsp salt'],
       starred: true,
+      photoId: null,
     });
   });
 
@@ -123,7 +125,14 @@ describe('listRowFrom', () => {
         ingredients: JSON.stringify([{ raw: 3 }, 'loose', null, { raw: 'ok' }]),
         starred: 0,
       }),
-    ).toEqual({ id: 'r1', title: 'Odd', tags: [], ingredients: ['ok'], starred: false });
+    ).toEqual({
+      id: 'r1',
+      title: 'Odd',
+      tags: [],
+      ingredients: ['ok'],
+      starred: false,
+      photoId: null,
+    });
     expect(listRowFrom({ id: 'r2', title: 'Old', tags: null, ingredients: null })).toMatchObject({
       tags: [],
       ingredients: [],

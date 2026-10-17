@@ -11,6 +11,11 @@ const deps = (response: Response | Error) => ({
 });
 
 describe('requestParse', () => {
+  it('treats photos still uploading as worth another try soon', async () => {
+    const d = deps(new Response(JSON.stringify({ error: 'photos_pending' }), { status: 409 }));
+    expect(await requestParse('i1', d)).toBe('retry');
+  });
+
   it.each([
     [202, 'started'],
     [409, 'busy'],

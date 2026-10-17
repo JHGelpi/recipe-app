@@ -8,6 +8,7 @@ const row = (id: string, tags: string[] = []): ListRow => ({
   tags,
   ingredients: [],
   starred: false,
+  photoId: null,
 });
 const rows = new Map([
   ['a', row('a', ['dinner'])],
@@ -18,8 +19,8 @@ const rows = new Map([
 describe('toListItems', () => {
   it('keeps the search order, marks stars from the favorites set, and skips unknown ids', () => {
     expect(toListItems(['c', 'x', 'a'], rows, new Set(['a']), false)).toEqual([
-      { id: 'c', title: 'C', tags: ['snack'], starred: false },
-      { id: 'a', title: 'A', tags: ['dinner'], starred: true },
+      { id: 'c', title: 'C', tags: ['snack'], starred: false, photoId: null },
+      { id: 'a', title: 'A', tags: ['dinner'], starred: true, photoId: null },
     ]);
   });
 

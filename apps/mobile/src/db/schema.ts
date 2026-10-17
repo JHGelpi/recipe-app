@@ -1,4 +1,4 @@
-import { column, Schema, Table } from '@powersync/web';
+import { AttachmentTable, column, Schema, Table } from '@powersync/web';
 
 // PowerSync adds the `id` column itself. Timestamps are ISO strings.
 // ingredients, steps and tags hold JSON text (rows.ts parses them).
@@ -16,6 +16,7 @@ const recipes = new Table(
     source_url: column.text,
     source_author: column.text,
     source_text: column.text,
+    photo_id: column.text,
     created_at: column.text,
     updated_at: column.text,
     updated_by: column.text,
@@ -59,9 +60,40 @@ const imports = new Table(
   { indexes: { household: ['household_id'] } },
 );
 
-export const AppSchema = new Schema({ recipes, favorites, imports });
+// The household's photos that are not deleted (household_photos stream).
+// The bytes are not here: the attachments table and IndexedDB hold the files
+// this phone keeps (src/photos/queue.ts).
+const photos = new Table(
+  {
+    household_id: column.text,
+    kind: column.text,
+    import_id: column.text,
+    position: column.integer,
+    recipe_id: column.text,
+    media_type: column.text,
+    bytes: column.integer,
+    width: column.integer,
+    height: column.integer,
+    uploaded_at: column.text,
+    created_at: column.text,
+    updated_at: column.text,
+    updated_by: column.text,
+    deleted_at: column.text,
+  },
+  { indexes: { import: ['import_id'], recipe: ['recipe_id'] } },
+);
+
+// attachments is PowerSync's local-only queue table: never uploaded.
+export const AppSchema = new Schema({
+  recipes,
+  favorites,
+  imports,
+  photos,
+  attachments: new AttachmentTable(),
+});
 
 export type Database = (typeof AppSchema)['types'];
 export type RecipeRow = Database['recipes'];
 export type FavoriteRow = Database['favorites'];
 export type ImportRow = Database['imports'];
+export type PhotoRow = Database['photos'];

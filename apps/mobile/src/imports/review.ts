@@ -31,6 +31,7 @@ export function draftRecord(
     ...draftToRecipeFields(draft, newId),
     notes: '',
     deleted_at: null,
+    photo_id: null,
     ...NO_SOURCE,
   };
 }

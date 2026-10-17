@@ -35,7 +35,7 @@ describe('importFromRow', () => {
       status: 'pending',
       error: null,
     });
-    expect(importFromRow({ ...row, source_type: 'photo' })).toBeNull();
+    expect(importFromRow({ ...row, source_type: 'video' })).toBeNull();
     expect(importFromRow({ ...row, id: 7 })).toBeNull();
   });
 });
@@ -56,5 +56,25 @@ describe('importPreview', () => {
         })!,
       ),
     ).toBe('https://e.com/a');
+  });
+});
+
+it('reads a photo import with its page counts', () => {
+  expect(
+    importFromRow({
+      id: 'i1',
+      source_type: 'photo',
+      status: 'pending',
+      pages: 2,
+      uploaded: 1,
+      local_pending: 1,
+      first_page: 'p1',
+    }),
+  ).toMatchObject({
+    source_type: 'photo',
+    pages: 2,
+    uploaded: 1,
+    localPending: 1,
+    firstPage: 'p1',
   });
 });

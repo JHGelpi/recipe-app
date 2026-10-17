@@ -21,6 +21,11 @@ export async function requestParse(id: string, deps: ApiDeps): Promise<ParseRequ
       method: 'POST',
       headers: { Authorization: `Bearer ${deps.token}` },
     });
+    if (response.status === 409) {
+      // Pages still uploading: ask again on the usual backoff, not in 5 minutes.
+      const body = (await response.json().catch(() => null)) as { error?: string } | null;
+      if (body?.error === 'photos_pending') return 'retry';
+    }
     return OUTCOMES[response.status] ?? 'retry';
   } catch {
     return 'retry';

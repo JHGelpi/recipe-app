@@ -1,6 +1,12 @@
 import type { ListRow } from './rows';
 
-export type ListItem = { id: string; title: string; tags: string[]; starred: boolean };
+export type ListItem = {
+  id: string;
+  title: string;
+  tags: string[];
+  starred: boolean;
+  photoId: string | null;
+};
 
 /**
  * Search results as list items. Stars come from the user's favorites set, so
@@ -15,7 +21,9 @@ export function toListItems(
   return ids.flatMap((id) => {
     const row = rows.get(id);
     if (!row || (favoritesOnly && !starred.has(id))) return [];
-    return [{ id, title: row.title, tags: row.tags, starred: starred.has(id) }];
+    return [
+      { id, title: row.title, tags: row.tags, starred: starred.has(id), photoId: row.photoId },
+    ];
   });
 }
 
