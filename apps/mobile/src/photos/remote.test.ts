@@ -15,6 +15,7 @@ describe('photo remote storage', () => {
     await storage.uploadFile(new ArrayBuffer(3), attachment);
     expect(fetch).toHaveBeenCalledWith('/api/photos/p1', {
       method: 'PUT',
+      cache: 'no-store',
       headers: { 'Content-Type': 'image/jpeg', Authorization: 'Bearer jwt' },
       body: expect.any(ArrayBuffer),
     });

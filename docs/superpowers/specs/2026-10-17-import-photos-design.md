@@ -112,7 +112,7 @@ A page can also serve as the dish photo, in which case `photo_id` points at a `p
 
 **`GET /api/photos/:id`:**
 - Reads the row as the user, so RLS decides who sees it.
-- Streams the file as `image/jpeg` with `Cache-Control: private, max-age=31536000, immutable`; a photo id's bytes never change in practice.
+- Streams the file as `image/jpeg` with `Cache-Control: private, no-store`: the app keeps its own offline copies (cleared on sign-out), and a browser-cached copy would outlive sign-out and skip the RLS check.
 - 404 for an unknown photo, another household's photo, or a missing file.
 - Viewers can read.
 

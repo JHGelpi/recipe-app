@@ -113,4 +113,56 @@ describe('photos RLS', () => {
     );
     expect(purged.map((row) => row.id)).toEqual([old.id]);
   });
+
+  it('a viewer cannot update or purge a photo', async () => {
+    const member = await signInAs(SEED.memberA);
+    const viewer = await signInAs(SEED.viewerA);
+    const page = insertPage(member, await photoImport(member));
+    await page.run;
+    await adminSql`update public.photos set deleted_at = now() - interval '31 days' where id = ${page.id}`;
+    const updated = await as(
+      viewer,
+      (tx) => tx`update public.photos set recipe_id = null where id = ${page.id} returning id`,
+    );
+    const deleted = await as(
+      viewer,
+      (tx) => tx`delete from public.photos where id = ${page.id} returning id`,
+    );
+    expect([updated.length, deleted.length]).toEqual([0, 0]);
+  });
+
+  it('refuses a photo of another household’s recipe', async () => {
+    const adminA = await signInAs(SEED.adminA);
+    const importId = await photoImport(adminA);
+    expect(
+      await refusalCode(
+        insertPage(adminA, importId, { recipe_id: '00000000-0000-0000-0000-0000000000c2' }).run,
+      ),
+    ).toBe(FOREIGN_KEY);
+  });
+
+  it('purges the photos of a recipe in expired trash, and the recipe then loses its dish photo', async () => {
+    const member = await signInAs(SEED.memberA);
+    const recipeId = randomUUID();
+    await as(
+      member,
+      (tx) => tx`insert into public.recipes (id, household_id, title)
+                 values (${recipeId}, ${member.householdId}, 'Old soup')`,
+    );
+    const page = insertPage(member, await photoImport(member), { recipe_id: recipeId });
+    await page.run;
+    await as(
+      member,
+      (tx) => tx`update public.recipes set photo_id = ${page.id} where id = ${recipeId}`,
+    );
+    await adminSql`update public.recipes set deleted_at = now() - interval '31 days' where id = ${recipeId}`;
+    const purged = await as(
+      member,
+      (tx) => tx<{ id: string }[]>`delete from public.photos where id = ${page.id} returning id`,
+    );
+    expect(purged.map((row) => row.id)).toEqual([page.id]);
+    const [recipe] = await adminSql<{ photo_id: string | null }[]>`
+      select photo_id from public.recipes where id = ${recipeId}`;
+    expect(recipe?.photo_id).toBeNull();
+  });
 });

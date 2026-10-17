@@ -73,7 +73,7 @@ describe('photo files', () => {
     expect(row?.uploaded_at).not.toBeNull();
     const response = await getFile(viewer, id);
     expect(response.status).toBe(200);
-    expect(response.headers.get('cache-control')).toBe('private, max-age=31536000, immutable');
+    expect(response.headers.get('cache-control')).toBe('private, no-store');
     expect([...new Uint8Array(await response.arrayBuffer())]).toEqual([...bytes]);
   });
 

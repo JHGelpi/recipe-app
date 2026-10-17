@@ -23,6 +23,8 @@ export function createRemoteStorage(deps: RemoteDeps): RemoteStorageAdapter {
     if (!token) throw new Error('signed out');
     const response = await deps.fetch(`${deps.apiUrl}/photos/${encodeURIComponent(id)}`, {
       ...init,
+      // Never the browser's HTTP cache: it would outlive sign-out (NFR-2).
+      cache: 'no-store',
       headers: { ...init.headers, Authorization: `Bearer ${token}` },
     });
     if (FINAL.has(response.status))

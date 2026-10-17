@@ -294,7 +294,7 @@ describe('/api/photos/:id', () => {
     expect(d.photos.put).not.toHaveBeenCalled();
   });
 
-  it('serves a photo as a private, immutable JPEG', async () => {
+  it('serves a photo as a JPEG no browser cache keeps (NFR-2)', async () => {
     const d = deps();
     vi.mocked(d.photos.get).mockResolvedValue(Uint8Array.from([0xff, 0xd8]));
     const response = await createApp(d).request(`/api/photos/${ID}`, {
@@ -302,7 +302,7 @@ describe('/api/photos/:id', () => {
     });
     expect(response.status).toBe(200);
     expect(response.headers.get('Content-Type')).toBe('image/jpeg');
-    expect(response.headers.get('Cache-Control')).toBe('private, max-age=31536000, immutable');
+    expect(response.headers.get('Cache-Control')).toBe('private, no-store');
     expect([...new Uint8Array(await response.arrayBuffer())]).toEqual([0xff, 0xd8]);
   });
 });

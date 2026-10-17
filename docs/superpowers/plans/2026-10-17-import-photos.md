@@ -15,7 +15,7 @@
 - At most **8** pages per import; a photo file at most **3,000,000** bytes; width and height **1 to 4,000** px; `image/jpeg` only, checked from the bytes (spec §3, §4).
 - Phone resizing: pages **1568** px on the long edge, dish photos **1200** px, JPEG quality **0.82**, EXIF dropped by re-encoding (spec §2, §6).
 - Files on the volume at `/data/photos/<household_id>/<id>.jpg`, written to a temporary file and renamed (spec §4).
-- `GET /api/photos/:id` sends `Content-Type: image/jpeg` and `Cache-Control: private, max-age=31536000, immutable` (spec §4).
+- `GET /api/photos/:id` sends `Content-Type: image/jpeg` and `Cache-Control: private, no-store` (spec §4).
 - New error code exactly `photo_unreadable`, message "Couldn't read the photos", retryable; `photos_pending` is a 409 answer, never stored (spec §5).
 - Copy, exactly: "Photo", "Add page", "Uploading photos (2 of 3)" (format), "Waiting for photos from another device", "Photo · 3 pages" (format), "Use page n as the dish photo" (format), "Add photo", "Change photo", "Remove photo", "From photos · 3 pages" (format), "Available when online", "Couldn't open that photo" (spec §6).
 - The `photos` sync stream sends only rows with `deleted_at IS NULL` and mirrors `photos_select` (rule 6).

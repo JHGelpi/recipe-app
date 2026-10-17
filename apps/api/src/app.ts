@@ -145,7 +145,9 @@ export function createApp(deps: AppDeps): Hono {
     return c.json({ error: outcome }, PUT_STATUS[outcome]);
   });
 
-  // NFR-2: served only to the photo's household, never to a shared cache.
+  // NFR-2: served only to the photo's household. No browser cache keeps it:
+  // the app holds its own offline copies, cleared on sign-out, and a cached
+  // copy would outlive sign-out and be served without the RLS check.
   app.get('/api/photos/:id', async (c) => {
     const token = bearer(c.req.header('Authorization'));
     if (!token) return c.json({ error: 'unauthorized' }, 401);
@@ -155,7 +157,7 @@ export function createApp(deps: AppDeps): Hono {
     if (!bytes) return c.json({ error: 'not_found' }, 404);
     return c.body(bytes as Uint8Array<ArrayBuffer>, 200, {
       'Content-Type': 'image/jpeg',
-      'Cache-Control': 'private, max-age=31536000, immutable',
+      'Cache-Control': 'private, no-store',
     });
   });
 

@@ -35,6 +35,7 @@ export function usePhotoUri(id: string | null): PhotoView {
           headers: session.session
             ? { Authorization: `Bearer ${session.session.access_token}` }
             : {},
+          cache: 'no-store',
         });
       },
       cache: null,
