@@ -228,3 +228,61 @@ describe('roles, removing and leaving', () => {
     expect(admins[0]?.n).toBe(1);
   });
 });
+
+describe('review fixes', () => {
+  it('a removal waiting on the lock re-checks that its caller is still in the household (Critical 1)', async () => {
+    const a = await fresh();
+    const b = await fresh();
+    const c = await fresh();
+    await accept(b, await invite(a, 'admin'));
+    await accept(c, await invite(a, 'member'));
+    let blocked: Promise<string> | null = null;
+    await adminSql.begin(async (sql) => {
+      // Hold the household's rows, as a removal of B in progress would.
+      await sql`select 1 from public.memberships where household_id = ${a.householdId} for update`;
+      blocked = outcome(as(b, (tx) => tx`select public.remove_member(${a.userId})`));
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      // That removal of B completes: B now has a household of their own, as Admin.
+      const [home] = await sql<
+        { id: string }[]
+      >`insert into public.households (name) values ('B alone') returning id`;
+      await sql`update public.memberships set household_id = ${home!.id}, role = 'admin' where user_id = ${b.userId}`;
+    });
+    expect(await blocked!).toBe('not_member');
+    const admins = await adminSql<{ n: number }[]>`
+      select count(*)::int as n from public.memberships where household_id = ${a.householdId} and role = 'admin'`;
+    expect(admins[0]?.n).toBe(1);
+  });
+
+  it('a closed household’s invites stop working (Important 2)', async () => {
+    const host = await fresh();
+    const loner = await fresh();
+    const other = await fresh();
+    const lonersInvite = await invite(loner);
+    await accept(loner, await invite(host));
+    expect((await preview(other, lonersInvite)).status).toBe('cancelled');
+    expect(await outcome(accept(other, lonersInvite))).toBe('invite_cancelled');
+  });
+
+  it('joining from a shared household clears favorites of recipes left behind (Important 4)', async () => {
+    const host = await fresh();
+    const guest = await fresh();
+    const target = await fresh();
+    await accept(guest, await invite(host));
+    const recipe = randomUUID();
+    await as(
+      host,
+      (tx) =>
+        tx`insert into public.recipes (id, household_id, title) values (${recipe}, ${host.householdId}, 'Theirs')`,
+    );
+    await as(
+      guest,
+      (tx) =>
+        tx`insert into public.favorites (id, household_id, user_id, recipe_id) values (${randomUUID()}, ${host.householdId}, ${guest.userId}, ${recipe})`,
+    );
+    await accept(guest, await invite(target));
+    const live =
+      await adminSql`select id from public.favorites where user_id = ${guest.userId} and deleted_at is null`;
+    expect(live).toHaveLength(0);
+  });
+});

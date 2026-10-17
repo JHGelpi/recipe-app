@@ -11,6 +11,7 @@ import {
 } from '../household/api';
 import { setNotice } from '../household/notice';
 import { setPendingInvite } from '../household/pendingInvite';
+import { waitForUploads } from '../household/uploads';
 import { auth } from '../session/auth';
 import { useSession } from '../session/SessionProvider';
 
@@ -21,18 +22,6 @@ const STATUS_TEXT: Record<string, string> = {
   cancelled: HOUSEHOLD_MESSAGES.invite_cancelled!,
   unknown: HOUSEHOLD_MESSAGES.invite_unknown!,
 };
-const UPLOAD_WAIT_TRIES = 60;
-
-/** True once this phone's queued uploads are sent (up to 30 s). */
-async function waitForUploads(db: {
-  getUploadQueueStats(): Promise<{ count: number }>;
-}): Promise<boolean> {
-  for (let tries = 0; tries < UPLOAD_WAIT_TRIES; tries++) {
-    if ((await db.getUploadQueueStats()).count === 0) return true;
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-  return false;
-}
 
 /** FR-3: the page an invite link opens (spec §6). */
 export function InviteScreen({ code }: { code: string }) {

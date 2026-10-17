@@ -1,4 +1,5 @@
 import type { HouseholdRoleName } from '@recipe-app/domain';
+import { usePowerSync } from '@powersync/react';
 import { Link, router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
@@ -19,6 +20,7 @@ import {
 } from '../household/api';
 import { useHouseholdName, useMembers } from '../household/hooks';
 import { shareLink } from '../household/share';
+import { waitForUploads } from '../household/uploads';
 import { auth } from '../session/auth';
 import type { Claims } from '../session/claims';
 
@@ -33,6 +35,7 @@ const days = (iso: string) => Math.max(0, Math.ceil((Date.parse(iso) - Date.now(
 
 /** FR-3–FR-6: who is in the household, and (for Admins) invites and roles. */
 export function HouseholdScreen({ claims }: { claims: Claims }) {
+  const db = usePowerSync();
   const online = useNetworkOnline();
   const members = useMembers(claims.householdId);
   const name = useHouseholdName(claims.householdId);
@@ -270,6 +273,11 @@ export function HouseholdScreen({ claims }: { claims: Claims }) {
                 'Leave the household? You will get an empty household of your own. The recipes stay here.',
               )
             ) {
+              // Leaving wipes this phone's copy: unsent changes go first.
+              if (!(await waitForUploads(db))) {
+                setMessage('Still saving your changes. Try again in a moment.');
+                return;
+              }
               await act(
                 () => withSession(leaveHousehold),
                 async () => {
