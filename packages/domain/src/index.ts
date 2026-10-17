@@ -9,6 +9,8 @@ export * from './steps';
 export * from './tags';
 export * from './search';
 export * from './importDraft';
+export * from './html';
+export * from './jsonLd';
 export { RECIPE_LIMITS, TITLE_MAX } from './limits';
 
 export const recipeTitleSchema = z
