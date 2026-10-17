@@ -60,3 +60,14 @@ insert into public.recipes (id, household_id, title) values
 insert into public.favorites (id, household_id, user_id, recipe_id) values
   ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-0000000000c1'),
   ('00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000b1', '00000000-0000-0000-0000-0000000000c2');
+
+-- One import and one usage row per household, so the isolation suite's checks
+-- on them are not vacuous. The imports are settled failures that cannot be
+-- retried, so no device ever sends them for parsing.
+insert into public.imports (id, household_id, source_type, source_text, status, error) values
+  ('00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-00000000000a', 'text', 'Seed note A', 'failed', 'not_a_recipe'),
+  ('00000000-0000-0000-0000-0000000000e2', '00000000-0000-0000-0000-00000000000b', 'text', 'Seed note B', 'failed', 'not_a_recipe');
+
+insert into public.ai_usage (household_id, month, spent_microusd) values
+  ('00000000-0000-0000-0000-00000000000a', date_trunc('month', now() at time zone 'utc')::date, 0),
+  ('00000000-0000-0000-0000-00000000000b', date_trunc('month', now() at time zone 'utc')::date, 0);

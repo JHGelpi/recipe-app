@@ -9,7 +9,7 @@ streams:
     auto_subscribe: true
     query: >-
       SELECT id, household_id, title, servings, prep_minutes, cook_minutes,
-             ingredients, steps, tags, notes,
+             ingredients, steps, tags, notes, source_url, source_author, source_text,
              created_at, updated_at, updated_by, deleted_at
       FROM recipes
       WHERE household_id = auth.parameter('household_id')
@@ -23,3 +23,14 @@ streams:
              created_at, updated_at, updated_by, deleted_at
       FROM favorites
       WHERE user_id = auth.user_id()
+
+  # Mirrors imports_select: household_id = auth_household_id(), narrowed to
+  # rows not dismissed, so a dismissed or saved import leaves the phone.
+  household_imports:
+    auto_subscribe: true
+    query: >-
+      SELECT id, household_id, source_type, source_text, source_url, status, draft,
+             error, parse_started_at, recipe_id,
+             created_at, updated_at, updated_by, deleted_at
+      FROM imports
+      WHERE household_id = auth.parameter('household_id') AND deleted_at IS NULL

@@ -55,6 +55,8 @@ describe('database roles (spec §4)', () => {
       memberships: ['SELECT'],
       recipes: ['DELETE', 'INSERT', 'SELECT', 'UPDATE'],
       favorites: ['INSERT', 'SELECT', 'UPDATE'],
+      imports: ['INSERT', 'SELECT', 'UPDATE'],
+      ai_usage: ['INSERT', 'SELECT', 'UPDATE'],
     });
   });
 
