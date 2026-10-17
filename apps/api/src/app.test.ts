@@ -12,6 +12,7 @@ function deps(overrides: Partial<AppDeps> = {}): AppDeps {
       process: vi.fn().mockResolvedValue(undefined),
       usage: vi.fn().mockResolvedValue({ spentUsd: 0.42, capUsd: 2 }),
     },
+    substitutions: { ask: vi.fn().mockResolvedValue({ kind: 'missing' }) },
     photos: {
       put: vi.fn().mockResolvedValue('stored'),
       get: vi.fn().mockResolvedValue(null),
@@ -304,5 +305,51 @@ describe('/api/photos/:id', () => {
     expect(response.headers.get('Content-Type')).toBe('image/jpeg');
     expect(response.headers.get('Cache-Control')).toBe('private, no-store');
     expect([...new Uint8Array(await response.arrayBuffer())]).toEqual([0xff, 0xd8]);
+  });
+});
+
+describe('POST /api/substitutions', () => {
+  const body = {
+    id: '11111111-1111-4111-8111-111111111111',
+    recipe_id: '33333333-3333-4333-8333-333333333333',
+    ingredient_id: '44444444-4444-4444-8444-444444444444',
+  };
+  const ask = (app: ReturnType<typeof createApp>, payload: unknown, token: string | null = 'jwt') =>
+    app.request('/api/substitutions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+
+  it('answers 401 without a token and 400 for a bad body, without asking', async () => {
+    const d = deps();
+    expect((await ask(createApp(d), body, null)).status).toBe(401);
+    expect((await ask(createApp(d), { ...body, extra: 1 })).status).toBe(400);
+    expect(d.substitutions.ask).not.toHaveBeenCalled();
+  });
+
+  it('maps each outcome to its status and body', async () => {
+    const cases: [object, number, unknown][] = [
+      [{ kind: 'forbidden' }, 403, { error: 'forbidden' }],
+      [{ kind: 'missing' }, 404, { error: 'not_found' }],
+      [{ kind: 'quota' }, 402, { error: 'quota' }],
+      [{ kind: 'ai_unavailable' }, 503, { error: 'ai_unavailable' }],
+      [{ kind: 'invalid_output' }, 422, { error: 'invalid_output' }],
+      [
+        { kind: 'answer', answer: { options: [], note: 'No swap' }, ingredient_raw: '2 eggs' },
+        200,
+        { options: [], note: 'No swap', ingredient_raw: '2 eggs' },
+      ],
+    ];
+    for (const [outcome, status, json] of cases) {
+      const d = deps();
+      vi.mocked(d.substitutions.ask).mockResolvedValue(outcome as never);
+      const response = await ask(createApp(d), body);
+      expect(response.status).toBe(status);
+      expect(await response.json()).toEqual(json);
+    }
   });
 });

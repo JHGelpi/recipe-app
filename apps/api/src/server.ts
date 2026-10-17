@@ -7,6 +7,7 @@ import { fetchPage, FETCH_DEFAULTS } from './import/fetchPage';
 import { createImportService } from './import/service';
 import { createImportStore } from './import/store';
 import { createGateway } from './llm/gateway';
+import { createSubstitutionService } from './substitutions/service';
 import { createPhotoService } from './photos/service';
 import { createDiskPhotoStore } from './photos/store';
 
@@ -19,12 +20,20 @@ const photos = createPhotoService({
   asUser: createAsUser(sql, verify),
   store: photoStore,
 });
+const gateway = createGateway(config.ai);
 const imports = createImportService({
   verify,
   store: createImportStore(createAsClaims(sql)),
-  gateway: createGateway(config.ai),
+  gateway,
   fetchPage: (url) => fetchPage(url, { ...FETCH_DEFAULTS, allowHosts: config.fetchAllowHosts }),
   photos: photoStore,
+  ai: config.ai,
+  log: (event) => console.log(JSON.stringify(event)),
+});
+const substitutions = createSubstitutionService({
+  verify,
+  asClaims: createAsClaims(sql),
+  gateway,
   ai: config.ai,
   log: (event) => console.log(JSON.stringify(event)),
 });
@@ -34,6 +43,7 @@ const app = createApp({
   ping: createPing(sql),
   imports,
   photos,
+  substitutions,
 });
 
 const server = serve({ fetch: app.fetch, port: config.port, hostname: '0.0.0.0' });
