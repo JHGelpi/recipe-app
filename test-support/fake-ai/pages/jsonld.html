@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Fixture Lasagna | A Blog</title>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          { "@type": "WebSite", "name": "A Blog" },
+          {
+            "@type": "Recipe",
+            "name": "Fixture Lasagna",
+            "author": { "@type": "Person", "name": "Fixture Cook" },
+            "recipeYield": ["8", "8 servings"],
+            "prepTime": "PT30M",
+            "cookTime": "PT1H15M",
+            "keywords": "italian, pasta",
+            "recipeIngredient": ["1 lb ground beef", "2 cups ricotta cheese", "12 lasagna noodles"],
+            "recipeInstructions": [
+              {
+                "@type": "HowToSection",
+                "name": "Sauce",
+                "itemListElement": [{ "@type": "HowToStep", "text": "Brown the beef." }]
+              },
+              { "@type": "HowToStep", "text": "Layer and bake." }
+            ]
+          }
+        ]
+      }
+    </script>
+  </head>
+  <body>
+    <nav>Home · Recipes · About</nav>
+    <p>A long story about lasagna.</p>
+  </body>
+</html>

@@ -8,15 +8,16 @@
     "format": "prettier --write .",
     "typecheck": "tsc -p tsconfig.json && pnpm -r --if-present run typecheck",
     "env:init": "node scripts/init-env.mjs",
-    "dev:backend": "node scripts/init-env.mjs && docker compose --profile dev up -d --build --wait",
+    "dev:backend": "node scripts/init-env.mjs && docker compose --profile dev up -d --build --wait --remove-orphans",
+    "dev:backend:test": "node scripts/init-env.mjs && docker compose -f docker-compose.yml -f docker-compose.test.yml --profile dev up -d --build --wait",
     "dev:backend:stop": "docker compose --profile dev down",
     "dev:web": "node scripts/dev-web.mjs",
     "db:seed": "docker compose exec -T db psql -U postgres -d app -v ON_ERROR_STOP=1 -q < db/seed.sql",
     "db:reset": "docker compose --profile dev down -v && pnpm dev:backend && pnpm db:seed",
     "test:stack": "vitest run -c vitest.integration.config.ts apps/api/tests/stack",
     "test:rls": "vitest run -c vitest.integration.config.ts apps/api/tests/rls",
-    "test:api": "vitest run -c vitest.integration.config.ts apps/api/tests/upload",
-    "test:e2e": "node scripts/init-env.mjs && docker compose --profile dev up -d --build --wait && playwright test"
+    "test:api": "vitest run -c vitest.integration.config.ts apps/api/tests/upload apps/api/tests/imports",
+    "test:e2e": "pnpm dev:backend:test && playwright test"
   },
   "packageManager": "pnpm@12.11.2+sha512.25a51652a196785af5f28bda6dfe8dc582ebefa4ac1d180221ce1390231c5fb76637822ea4b6e4633ce74acdcb0a77f725af11bad38177fdeddaee818a955cb9",
   "devDependencies": {

@@ -36,14 +36,14 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # Builds every image, so a broken Dockerfile fails the pull request.
       - name: Build and start the stack
-        run: pnpm dev:backend
+        run: pnpm dev:backend:test
       - run: pnpm db:seed
       - run: pnpm test:stack
       - run: pnpm test:rls
       - run: pnpm test:api
       - name: Stack logs
         if: failure()
-        run: docker compose --profile dev logs --tail 200
+        run: docker compose -f docker-compose.yml -f docker-compose.test.yml --profile dev logs --tail 200
 
   e2e:
     runs-on: ubuntu-latest
@@ -56,13 +56,13 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Build and start the stack
-        run: pnpm dev:backend
+        run: pnpm dev:backend:test
       - run: pnpm db:seed
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
       - name: Stack logs
         if: failure()
-        run: docker compose --profile dev logs --tail 200
+        run: docker compose -f docker-compose.yml -f docker-compose.test.yml --profile dev logs --tail 200
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

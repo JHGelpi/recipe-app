@@ -116,6 +116,13 @@ services:
       DATABASE_URL: postgres://api_login:${API_LOGIN_PASSWORD}@db:5432/app
       JWT_JWKS_URL: http://auth:9999/.well-known/jwks.json
       JWT_AUDIENCE: authenticated
+      # AI (ADR-0005, ADR-0012). Empty key: imports fail with ai_unavailable.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-}
+      LLM_MODEL_PARSE: ${LLM_MODEL_PARSE:-claude-sonnet-5-5}
+      LLM_PRICE_INPUT_PER_MTOK_USD: ${LLM_PRICE_INPUT_PER_MTOK_USD:-3}
+      LLM_PRICE_OUTPUT_PER_MTOK_USD: ${LLM_PRICE_OUTPUT_PER_MTOK_USD:-15}
+      AI_MONTHLY_CAP_USD: ${AI_MONTHLY_CAP_USD:-2}
 
   sync:
     image: journeyapps/powersync-service:1.27.0
