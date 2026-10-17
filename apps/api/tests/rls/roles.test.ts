@@ -59,6 +59,7 @@ describe('database roles (spec §4)', () => {
       ai_usage: ['INSERT', 'SELECT', 'UPDATE'],
       photos: ['DELETE', 'INSERT', 'SELECT', 'UPDATE'],
       substitutions: ['INSERT', 'SELECT', 'UPDATE'],
+      invites: ['SELECT'],
     });
   });
 
