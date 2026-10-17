@@ -8,6 +8,7 @@ export type PhotoStore = {
   put(householdId: string, id: string, bytes: Uint8Array): Promise<void>;
   read(householdId: string, id: string): Promise<Uint8Array | null>;
   remove(householdId: string, id: string): Promise<void>;
+  move(fromHousehold: string, toHousehold: string, id: string): Promise<void>;
 };
 
 function pathOf(root: string, householdId: string, id: string): string {
@@ -33,6 +34,16 @@ export function createDiskPhotoStore(root: string): PhotoStore {
       } catch (error) {
         if ((error as { code?: string }).code === 'ENOENT') return null;
         throw error;
+      }
+    },
+    async move(fromHousehold, toHousehold, id) {
+      const target = pathOf(root, toHousehold, id);
+      await mkdir(dirname(target), { recursive: true });
+      try {
+        await rename(pathOf(root, fromHousehold, id), target);
+      } catch (error) {
+        // Never uploaded, or already moved: nothing to do.
+        if ((error as { code?: string }).code !== 'ENOENT') throw error;
       }
     },
     async remove(householdId, id) {

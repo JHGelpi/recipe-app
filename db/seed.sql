@@ -85,3 +85,9 @@ insert into public.photos (id, household_id, kind, recipe_id, media_type, bytes,
 insert into public.substitutions (id, household_id, recipe_id, ingredient_id, ingredient_raw, options, note) values
   ('00000000-0000-0000-0000-0000000000e3', '00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-0000000000c1', '00000000-0000-0000-0000-0000000000e5', 'Seed line', '[]', 'Seed note'),
   ('00000000-0000-0000-0000-0000000000e4', '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000c2', '00000000-0000-0000-0000-0000000000e6', 'Seed line', '[]', 'Seed note');
+
+-- One invite per household, so the isolation suite's invites checks are not
+-- vacuous. Both are already used, so no code can ever accept them.
+insert into public.invites (id, household_id, role, token_hash, expires_at, accepted_at) values
+  ('00000000-0000-0000-0000-0000000000e7', '00000000-0000-0000-0000-00000000000a', 'member', sha256(convert_to('seed invite a', 'UTF8')), now(), now()),
+  ('00000000-0000-0000-0000-0000000000e8', '00000000-0000-0000-0000-00000000000b', 'member', sha256(convert_to('seed invite b', 'UTF8')), now(), now());

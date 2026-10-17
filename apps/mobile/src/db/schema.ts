@@ -101,6 +101,22 @@ const substitutions = new Table(
   { indexes: { recipe: ['recipe_id'] } },
 );
 
+// The household's members (household_members) and this user's own row
+// (my_membership); written only by the server's household functions.
+const memberships = new Table(
+  {
+    household_id: column.text,
+    user_id: column.text,
+    email: column.text,
+    role: column.text,
+    created_at: column.text,
+  },
+  { indexes: { user: ['user_id'] } },
+);
+
+// The household's name (household_info).
+const households = new Table({ name: column.text });
+
 // attachments is PowerSync's local-only queue table: never uploaded.
 export const AppSchema = new Schema({
   recipes,
@@ -108,6 +124,8 @@ export const AppSchema = new Schema({
   imports,
   photos,
   substitutions,
+  memberships,
+  households,
   attachments: new AttachmentTable(),
 });
 

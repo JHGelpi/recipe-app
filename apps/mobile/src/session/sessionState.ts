@@ -8,7 +8,8 @@ export type SessionState =
 
 /** A session state the database bridge acts on. */
 export type SettledSession =
-  { status: 'signedIn'; userId: string } | { status: 'signedOut'; byUser: boolean };
+  | { status: 'signedIn'; userId: string; householdId: string | null }
+  | { status: 'signedOut'; byUser: boolean };
 
 type GetSessionResult = { data: { session: Session | null }; error: unknown };
 
@@ -62,12 +63,36 @@ export function resolveSession(result: GetSessionResult, saved: unknown): Sessio
   return { status: 'signedOut', byUser: false };
 }
 
+/** What the local database is recorded as holding: this user, in this household. */
+export function ownerKey(userId: string, householdId: string | null): string {
+  return householdId ? `${userId}:${householdId}` : userId;
+}
+
+const ownerUser = (owner: string) => owner.split(':')[0];
+
 /**
- * Local data is wiped only when the user signs out, or when someone other
- * than the recorded owner signs in. A session the server ended keeps the
- * data, so unsynced recipes upload once the same user signs back in.
+ * Local data is wiped when the user signs out, when someone other than the
+ * recorded owner signs in, or when the same user's household has changed
+ * (FR-5: joined, left or removed). A session the server ended keeps the
+ * data, so unsynced recipes upload once the same user signs back in. An
+ * owner recorded as a bare user id (before households could change) matches.
  */
 export function localDataAction(session: SettledSession, owner: string | null): 'wipe' | 'keep' {
   if (session.status === 'signedOut') return session.byUser ? 'wipe' : 'keep';
-  return owner !== null && owner !== session.userId ? 'wipe' : 'keep';
+  if (owner === null || owner === session.userId) return 'keep';
+  if (ownerUser(owner) !== session.userId) return 'wipe';
+  return session.householdId === null || owner === ownerKey(session.userId, session.householdId)
+    ? 'keep'
+    : 'wipe';
+}
+
+/** The same user, now in another household. */
+export function householdChanged(session: SettledSession, owner: string | null): boolean {
+  return (
+    session.status === 'signedIn' &&
+    owner !== null &&
+    owner.includes(':') &&
+    ownerUser(owner) === session.userId &&
+    localDataAction(session, owner) === 'wipe'
+  );
 }

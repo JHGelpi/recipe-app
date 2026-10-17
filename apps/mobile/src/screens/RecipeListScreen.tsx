@@ -3,6 +3,7 @@ import { useDeferredValue, useState } from 'react';
 import { FlatList, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { PhotoImage } from '../components/PhotoImage';
 import { BuildFooter } from '../components/BuildFooter';
+import { HouseholdNoticeBanner } from '../components/HouseholdNoticeBanner';
 import { StarButton } from '../components/StarButton';
 import { StatusLine } from '../components/StatusLine';
 import { useReadyCount } from '../imports/hooks';
@@ -42,6 +43,7 @@ export function RecipeListScreen({ claims }: { claims: Claims }) {
       <Text role="heading" aria-level={1} style={{ fontSize: 24, fontWeight: '600' }}>
         Recipes
       </Text>
+      <HouseholdNoticeBanner claims={claims} />
       <StatusLine />
       <View
         style={{
@@ -124,6 +126,9 @@ export function RecipeListScreen({ claims }: { claims: Claims }) {
             {items.length === 1 ? '1 recipe' : `${items.length} recipes`}
           </Text>
         ) : null}
+        <Link href="/household" style={link}>
+          Household
+        </Link>
         {writer ? (
           <Link href="/trash" style={link}>
             Trash

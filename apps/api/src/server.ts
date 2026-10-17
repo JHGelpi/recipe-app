@@ -6,6 +6,7 @@ import { connect, createAsClaims, createAsUser, createPing } from './db/asUser';
 import { fetchPage, FETCH_DEFAULTS } from './import/fetchPage';
 import { createImportService } from './import/service';
 import { createImportStore } from './import/store';
+import { createHouseholdService } from './household/service';
 import { createGateway } from './llm/gateway';
 import { createSubstitutionService } from './substitutions/service';
 import { createPhotoService } from './photos/service';
@@ -37,6 +38,11 @@ const substitutions = createSubstitutionService({
   ai: config.ai,
   log: (event) => console.log(JSON.stringify(event)),
 });
+const household = createHouseholdService({
+  asUser: createAsUser(sql, verify),
+  photos: photoStore,
+  log: (event) => console.log(JSON.stringify(event)),
+});
 const app = createApp({
   verify,
   asUser: createAsUser(sql, verify),
@@ -44,6 +50,7 @@ const app = createApp({
   imports,
   photos,
   substitutions,
+  household,
 });
 
 const server = serve({ fetch: app.fetch, port: config.port, hostname: '0.0.0.0' });

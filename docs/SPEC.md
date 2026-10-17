@@ -58,10 +58,10 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 |---|---|---|
 | FR-1 | Sign up / sign in with an email one-time code | M |
 | FR-2 | Creating an account creates a household; creator becomes Admin | M |
-| FR-3 | Admin invites people into the household by text or email link | M |
+| FR-3 | Admin invites people into the household by text or email link *(built in sub-project 6)* | M |
 | FR-4 | Roles: Admin, Member, Viewer with permissions per §2 | M |
-| FR-5 | Admin can change roles and remove members | M |
-| FR-6 | Any user can invite someone to create their own household | S |
+| FR-5 | Admin can change roles and remove members *(built in sub-project 6)* | M |
+| FR-6 | Any user can invite someone to create their own household *(built in sub-project 6)* | S |
 
 ### Capture & import
 | ID | Requirement | Pri |

@@ -15,15 +15,15 @@ streams:
       FROM recipes
       WHERE household_id = auth.parameter('household_id')
 
-  # Mirrors favorites_select: the user's own rows. RLS on write keeps a
-  # user's rows inside their household, so the user filter is enough.
+  # Mirrors favorites_select: the user's own rows in their current household
+  # (people can move between households, ADR-0015).
   user_favorites:
     auto_subscribe: true
     query: >-
       SELECT id, household_id, user_id, recipe_id,
              created_at, updated_at, updated_by, deleted_at
       FROM favorites
-      WHERE user_id = auth.user_id()
+      WHERE user_id = auth.user_id() AND household_id = auth.parameter('household_id')
 
   # Mirrors imports_select: household_id = auth_household_id(), narrowed to
   # rows not dismissed, so a dismissed or saved import leaves the phone.
@@ -56,3 +56,26 @@ streams:
              created_at, updated_at, updated_by, deleted_at
       FROM substitutions
       WHERE household_id = auth.parameter('household_id') AND deleted_at IS NULL
+
+  # Mirrors memberships_select's household branch.
+  household_members:
+    auto_subscribe: true
+    query: >-
+      SELECT id, household_id, user_id, email, role, created_at
+      FROM memberships
+      WHERE household_id = auth.parameter('household_id') AND deleted_at IS NULL
+
+  # Mirrors memberships_select's own-row branch. Keyed by user, so it keeps
+  # arriving after a change of household; the phone refreshes on a change.
+  my_membership:
+    auto_subscribe: true
+    query: >-
+      SELECT id, household_id, user_id, email, role, created_at
+      FROM memberships
+      WHERE user_id = auth.user_id() AND deleted_at IS NULL
+
+  # Mirrors households_select.
+  household_info:
+    auto_subscribe: true
+    query: >-
+      SELECT id, name FROM households WHERE id = auth.parameter('household_id')
