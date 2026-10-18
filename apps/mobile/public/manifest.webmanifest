@@ -1,12 +1,12 @@
 {
-  "name": "Recipes",
-  "short_name": "Recipes",
-  "description": "Your household's recipes, on and offline.",
+  "name": "Dishkept",
+  "short_name": "Dishkept",
+  "description": "Keep Your Kitchen Inspired",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#1a5d3a",
+  "background_color": "#0E121A",
+  "theme_color": "#0E121A",
   "icons": [
     { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },

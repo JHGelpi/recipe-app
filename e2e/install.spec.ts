@@ -9,14 +9,18 @@ test('the manifest makes the app installable', async ({ request }) => {
     display: string;
     start_url: string;
     scope: string;
+    theme_color: string;
+    background_color: string;
     icons: { src: string; sizes: string; purpose?: string }[];
   };
   expect(manifest).toMatchObject({
-    name: 'Recipes',
-    short_name: 'Recipes',
+    name: 'Dishkept',
+    short_name: 'Dishkept',
     display: 'standalone',
     start_url: '/',
     scope: '/',
+    theme_color: '#0E121A',
+    background_color: '#0E121A',
   });
   expect(manifest.icons.map((icon) => icon.sizes)).toEqual(
     expect.arrayContaining(['192x192', '512x512']),
@@ -38,7 +42,7 @@ test('the page links the manifest and the iOS home-screen icon', async ({ page, 
   expect(touchIcon).toBe('/icons/apple-touch-icon.png');
   expect((await request.get(touchIcon ?? '')).headers()['content-type']).toBe('image/png');
   await expect(page.locator('meta[name="theme-color"]')).toHaveCount(1);
-  await expect(page).toHaveTitle('Recipes');
+  await expect(page).toHaveTitle('Dishkept');
 });
 
 test('the page is revalidated and hashed bundles are cached for good', async ({
@@ -59,4 +63,17 @@ test('the footer shows the build time and the storage status', async ({ page }) 
   await expect(page.getByLabel('Build')).toHaveText(
     /^Build \d{4}-\d{2}-\d{2} \d{2}:\d{2} · Storage: (persistent|best effort|unknown)$/,
   );
+});
+
+test('the icons are the Dishkept artwork at their stated sizes', async ({ request }) => {
+  for (const [src, size] of [
+    ['/icons/apple-touch-icon.png', 180],
+    ['/icons/icon-192.png', 192],
+    ['/icons/icon-512.png', 512],
+    ['/icons/icon-maskable-512.png', 512],
+  ] as const) {
+    const body = await (await request.get(src)).body();
+    // PNG width and height sit at bytes 16–23 of the IHDR chunk.
+    expect([body.readUInt32BE(16), body.readUInt32BE(20)], src).toEqual([size, size]);
+  }
 });

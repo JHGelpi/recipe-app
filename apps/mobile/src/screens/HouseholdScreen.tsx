@@ -67,7 +67,7 @@ export function HouseholdScreen({ claims }: { claims: Claims }) {
       async (created) => {
         const url = inviteUrl(created.code);
         setShared(url);
-        const how = await shareLink(`Join the ${name ?? 'household'} on Recipes: ${url}`, url);
+        const how = await shareLink(`Join the ${name ?? 'household'} on Dishkept: ${url}`, url);
         if (how === 'copied') setMessage('Link copied');
         void refresh();
       },
@@ -302,7 +302,7 @@ export function HouseholdScreen({ claims }: { claims: Claims }) {
           });
         }}
       >
-        <Text style={link}>Invite a friend to Recipes</Text>
+        <Text style={link}>Invite a friend to Dishkept</Text>
       </Pressable>
     </ScrollView>
   );

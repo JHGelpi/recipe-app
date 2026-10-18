@@ -36,7 +36,7 @@ describe('the recipe PDF (FR-26)', () => {
       '1. Bake 30 minutes',
       'Chill first.',
       'From example.com',
-      'Shared from Recipes',
+      'Shared from Dishkept',
     ]) {
       expect(text).toContain(expected);
     }

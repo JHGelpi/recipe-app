@@ -95,7 +95,7 @@ export function buildRecipePdf(recipe: PdfRecipe, photo: PdfPhoto | null): jsPDF
   for (let page = 1; page <= pages; page++) {
     doc.setPage(page);
     doc.setFont('helvetica', 'normal').setFontSize(9).setTextColor(120);
-    doc.text('Shared from Recipes', PAGE.width / 2, PAGE.height - PAGE.margin / 2, {
+    doc.text('Shared from Dishkept', PAGE.width / 2, PAGE.height - PAGE.margin / 2, {
       align: 'center',
     });
     doc.setTextColor(0);
