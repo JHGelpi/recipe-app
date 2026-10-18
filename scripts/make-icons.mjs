@@ -2,6 +2,7 @@
 // the artwork changes: `pnpm icons:make`. The outputs are committed.
 // app_icon.png is a crop of the theme board: the navy rounded square sits
 // inside it, with some of the board's background around it.
+/* global Image, document -- used inside page.evaluate, which runs in Chromium */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { chromium } from '@playwright/test';
