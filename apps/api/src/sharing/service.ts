@@ -155,9 +155,17 @@ export function createSharingService(deps: {
         });
         // The copy's photo file. Missing: the recipe is saved without it (Review Focus 4).
         if (result.photo_id) {
-          await deps.store
+          const copied = await deps.store
             .copy(result.source_household, result.share_id, result.home, result.photo_id)
             .catch(() => false);
+          // A photo row without its file would be fetched forever and never shown.
+          if (!copied) {
+            const photoId = result.photo_id;
+            await deps.asUser(token, async (tx) => {
+              await tx`update public.recipes set photo_id = null where id = ${result.recipe_id}`;
+              await tx`update public.photos set deleted_at = now() where id = ${photoId}`;
+            });
+          }
         }
         return { recipe_id: result.recipe_id };
       }),

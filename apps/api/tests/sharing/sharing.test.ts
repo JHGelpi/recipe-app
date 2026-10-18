@@ -107,4 +107,38 @@ describe('sharing endpoints', () => {
     expect((await call(viewer, 'POST', `/shares/${code}/save`)).status).toBe(403);
     expect((await call(owner, 'POST', `/shares/${code}/save`)).status).toBe(409);
   });
+
+  it('saves without a photo when the shared photo file is missing (Review Focus 4)', async () => {
+    const owner = await fresh();
+    const saver = await fresh();
+    const recipe = randomUUID();
+    await call(owner, 'POST', '/upload', {
+      ops: [
+        {
+          op: 'put',
+          table: 'recipes',
+          id: recipe,
+          data: { household_id: owner.householdId, title: 'Lost photo' },
+        },
+      ],
+    });
+    const { code } = (await (
+      await call(owner, 'POST', '/shares', { recipe_id: recipe })
+    ).json()) as {
+      code: string;
+    };
+    // The snapshot says there is a photo, but its file is gone.
+    await adminSql`update public.shares set snapshot = jsonb_set(snapshot, '{photo}', '{"bytes": 10, "width": 1, "height": 1}')
+      where recipe_id = ${recipe}`;
+    const saved = await call(saver, 'POST', `/shares/${code}/save`);
+    expect(saved.status).toBe(201);
+    const { recipe_id } = (await saved.json()) as { recipe_id: string };
+    const [row] = await adminSql<
+      { photo_id: string | null }[]
+    >`select photo_id from public.recipes where id = ${recipe_id}`;
+    expect(row?.photo_id).toBeNull();
+    const live =
+      await adminSql`select id from public.photos where recipe_id = ${recipe_id} and deleted_at is null`;
+    expect(live).toHaveLength(0);
+  });
 });
