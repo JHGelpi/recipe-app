@@ -56,6 +56,18 @@ describe('the recipe PDF (FR-26)', () => {
     expect(buildRecipePdf(long, null).getNumberOfPages()).toBeGreaterThanOrEqual(2);
   });
 
+  it('keeps every word of a long ingredient line among many (Final 2)', () => {
+    const many = {
+      ...recipe,
+      ingredients: [
+        ...Array.from({ length: 29 }, (_, n) => ingredient(n + 1, `${n + 1} tbsp spice`)),
+        ingredient(30, '2 cups all-purpose flour, sifted twice and spooned into the cup gently'),
+      ],
+    };
+    const text = buildRecipePdf(many, null).output();
+    expect(text).toContain('gently');
+  });
+
   it('names the file after the title, without characters files cannot have (Review Focus 2)', () => {
     expect(pdfFileName('Lemon Bars')).toBe('Lemon Bars.pdf');
     expect(pdfFileName("Mom's 1/2-batch: Pie?")).toBe("Mom's 1-2-batch - Pie.pdf");

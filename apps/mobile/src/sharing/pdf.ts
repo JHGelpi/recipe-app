@@ -56,14 +56,21 @@ export function buildRecipePdf(recipe: PdfRecipe, photo: PdfPhoto | null): jsPDF
       recipe.ingredients.filter((item) => !item.heading).length > TWO_COLUMNS_ABOVE;
     const rowHeight = 11 * 1.35;
     const half = Math.ceil(lines.length / 2);
-    if (twoColumns && y + half * rowHeight <= BOTTOM) {
-      doc.setFont('helvetica', 'normal').setFontSize(11);
-      const column = (width - 18) / 2;
+    doc.setFont('helvetica', 'normal').setFontSize(11);
+    const column = (width - 18) / 2;
+    // Two columns only when every line fits its column, so no words are lost.
+    const fits = lines.every(
+      (line) => (doc.splitTextToSize(pdfSafeText(line), column) as string[]).length === 1,
+    );
+    if (twoColumns && fits && y + half * rowHeight <= BOTTOM) {
       lines.forEach((line, index) => {
         const left = index < half;
         const row = left ? index : index - half;
-        const text = (doc.splitTextToSize(pdfSafeText(line), column) as string[])[0] ?? '';
-        doc.text(text, PAGE.margin + (left ? 0 : column + 18), y + 11 + row * rowHeight);
+        doc.text(
+          pdfSafeText(line),
+          PAGE.margin + (left ? 0 : column + 18),
+          y + 11 + row * rowHeight,
+        );
       });
       y += half * rowHeight + 10;
     } else {
