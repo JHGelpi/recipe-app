@@ -1,4 +1,4 @@
-import { test } from '@playwright/test';
+import { test } from './fixtures';
 import { createRecipe, freshEmail, openAdd, signIn, unique } from './helpers';
 
 // Run on request: SCREENSHOTS=1 npx playwright test e2e/screens.spec.ts

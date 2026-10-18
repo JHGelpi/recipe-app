@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { env } from '../test-support/env';
 import { watchMailbox } from '../test-support/mail';
 import { addRecipe, expectNotListed, freshEmail, requestCode, signIn } from './helpers';

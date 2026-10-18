@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import postgres from 'postgres';
 import { env } from '../test-support/env';
 import { createRecipe, expectNotListed, findRecipe, SEED, session, unique } from './helpers';

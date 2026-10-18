@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { createRecipe, freshEmail, openAdd, SEED, signIn, unique } from './helpers';
 
 const tabBar = (page: import('@playwright/test').Page) =>

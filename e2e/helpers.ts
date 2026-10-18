@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type Locator, type Page } from '@playwright/test';
+import { expect, type Browser, type Locator, type Page } from '@playwright/test';
 import { env } from '../test-support/env';
 import { watchMailbox } from '../test-support/mail';
 
@@ -107,19 +107,6 @@ export async function addRecipe(page: Page, title: string): Promise<void> {
 const AUTH_STORAGE_KEY = 'supabase.auth.token';
 
 /** A signed-in page in its own browser context, as on its own device. */
-// Contexts a test opens on the worker's shared browser (session(), visitors)
-// are not closed for us: each would stay open, still syncing, until the whole
-// run ends, and a full run then runs out of memory. Close them after every test;
-// Playwright closes the test's own context itself.
-test.afterEach(async ({ browser, context }) => {
-  await Promise.all(
-    browser
-      .contexts()
-      .filter((other) => other !== context)
-      .map((other) => other.close().catch(() => undefined)),
-  );
-});
-
 export async function session(browser: Browser, email: string): Promise<Page> {
   const context = await browser.newContext();
   const page = await context.newPage();

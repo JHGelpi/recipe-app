@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 test('the manifest makes the app installable', async ({ request }) => {
   const response = await request.get('/manifest.webmanifest');

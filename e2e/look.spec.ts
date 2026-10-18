@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { createRecipe, freshEmail, signIn, unique } from './helpers';
 
 test.use({ viewport: { width: 390, height: 600 } });

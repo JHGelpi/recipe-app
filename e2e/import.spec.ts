@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 import { findRecipe, freshEmail, openAdd, SEED, signIn, unique } from './helpers';
 
 test.beforeEach(({ page }) => {

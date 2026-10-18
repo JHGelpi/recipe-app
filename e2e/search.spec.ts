@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 import { createRecipe, freshEmail, signIn, type RecipeInput } from './helpers';
 
 async function add(page: Page, input: RecipeInput): Promise<void> {
