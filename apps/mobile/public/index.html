@@ -14,7 +14,9 @@
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <meta name="theme-color" content="#0E121A" />
     <meta name="color-scheme" content="dark" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- "black", not "black-translucent": translucent draws the page under the
+         iPhone's clock and Dynamic Island. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <meta name="apple-mobile-web-app-title" content="Dishkept" />
     <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
     <style id="expo-reset">

@@ -43,6 +43,12 @@ test('the page links the manifest and the iOS home-screen icon', async ({ page, 
   expect((await request.get(touchIcon ?? '')).headers()['content-type']).toBe('image/png');
   await expect(page.locator('meta[name="theme-color"]')).toHaveCount(1);
   await expect(page).toHaveTitle('Dishkept');
+  // Not black-translucent: that draws the page under the iPhone's clock, and
+  // nothing here pads for it (Final 2).
+  await expect(page.locator('meta[name="apple-mobile-web-app-status-bar-style"]')).toHaveAttribute(
+    'content',
+    'black',
+  );
 });
 
 test('the page is revalidated and hashed bundles are cached for good', async ({
