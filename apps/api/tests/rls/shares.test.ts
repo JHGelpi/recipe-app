@@ -53,11 +53,17 @@ async function recipe(actor: Actor, title = 'Shared soup'): Promise<string> {
   return id;
 }
 
-async function share(actor: Actor, recipeId: string, title = 'Shared soup'): Promise<string> {
+async function share(
+  actor: Actor,
+  recipeId: string,
+  title = 'Shared soup',
+  id: string = randomUUID(),
+  photo: { bytes: number; width: number; height: number } | null = null,
+): Promise<string> {
   const [row] = await as(
     actor,
     (tx) => tx<{ token: string }[]>`
-    select token from public.create_share(${randomUUID()}, ${recipeId}, ${tx.json(snapshot(title))})`,
+    select token from public.create_share(${id}, ${recipeId}, ${tx.json({ ...snapshot(title), photo })})`,
   );
   return row!.token;
 }
@@ -160,5 +166,41 @@ describe('shares', () => {
     expect(await outcome(as(other, (tx) => tx`select public.stop_shares(${recipeId})`))).toBe(
       'forbidden',
     );
+  });
+
+  it('a person alone who shared brings their links when they join a household (Final 1)', async () => {
+    const admin = await fresh();
+    const joiner = await fresh();
+    const recipeId = await recipe(joiner);
+    const withPhoto = randomUUID();
+    const code = await share(joiner, recipeId, 'Shared soup', withPhoto, {
+      bytes: 10,
+      width: 1,
+      height: 1,
+    });
+    const stoppedId = randomUUID();
+    await share(joiner, recipeId, 'Shared soup', stoppedId);
+    await as(joiner, (tx) => tx`select public.stop_shares(${recipeId})`);
+    const fresher = await share(joiner, recipeId);
+    const [invite] = await as(
+      admin,
+      (tx) =>
+        tx<
+          { token: string }[]
+        >`select token from public.create_invite('member'::public.household_role)`,
+    );
+    const [result] = await as(
+      joiner,
+      (tx) =>
+        tx<{ moved_photos: string[] }[]>`select * from public.accept_invite(${invite!.token})`,
+    );
+    // The share's photo copy is a file to move too; the share without a photo has none.
+    expect(result!.moved_photos).toContain(withPhoto);
+    expect(result!.moved_photos).not.toContain(stoppedId);
+    const left = await adminSql<{ n: number }[]>`
+      select count(*)::int as n from public.shares where household_id = ${joiner.householdId}`;
+    expect(left[0]!.n).toBe(0);
+    expect((await read(fresher)).status).toBe('ok');
+    expect((await read(code)).status).toBe('stopped');
   });
 });
