@@ -7,14 +7,16 @@ import { DatabaseSessionBridge } from '../src/db/DatabaseSessionBridge';
 import { registerServiceWorker } from '../src/pwa/serviceWorker';
 import { UpdateBanner } from '../src/pwa/UpdateBanner';
 import { SessionProvider } from '../src/session/SessionProvider';
-import { colors, FONT_FILES } from '../src/theme';
+import { colors } from '../src/theme';
+import { FONT_FILES } from '../src/theme/fonts';
+import { IONICONS_FONT } from '../src/ui/Icon';
 
 export default function RootLayout() {
   useEffect(() => {
     void registerServiceWorker();
   }, []);
   // Not awaited: text shows in the system font until these arrive.
-  useFonts(FONT_FILES);
+  useFonts({ ...FONT_FILES, ionicons: IONICONS_FONT });
 
   return (
     <SessionProvider>

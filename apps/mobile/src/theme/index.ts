@@ -1,4 +1,4 @@
 export { colors, TEXT_PAIRS, type ColorName } from './colors';
 export { contrast } from './contrast';
 export { radius, shadow, space } from './spacing';
-export { FONT_FILES, fonts, type, type TypeVariant } from './type';
+export { fonts, type, type TypeVariant } from './type';
