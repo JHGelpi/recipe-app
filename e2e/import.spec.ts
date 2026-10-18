@@ -1,11 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
-import { findRecipe, freshEmail, SEED, signIn, unique } from './helpers';
+import { findRecipe, freshEmail, openAdd, SEED, signIn, unique } from './helpers';
 
 test.beforeEach(({ page }) => {
   page.on('dialog', (dialog) => void dialog.accept());
 });
 
 async function openImport(page: Page): Promise<void> {
+  await openAdd(page);
   await page.getByRole('button', { name: /^Import/ }).click();
   await expect(page.getByRole('heading', { name: 'Import a recipe' })).toBeVisible();
 }

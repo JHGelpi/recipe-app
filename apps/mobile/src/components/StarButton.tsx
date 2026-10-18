@@ -1,7 +1,7 @@
 import { usePowerSync } from '@powersync/react';
-import { Pressable, Text } from 'react-native';
 import { setFavorite } from '../recipes/repository';
 import type { Claims } from '../session/claims';
+import { IconButton } from '../ui';
 
 export function StarButton({
   claims,
@@ -14,16 +14,12 @@ export function StarButton({
 }) {
   const db = usePowerSync();
   return (
-    <Pressable
-      role="button"
-      aria-label={starred ? 'Unstar' : 'Star'}
+    <IconButton
+      icon={starred ? 'star' : 'star-outline'}
+      label={starred ? 'Unstar' : 'Star'}
+      tone={starred ? 'tag' : 'muted'}
       aria-pressed={starred}
-      hitSlop={8}
       onPress={() => void setFavorite(db, claims, recipeId, !starred)}
-    >
-      <Text style={{ fontSize: 22, color: starred ? '#c98a00' : '#888' }}>
-        {starred ? '★' : '☆'}
-      </Text>
-    </Pressable>
+    />
   );
 }

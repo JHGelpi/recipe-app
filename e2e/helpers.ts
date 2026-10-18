@@ -38,6 +38,11 @@ export async function signIn(page: Page, email: string): Promise<void> {
   await expect(page.getByRole('heading', { name: 'Recipes' })).toBeVisible();
 }
 
+/** Opens the "+" sheet in the tab bar (New recipe, Import). */
+export async function openAdd(page: Page): Promise<void> {
+  await page.getByRole('button', { name: /^Add a recipe/ }).click();
+}
+
 export type RecipeInput = {
   title: string;
   servings?: string;
@@ -68,6 +73,7 @@ export async function fillEditor(page: Page, input: RecipeInput): Promise<void> 
 
 /** Creates a recipe through the editor and ends on the recipe's own screen. */
 export async function createRecipe(page: Page, input: RecipeInput): Promise<void> {
+  await openAdd(page);
   await page.getByRole('button', { name: 'New recipe' }).click();
   await fillEditor(page, input);
   await page.getByRole('button', { name: 'Save' }).click();

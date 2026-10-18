@@ -1,202 +1,135 @@
-import { Link, router } from 'expo-router';
-import { useDeferredValue, useState } from 'react';
-import { FlatList, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { PhotoImage } from '../components/PhotoImage';
+import { useDeferredValue } from 'react';
+import { FlatList, ScrollView, View } from 'react-native';
 import { BuildFooter } from '../components/BuildFooter';
 import { HouseholdNoticeBanner } from '../components/HouseholdNoticeBanner';
 import { StarButton } from '../components/StarButton';
 import { StatusLine } from '../components/StatusLine';
-import { useReadyCount } from '../imports/hooks';
+import { durationLabel } from '../recipes/duration';
 import { useRecipeSearch } from '../recipes/hooks';
-import { canWrite, type Claims } from '../session/claims';
-import { useSession } from '../session/SessionProvider';
+import { clearFilter, setFilter, toggleTag, useListFilter } from '../recipes/listFilter';
+import type { Claims } from '../session/claims';
+import { Thumb } from '../components/Thumb';
+import { colors, space } from '../theme';
+import { Button, Chip, Icon, IconButton, RowCard, Screen, Text, TextField } from '../ui';
 
-const link = { textDecorationLine: 'underline' } as const;
-const green = '#1a5d3a';
-
-export function RecipeListScreen({ claims }: { claims: Claims }) {
-  const { signOut } = useSession();
-  const [favoritesOnly, setFavoritesOnly] = useState(false);
-  const [query, setQuery] = useState('');
-  const [selected, setSelected] = useState<string[]>([]);
+/** FR-15, FR-19, FR-20: the household's recipes, or the user's favorites. */
+export function RecipeListScreen({
+  claims,
+  favoritesOnly = false,
+}: {
+  claims: Claims;
+  favoritesOnly?: boolean;
+}) {
+  const { query, selected } = useListFilter();
   // Typing stays smooth even when the results take a moment to re-render.
   const deferredQuery = useDeferredValue(query);
   const { items, tags } = useRecipeSearch(claims.userId, favoritesOnly, deferredQuery, selected);
-  const writer = canWrite(claims.role);
-  const ready = useReadyCount();
   const filtering = query.trim() !== '' || selected.length > 0;
   const chips = [...selected, ...tags.filter((tag) => !selected.includes(tag))];
 
-  function toggle(tag: string) {
-    setSelected((current) =>
-      current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag],
-    );
-  }
-
-  function clear() {
-    setQuery('');
-    setSelected([]);
-  }
-
   return (
-    <View style={{ padding: 16, gap: 12, maxWidth: 640, flex: 1 }}>
-      <Text role="heading" aria-level={1} style={{ fontSize: 24, fontWeight: '600' }}>
-        Recipes
-      </Text>
-      <HouseholdNoticeBanner claims={claims} />
-      <StatusLine />
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          borderWidth: 1,
-          borderColor: '#888',
-          borderRadius: 6,
-        }}
-      >
-        <TextInput
-          aria-label="Search recipes"
-          placeholder="Search recipes"
-          value={query}
-          onChangeText={setQuery}
-          returnKeyType="search"
-          autoCapitalize="none"
-          autoCorrect={false}
-          style={{ flex: 1, padding: 10, fontSize: 16 }}
-        />
-        {query ? (
-          <Pressable
-            role="button"
-            aria-label="Clear search text"
-            hitSlop={8}
-            onPress={() => setQuery('')}
-            style={{ paddingHorizontal: 12 }}
-          >
-            <Text>✕</Text>
-          </Pressable>
-        ) : null}
+    <Screen scroll={false}>
+      <View style={{ gap: space.xs }}>
+        <Text role="heading" aria-level={1} variant="h1">
+          {favoritesOnly ? 'Favorites' : 'Recipes'}
+        </Text>
+        <StatusLine />
       </View>
+      <HouseholdNoticeBanner claims={claims} />
+      <TextField
+        label="Search recipes"
+        hideLabel
+        placeholder="Search recipes"
+        icon="search"
+        value={query}
+        onChangeText={(text) => setFilter({ query: text })}
+        returnKeyType="search"
+        autoCapitalize="none"
+        autoCorrect={false}
+        trailing={
+          query ? (
+            <IconButton
+              icon="close"
+              label="Clear search text"
+              tone="muted"
+              size={18}
+              onPress={() => setFilter({ query: '' })}
+            />
+          ) : null
+        }
+      />
       {chips.length > 0 ? (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 6 }}
+          contentContainerStyle={{ gap: space.sm }}
+          style={{ flexGrow: 0 }}
         >
-          {chips.map((tag) => {
-            const on = selected.includes(tag);
-            return (
-              <Pressable
-                key={tag}
-                role="button"
-                aria-label={`Tag ${tag}`}
-                aria-pressed={on}
-                onPress={() => toggle(tag)}
-                style={{
-                  borderWidth: 1,
-                  borderColor: green,
-                  backgroundColor: on ? green : 'transparent',
-                  borderRadius: 12,
-                  paddingHorizontal: 10,
-                  paddingVertical: 4,
-                }}
-              >
-                <Text style={{ color: on ? '#fff' : green }}>{tag}</Text>
-              </Pressable>
-            );
-          })}
+          {chips.map((tag) => (
+            <Chip
+              key={tag}
+              label={tag}
+              tone={selected.includes(tag) ? 'selected' : 'neutral'}
+              aria-label={`Tag ${tag}`}
+              aria-pressed={selected.includes(tag)}
+              onPress={() => toggleTag(tag)}
+            />
+          ))}
         </ScrollView>
       ) : null}
-      <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-        {(['All', 'Favorites'] as const).map((label) => {
-          const isSelected = (label === 'Favorites') === favoritesOnly;
-          return (
-            <Pressable
-              key={label}
-              role="tab"
-              aria-selected={isSelected}
-              onPress={() => setFavoritesOnly(label === 'Favorites')}
-            >
-              <Text style={{ fontWeight: isSelected ? '700' : '400' }}>{label}</Text>
-            </Pressable>
-          );
-        })}
-        <View style={{ flex: 1 }} />
-        {filtering && items.length > 0 ? (
-          <Text aria-live="polite">
-            {items.length === 1 ? '1 recipe' : `${items.length} recipes`}
-          </Text>
-        ) : null}
-        <Link href="/household" style={link}>
-          Household
-        </Link>
-        {writer ? (
-          <Link href="/trash" style={link}>
-            Trash
-          </Link>
-        ) : null}
-      </View>
-      {/* Viewers cannot write: RLS refuses it, and these controls are not rendered. */}
-      {writer ? (
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Pressable
-            role="button"
-            onPress={() => router.push('/recipe/new')}
-            style={{ backgroundColor: green, borderRadius: 6, padding: 12, flex: 1 }}
-          >
-            <Text style={{ color: '#fff', fontSize: 16, textAlign: 'center' }}>New recipe</Text>
-          </Pressable>
-          <Pressable
-            role="button"
-            aria-label={ready > 0 ? `Import, ${ready} ready` : 'Import'}
-            onPress={() => router.push('/import')}
-            style={{ borderWidth: 1, borderColor: green, borderRadius: 6, padding: 12, flex: 1 }}
-          >
-            <Text style={{ color: green, fontSize: 16, textAlign: 'center' }}>
-              {ready > 0 ? `Import · ${ready} ready` : 'Import'}
-            </Text>
-          </Pressable>
-        </View>
+      {filtering && items.length > 0 ? (
+        <Text variant="small" tone="muted" aria-live="polite">
+          {items.length === 1 ? '1 recipe' : `${items.length} recipes`}
+        </Text>
       ) : null}
       <FlatList
         style={{ flex: 1 }}
         data={items}
         keyExtractor={(item) => item.id}
         keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ gap: space.sm, paddingBottom: space.xl }}
         renderItem={({ item }) => (
-          <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, gap: 8 }}>
-            {item.photoId ? (
-              <PhotoImage
-                id={item.photoId}
-                label={`Photo of ${item.title}`}
-                style={{ width: 48, height: 48, borderRadius: 4 }}
-              />
-            ) : null}
-            <Pressable style={{ flex: 1 }} onPress={() => router.push(`/recipe/${item.id}`)}>
-              <Text style={{ fontSize: 18 }}>{item.title}</Text>
-              {item.tags.length > 0 ? (
-                <Text style={{ color: '#666' }}>{item.tags.join(' · ')}</Text>
-              ) : null}
-            </Pressable>
-            <StarButton claims={claims} recipeId={item.id} starred={item.starred} />
-          </View>
+          <RowCard
+            title={item.title}
+            href={`/recipe/${item.id}`}
+            leading={<Thumb photoId={item.photoId} label={`Photo of ${item.title}`} />}
+            meta={
+              item.tags.length > 0 || item.totalMinutes !== null ? (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: space.sm,
+                    marginTop: space.xs,
+                  }}
+                >
+                  {item.tags[0] ? <Chip label={item.tags[0]} tone="tag" /> : null}
+                  {item.totalMinutes !== null ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
+                      <Icon name="time-outline" size={14} color={colors.muted} />
+                      <Text variant="caption" tone="muted">
+                        {durationLabel(item.totalMinutes)}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+              ) : null
+            }
+            trailing={<StarButton claims={claims} recipeId={item.id} starred={item.starred} />}
+          />
         )}
         ListEmptyComponent={
           filtering ? (
-            <View style={{ gap: 8 }}>
+            <View style={{ gap: space.sm }}>
               <Text>No recipes match</Text>
-              <Pressable role="button" onPress={clear}>
-                <Text style={link}>Clear search</Text>
-              </Pressable>
+              <Button variant="ghost" label="Clear search" onPress={clearFilter} />
             </View>
           ) : (
-            <Text>{favoritesOnly ? 'No favorites yet' : 'No recipes yet'}</Text>
+            <Text tone="muted">{favoritesOnly ? 'No favorites yet' : 'No recipes yet'}</Text>
           )
         }
+        ListFooterComponent={<BuildFooter />}
       />
-      <Pressable role="button" onPress={() => void signOut()}>
-        <Text style={link}>Sign out</Text>
-      </Pressable>
-      <BuildFooter />
-    </View>
+    </Screen>
   );
 }

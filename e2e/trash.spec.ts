@@ -14,6 +14,7 @@ test('Move to Trash, then Restore, on two sessions', async ({ browser }) => {
   await expect(member.getByRole('heading', { name: 'Recipes', level: 1 })).toBeVisible();
   await expectNotListed(member, title);
 
+  await admin.getByRole('link', { name: 'Household' }).click();
   await admin.getByRole('link', { name: 'Trash' }).click();
   await expect(admin.getByText(title, { exact: true })).toBeVisible({ timeout: 10_000 });
   // The household has other trash; check this recipe's own row.
@@ -49,6 +50,7 @@ test('trash older than 30 days is deleted for good when a member comes online', 
       })
       .toBe(0);
     await member.getByRole('link', { name: 'All recipes' }).click();
+    await member.getByRole('link', { name: 'Household' }).click();
     await member.getByRole('link', { name: 'Trash' }).click();
     await expect(member.getByText(title, { exact: true })).toHaveCount(0);
   } finally {

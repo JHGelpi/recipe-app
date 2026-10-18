@@ -22,7 +22,11 @@ import { useHouseholdName, useMembers } from '../household/hooks';
 import { shareLink } from '../household/share';
 import { waitForUploads } from '../household/uploads';
 import { auth } from '../session/auth';
-import type { Claims } from '../session/claims';
+import { clearFilter } from '../recipes/listFilter';
+import { canWrite, type Claims } from '../session/claims';
+import { useSession } from '../session/SessionProvider';
+import { colors } from '../theme';
+import { Button, Icon, RowCard } from '../ui';
 
 const ROLES: [HouseholdRoleName, string][] = [
   ['admin', 'Admin'],
@@ -36,6 +40,7 @@ const days = (iso: string) => Math.max(0, Math.ceil((Date.parse(iso) - Date.now(
 /** FR-3–FR-6: who is in the household, and (for Admins) invites and roles. */
 export function HouseholdScreen({ claims }: { claims: Claims }) {
   const db = usePowerSync();
+  const { signOut } = useSession();
   const online = useNetworkOnline();
   const members = useMembers(claims.householdId);
   const name = useHouseholdName(claims.householdId);
@@ -304,6 +309,24 @@ export function HouseholdScreen({ claims }: { claims: Claims }) {
       >
         <Text style={link}>Invite a friend to Dishkept</Text>
       </Pressable>
+      {canWrite(claims.role) ? (
+        <RowCard
+          title="Trash"
+          subtitle="Deleted recipes, kept for 30 days"
+          href="/trash"
+          leading={<Icon name="trash-outline" color={colors.muted} />}
+          trailing={<Icon name="chevron-forward" color={colors.muted} />}
+        />
+      ) : null}
+      <Button
+        variant="secondary"
+        icon="log-out-outline"
+        label="Sign out"
+        onPress={() => {
+          clearFilter();
+          void signOut();
+        }}
+      />
     </ScrollView>
   );
 }

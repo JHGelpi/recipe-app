@@ -69,14 +69,14 @@ test('search works within Favorites, and a missing tag there says so', async ({ 
   await page.getByText('Fried rice', { exact: true }).click();
   await page.getByRole('button', { name: 'Star', exact: true }).click();
   await page.getByRole('link', { name: 'All recipes' }).click();
-  await page.getByRole('tab', { name: 'Favorites' }).click();
+  await page.getByRole('link', { name: 'Favorites', exact: true }).click();
   await page.getByLabel('Search recipes').fill('rice');
   await expect.poll(() => shown(page, TITLES)).toEqual(['Fried rice']);
 
-  await page.getByRole('tab', { name: 'All' }).click();
+  await page.getByRole('link', { name: 'Recipes', exact: true }).click();
   await page.getByRole('button', { name: 'Tag spicy' }).click();
   await page.getByLabel('Search recipes').fill('');
-  await page.getByRole('tab', { name: 'Favorites' }).click();
+  await page.getByRole('link', { name: 'Favorites', exact: true }).click();
   await expect(page.getByText('No recipes match')).toBeVisible();
 });
 

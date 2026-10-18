@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import {
+  openAdd,
   addRecipe,
   findRecipe,
   freshEmail,
@@ -24,6 +25,7 @@ async function choose(page: Page, button: string, files: string[]): Promise<void
 }
 
 async function photoTab(page: Page): Promise<void> {
+  await openAdd(page);
   await page.getByRole('button', { name: /^Import/ }).click();
   await page.getByRole('tab', { name: 'Photo' }).click();
 }
@@ -130,6 +132,7 @@ test('signing out leaves no photo in the browser (Review Focus 4)', async ({ pag
   await choose(page, 'Add photo', ['dish.jpg']);
   await expect(shown(page, 'Dish photo')).toBeVisible();
   await page.getByRole('link', { name: 'All recipes' }).click();
+  await page.getByRole('link', { name: 'Household' }).click();
   await page.getByRole('button', { name: 'Sign out' }).click();
   await expect(page.getByRole('heading', { name: /sign in/i })).toBeVisible();
   // The wipe runs just after the sign-in screen appears; wait for it.

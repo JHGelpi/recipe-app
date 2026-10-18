@@ -78,6 +78,7 @@ test('signing out while offline still wipes the local data', async ({ browser })
   await expect(page.getByText('Online · 0 unsynced')).toBeVisible({ timeout: 30_000 });
 
   await page.context().setOffline(true);
+  await page.getByRole('link', { name: 'Household' }).click();
   await page.getByRole('button', { name: 'Sign out' }).click();
   await expect(page.getByLabel('Email')).toBeVisible();
 

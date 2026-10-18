@@ -1,5 +1,5 @@
 import { useQuery, useStatus } from '@powersync/react';
-import { Text } from 'react-native';
+import { Text } from '../ui';
 
 export function StatusLine() {
   const status = useStatus();
@@ -7,5 +7,9 @@ export function StatusLine() {
   const { data } = useQuery<{ pending: number }>('select count(*) as pending from ps_crud');
   const pending = data[0]?.pending ?? 0;
   const label = `${status.connected ? 'Online' : 'Offline'} · ${pending} unsynced`;
-  return <Text aria-label="Sync status">{label}</Text>;
+  return (
+    <Text variant="small" tone="muted" aria-label="Sync status">
+      {label}
+    </Text>
+  );
 }
