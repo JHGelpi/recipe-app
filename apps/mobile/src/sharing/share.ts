@@ -1,3 +1,8 @@
+// Safari refuses the share sheet once the tap is too long ago (a PDF being
+// made, a link being created); that is not the person cancelling.
+const refusedByBrowser = (error: unknown) =>
+  (error as { name?: string })?.name === 'NotAllowedError';
+
 /** The share sheet with text, or the clipboard where there is none. */
 export async function shareOrCopy(content: {
   title: string;
@@ -8,8 +13,8 @@ export async function shareOrCopy(content: {
     try {
       await nav.share(content);
       return 'shared';
-    } catch {
-      return 'cancelled';
+    } catch (error) {
+      if (!refusedByBrowser(error)) return 'cancelled';
     }
   }
   try {
@@ -30,8 +35,8 @@ export async function shareFile(
     try {
       await nav.share({ files: [file], title });
       return 'shared';
-    } catch {
-      return 'cancelled';
+    } catch (error) {
+      if (!refusedByBrowser(error)) return 'cancelled';
     }
   }
   const url = URL.createObjectURL(file);
