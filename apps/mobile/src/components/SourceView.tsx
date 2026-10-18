@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Linking, Pressable, Text, View } from 'react-native';
+import { Linking } from 'react-native';
 import { linkHost } from '../imports/review';
 import type { RecipeSource } from '../recipes/rows';
-
-const link = { textDecorationLine: 'underline' } as const;
+import { colors, radius, space } from '../theme';
+import { Button, Card, Text } from '../ui';
 
 /** FR-12, NFR-13: where a recipe came from: its site and author, or the original text. */
 export function SourceView({ source }: { source: RecipeSource }) {
@@ -13,14 +13,16 @@ export function SourceView({ source }: { source: RecipeSource }) {
   const by = source.source_author ? ` · by ${source.source_author}` : '';
 
   return (
-    <View style={{ gap: 6 }}>
-      <Text role="heading" aria-level={2} style={{ fontSize: 18, fontWeight: '600' }}>
-        Source
-      </Text>
+    <Card title="Source">
       {host ? (
         <Text>
           {'From '}
-          <Text role="link" style={link} onPress={() => void Linking.openURL(source.source_url!)}>
+          <Text
+            role="link"
+            tone="accent"
+            style={{ textDecorationLine: 'underline' }}
+            onPress={() => void Linking.openURL(source.source_url!)}
+          >
             {host}
           </Text>
           {by}
@@ -30,16 +32,26 @@ export function SourceView({ source }: { source: RecipeSource }) {
       ) : null}
       {source.source_text ? (
         <>
-          <Pressable role="button" aria-expanded={open} onPress={() => setOpen((value) => !value)}>
-            <Text style={link}>{open ? 'Original text ▾' : 'Original text ▸'}</Text>
-          </Pressable>
+          <Button
+            variant="ghost"
+            label={open ? 'Original text ▾' : 'Original text ▸'}
+            aria-expanded={open}
+            onPress={() => setOpen((value) => !value)}
+          />
           {open ? (
-            <Text selectable style={{ backgroundColor: '#f4f4f4', padding: 8, borderRadius: 6 }}>
+            <Text
+              selectable
+              style={{
+                backgroundColor: colors.raised,
+                padding: space.sm,
+                borderRadius: radius.field,
+              }}
+            >
               {source.source_text}
             </Text>
           ) : null}
         </>
       ) : null}
-    </View>
+    </Card>
   );
 }

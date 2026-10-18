@@ -1,10 +1,10 @@
 import { useQuery } from '@powersync/react';
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
 import { withSession } from '../imports/api';
 import type { RecipeRecord } from '../recipes/rows';
 import { canWrite, type Claims } from '../session/claims';
 import { stopShares } from '../sharing/api';
+import { Banner, Button, Card, Text } from '../ui';
 import { confirm } from './confirm';
 
 /** FR-27: how many links point at this recipe, and Stop sharing (admins and members). */
@@ -17,11 +17,13 @@ export function SharedLinks({ claims, recipe }: { claims: Claims; recipe: Recipe
   const count = Number(data[0]?.n ?? 0);
   if (count === 0 || !canWrite(claims.role)) return null;
   return (
-    <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-      <Text>Shared links: {count} · </Text>
-      <Pressable
-        role="button"
-        style={{ minHeight: 44, justifyContent: 'center' }}
+    <Card title="Shared links" level={3}>
+      <Text tone="muted">
+        {count === 1 ? '1 link shows this recipe' : `${count} links show this recipe`}
+      </Text>
+      <Button
+        variant="danger"
+        label="Stop sharing"
         onPress={async () => {
           if (
             !(await confirm(
@@ -32,10 +34,12 @@ export function SharedLinks({ claims, recipe }: { claims: Claims; recipe: Recipe
           const result = await withSession((deps) => stopShares(recipe.id, deps));
           setMessage(result?.ok ? null : (result?.message ?? 'Sharing a link needs a connection'));
         }}
-      >
-        <Text style={{ textDecorationLine: 'underline', color: '#b00020' }}>Stop sharing</Text>
-      </Pressable>
-      {message ? <Text role="alert">{message}</Text> : null}
-    </View>
+      />
+      {message ? (
+        <Banner tone="danger" role="alert">
+          {message}
+        </Banner>
+      ) : null}
+    </Card>
   );
 }

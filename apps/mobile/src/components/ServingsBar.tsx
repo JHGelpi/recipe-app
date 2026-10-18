@@ -1,18 +1,14 @@
 import { formatAmount, stepScale, stepServings, type UnitSystem } from '@recipe-app/domain';
-import { Pressable, Text, View } from 'react-native';
+import { View } from 'react-native';
 import type { CookPlace } from '../cooking/place';
+import { space } from '../theme';
+import { Chip, IconButton, Text } from '../ui';
 
 const UNIT_LABELS: [UnitSystem, string][] = [
   ['as_written', 'As written'],
   ['us', 'US'],
   ['metric', 'Metric'],
 ];
-const box = {
-  minWidth: 44,
-  minHeight: 44,
-  alignItems: 'center',
-  justifyContent: 'center',
-} as const;
 
 /** FR-22, FR-23: servings (or scale) and units, for display only. */
 export function ServingsBar({
@@ -36,34 +32,23 @@ export function ServingsBar({
       ? onChange({ servings: stepServings(place.servings ?? recipeServings, delta) })
       : onChange({ scale: stepScale(place.scale, delta) });
   return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <Pressable role="button" aria-label="Fewer servings" onPress={() => step(-1)} style={box}>
-          <Text style={{ fontSize: size + 4 }}>−</Text>
-        </Pressable>
-        <Text style={{ fontSize: size, minWidth: 90, textAlign: 'center' }}>{label}</Text>
-        <Pressable role="button" aria-label="More servings" onPress={() => step(1)} style={box}>
-          <Text style={{ fontSize: size + 4 }}>+</Text>
-        </Pressable>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space.md }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+        <IconButton icon="remove" label="Fewer servings" filled onPress={() => step(-1)} />
+        <Text variant="label" style={{ fontSize: size, minWidth: 90, textAlign: 'center' }}>
+          {label}
+        </Text>
+        <IconButton icon="add" label="More servings" filled onPress={() => step(1)} />
       </View>
-      <View style={{ flexDirection: 'row', gap: 4 }}>
+      <View style={{ flexDirection: 'row', gap: space.sm }}>
         {UNIT_LABELS.map(([units, text]) => (
-          <Pressable
+          <Chip
             key={units}
-            role="button"
+            label={text}
+            tone={place.units === units ? 'selected' : 'neutral'}
             aria-pressed={place.units === units}
             onPress={() => onChange({ units })}
-            style={{
-              ...box,
-              paddingHorizontal: 10,
-              borderRadius: 6,
-              backgroundColor: place.units === units ? '#e6f0ea' : 'transparent',
-            }}
-          >
-            <Text style={{ fontSize: size, fontWeight: place.units === units ? '700' : '400' }}>
-              {text}
-            </Text>
-          </Pressable>
+          />
         ))}
       </View>
     </View>

@@ -10,6 +10,7 @@ test('Move to Trash, then Restore, on two sessions', async ({ browser }) => {
   await createRecipe(member, { title });
 
   member.once('dialog', (dialog) => void dialog.accept());
+  await member.getByRole('button', { name: 'More', exact: true }).click();
   await member.getByRole('button', { name: 'Move to Trash' }).click();
   await expect(member.getByRole('heading', { name: 'Recipes', level: 1 })).toBeVisible();
   await expectNotListed(member, title);

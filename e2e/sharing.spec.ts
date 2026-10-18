@@ -100,6 +100,7 @@ test('a link to a trashed recipe is no longer shared', async ({ page, browser })
   await page.getByRole('button', { name: 'Share' }).click();
   await page.getByRole('button', { name: 'Link' }).click();
   const url = (await page.getByLabel('Share link').textContent())!.trim();
+  await page.getByRole('button', { name: 'More', exact: true }).click();
   await page.getByRole('button', { name: 'Move to Trash' }).click();
   // The trash is saved on the phone first; the link changes once it uploads.
   await expect(page.getByText('Online · 0 unsynced')).toBeVisible({ timeout: 30_000 });

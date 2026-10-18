@@ -145,5 +145,6 @@ test('a viewer sees recipes but no New recipe, Edit, Move to Trash, or Trash', a
   await expect(page.getByRole('heading', { name: 'Seed pancakes', level: 1 })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Edit' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Move to Trash' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'More', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /^(Star|Unstar)$/ })).toBeVisible();
 });

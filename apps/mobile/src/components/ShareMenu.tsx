@@ -1,7 +1,7 @@
 import { usePowerSync } from '@powersync/react';
 import { shareText } from '@recipe-app/domain';
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { View } from 'react-native';
 import { useNetworkOnline } from '../db/useNetworkOnline';
 import { waitForUploads } from '../household/uploads';
 import { withSession } from '../imports/api';
@@ -9,9 +9,8 @@ import { usePhotoUri } from '../photos/usePhotoUri';
 import type { RecipeRecord } from '../recipes/rows';
 import { createShare } from '../sharing/api';
 import { shareFile, shareOrCopy } from '../sharing/share';
-
-const link = { textDecorationLine: 'underline' } as const;
-const box = { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 } as const;
+import { colors, radius, space } from '../theme';
+import { Button, Card, Text } from '../ui';
 
 async function dataUrlOf(uri: string): Promise<string> {
   const blob = await (await fetch(uri)).blob();
@@ -24,11 +23,10 @@ async function dataUrlOf(uri: string): Promise<string> {
 }
 
 /** FR-26, FR-27: Share as text, PDF, or a link. Every role may share. */
-export function ShareMenu({ recipe }: { recipe: RecipeRecord }) {
+export function SharePanel({ recipe }: { recipe: RecipeRecord }) {
   const db = usePowerSync();
   const online = useNetworkOnline();
   const photo = usePhotoUri(recipe.photo_id);
-  const [open, setOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [linkText, setLinkText] = useState<string | null>(null);
 
@@ -74,38 +72,43 @@ export function ShareMenu({ recipe }: { recipe: RecipeRecord }) {
   }
 
   return (
-    <View style={{ gap: 6 }}>
-      <Pressable
-        role="button"
-        aria-expanded={open}
-        onPress={() => setOpen((value) => !value)}
-        style={box}
-      >
-        <Text style={link}>Share</Text>
-      </Pressable>
-      {open ? (
-        <View style={{ flexDirection: 'row', gap: 12 }}>
-          <Pressable role="button" onPress={() => void text()} style={box}>
-            <Text style={link}>Text</Text>
-          </Pressable>
-          <Pressable role="button" onPress={() => void pdf()} style={box}>
-            <Text style={link}>PDF</Text>
-          </Pressable>
-          <Pressable role="button" onPress={() => void shareLink()} style={box}>
-            <Text style={link}>Link</Text>
-          </Pressable>
-        </View>
-      ) : null}
+    <Card>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+        <Button
+          variant="secondary"
+          icon="document-text-outline"
+          label="Text"
+          onPress={() => void text()}
+        />
+        <Button
+          variant="secondary"
+          icon="document-text-outline"
+          label="PDF"
+          onPress={() => void pdf()}
+        />
+        <Button
+          variant="secondary"
+          icon="link-outline"
+          label="Link"
+          onPress={() => void shareLink()}
+        />
+      </View>
       {linkText ? (
         <Text
           aria-label="Share link"
           selectable
-          style={{ backgroundColor: '#f4f4f4', padding: 8, borderRadius: 6 }}
+          variant="small"
+          tone="accent"
+          style={{ backgroundColor: colors.raised, padding: space.sm, borderRadius: radius.field }}
         >
           {linkText}
         </Text>
       ) : null}
-      {message ? <Text role="status">{message}</Text> : null}
-    </View>
+      {message ? (
+        <Text role="status" variant="small" tone="muted">
+          {message}
+        </Text>
+      ) : null}
+    </Card>
   );
 }
