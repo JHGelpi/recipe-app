@@ -184,6 +184,38 @@ services:
       timeout: 5s
       retries: 30
 
+  backup:
+    build:
+      context: .
+      dockerfile: deploy/backup.Dockerfile
+    profiles: [backup]
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: ${TZ:-America/New_York}
+      BACKUP_TIME: ${BACKUP_TIME:-03:30}
+      BACKUP_BUCKET: ${BACKUP_BUCKET:-}
+      BACKUP_REMOTE: ${BACKUP_REMOTE:-}
+      BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:-}
+      BACKUP_ALERT_TO: ${BACKUP_ALERT_TO:-}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      SMTP_FROM: ${SMTP_FROM}
+      SMTP_SENDER_NAME: ${SMTP_SENDER_NAME:-Dishkept}
+      # rclone's GCS remote, named "offsite", from the environment.
+      RCLONE_CONFIG_OFFSITE_TYPE: 'google cloud storage'
+      RCLONE_CONFIG_OFFSITE_SERVICE_ACCOUNT_FILE: /run/secrets/gcs.json
+      RCLONE_CONFIG_OFFSITE_BUCKET_POLICY_ONLY: 'true'
+    volumes:
+      # Read-write: a restore replaces the files. Back up with the database (ADR-0013).
+      - photos:/data/photos
+      - backups:/backups
+
   mail:
     image: axllent/mailpit:v1.31.5
     profiles: [dev]
@@ -194,3 +226,4 @@ services:
 volumes:
   db_data:
   photos:
+  backups:

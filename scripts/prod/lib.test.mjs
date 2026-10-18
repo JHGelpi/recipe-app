@@ -5,6 +5,7 @@ import {
   composeArgs,
   deployBlockers,
   DRILL_PROFILES,
+  drillCounts,
   normalizeEmail,
   productionSignals,
 } from './lib.mjs';
@@ -67,4 +68,15 @@ it('compose args name the project, env file and both files; the drill never star
   ]);
   expect(composeArgs('dishkept-drill')[1]).toBe('dishkept-drill');
   expect(DRILL_PROFILES).not.toContain('tunnel');
+});
+
+it('the drill reports every count that differs from the manifest', () => {
+  const manifest = { counts: { users: 2, recipes: 10, photo_files: 3 } };
+  expect(drillCounts(manifest, { users: 2, recipes: 10, photo_files: 3 })).toEqual([]);
+  expect(drillCounts(manifest, { users: 2, recipes: 9, photo_files: 3 })).toEqual([
+    'recipes: backup 10, restored 9',
+  ]);
+  expect(drillCounts(manifest, { users: 2, recipes: 10 })).toEqual([
+    'photo_files: backup 3, restored missing',
+  ]);
 });

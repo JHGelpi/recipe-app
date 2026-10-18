@@ -70,3 +70,12 @@ export function buildProdEnv(template, values) {
     })
     .join('\n');
 }
+
+/** Every count that differs between a backup's manifest and what a drill restored. */
+export function drillCounts(manifest, actual) {
+  return Object.entries(manifest.counts).flatMap(([name, expected]) =>
+    actual[name] === expected
+      ? []
+      : [`${name}: backup ${expected}, restored ${actual[name] ?? 'missing'}`],
+  );
+}

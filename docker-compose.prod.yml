@@ -10,7 +10,9 @@ services:
       TRUSTED_PROXIES: private_ranges
     volumes: !override
       - caddy_data:/data
-  # backup: (added with the backup service, Task 5)
+  backup:
+    volumes:
+      - ${GCS_KEY_FILE:-./.local/gcs-backup-key.json}:/run/secrets/gcs.json:ro
   cloudflared:
     image: cloudflare/cloudflared:2026.10.0
     profiles: [tunnel]

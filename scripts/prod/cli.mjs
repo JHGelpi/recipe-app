@@ -5,6 +5,8 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { createInterface } from 'node:readline/promises';
 import {
   backupAge,
+  drillCounts,
+  DRILL_PROFILES,
   buildProdEnv,
   composeArgs,
   deployBlockers,
@@ -49,6 +51,23 @@ const literal = (value) => `'${value.replaceAll("'", "''")}'`;
 
 if (process.env.COMPOSE_FILE) fail('Unset COMPOSE_FILE first: prod:* names its own files.');
 const [command, ...rest] = process.argv.slice(2);
+
+/** The newest local copy, or the named day's; fetched from GCS when it is not local. */
+async function fetchBackup(date) {
+  const name = (args) =>
+    compose(['run', '--rm', '-T', '--entrypoint', 'sh', 'backup', '-c', args], {
+      stdio: ['ignore', 'pipe', 'inherit'],
+      encoding: 'utf8',
+    }).stdout.trim();
+  const wanted = date
+    ? `dishkept-${date}.tar.age`
+    : name('ls -1 /backups/dishkept-*.tar.age 2>/dev/null | sort | tail -n 1 | xargs -r basename');
+  if (!wanted) fail('No local backup; name a date to fetch one from GCS.');
+  name(
+    `[ -f /backups/${wanted} ] || rclone copyto "offsite:$BACKUP_BUCKET/${wanted}" /backups/${wanted}`,
+  );
+  return `/backups/${wanted}`;
+}
 
 const commands = {
   async init() {
@@ -171,6 +190,115 @@ const commands = {
   },
 
   'backup-now': () => compose(['run', '--rm', 'backup', 'now']),
+
+  async restore() {
+    const date = rest[0];
+    if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) fail('Usage: pnpm prod:restore [YYYY-MM-DD]');
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    const keyPath = (await rl.question('Path to your age private key file: ')).trim();
+    if (!existsSync(keyPath)) fail(`No file at ${keyPath}`);
+    const file = await fetchBackup(date);
+    console.log(
+      `Restoring ${file}. Everything saved after it is lost unless a phone still holds it unsynced.`,
+    );
+    if ((await rl.question('Type "restore" to continue: ')).trim() !== 'restore')
+      fail('Cancelled.');
+    rl.close();
+    compose(['stop', 'api', 'auth', 'sync', 'proxy']);
+    const result = compose([
+      'run',
+      '--rm',
+      '-v',
+      `${keyPath}:/run/secrets/age.key:ro`,
+      'backup',
+      'restore',
+      file,
+    ]);
+    if (result.status !== 0) fail('Restore failed; the stack is stopped. pnpm prod:logs backup');
+    compose(['up', '-d', '--wait']);
+    compose(['restart', 'sync']);
+    commands.status();
+  },
+
+  async 'restore-test'() {
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    const keyPath = (await rl.question('Path to your age private key file: ')).trim();
+    rl.close();
+    const file = await fetchBackup();
+    const drill = (args, opts = {}) =>
+      spawnSync(
+        'docker',
+        ['compose', ...composeArgs('dishkept-drill'), ...profiles(DRILL_PROFILES), ...args],
+        { encoding: 'utf8', ...opts },
+      );
+    try {
+      drill(['up', '-d', '--wait', 'db']);
+      // Read the file straight from production's backups volume, read-only.
+      const source = `/source/${file.split('/').pop()}`;
+      const restored = drill([
+        'run',
+        '--rm',
+        '-v',
+        'dishkept_backups:/source:ro',
+        '-v',
+        `${keyPath}:/run/secrets/age.key:ro`,
+        'backup',
+        'restore',
+        source,
+      ]);
+      if (restored.status !== 0) fail(`Drill restore failed:\n${restored.stderr}`);
+      const manifest = JSON.parse(
+        restored.stdout.slice(restored.stdout.indexOf('{'), restored.stdout.lastIndexOf('}') + 1),
+      );
+      if (drill(['up', '-d', '--wait']).status !== 0)
+        fail('The restored drill stack did not become healthy');
+      const q = (sql) =>
+        Number(
+          drill([
+            'exec',
+            '-T',
+            'db',
+            'psql',
+            '-U',
+            'postgres',
+            '-d',
+            'app',
+            '-Atc',
+            sql,
+          ]).stdout.trim(),
+        );
+      const actual = Object.fromEntries(
+        [
+          ['users', 'auth.users'],
+          ['households', 'public.households'],
+          ['memberships', 'public.memberships'],
+          ['recipes', 'public.recipes'],
+          ['photos', 'public.photos'],
+          ['shares', 'public.shares'],
+        ].map(([k, t]) => [k, q(`select count(*) from ${t}`)]),
+      );
+      actual.photo_files = Number(
+        drill([
+          'run',
+          '--rm',
+          '--entrypoint',
+          'sh',
+          'backup',
+          '-c',
+          'find /data/photos -type f | wc -l',
+        ]).stdout.trim(),
+      );
+      const diffs = drillCounts(manifest, actual);
+      console.log(
+        diffs.length
+          ? `DRILL FAILED:\n- ${diffs.join('\n- ')}`
+          : `DRILL PASSED: ${JSON.stringify(actual)}`,
+      );
+      if (diffs.length) process.exitCode = 1;
+    } finally {
+      drill(['down', '-v'], { stdio: 'inherit' });
+    }
+  },
 };
 
 const run = commands[command];
