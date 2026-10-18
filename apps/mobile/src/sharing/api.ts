@@ -36,26 +36,37 @@ export const stopShares = (recipeId: string, deps: ApiDeps) =>
 export const saveShare = (code: string, deps: ApiDeps) =>
   call<{ recipe_id: string }>(deps, `/shares/${code}/save`);
 
-/** No token: a shared page is readable by anyone with the link. */
+/**
+ * Readable by anyone with the link. A signed-in reader's token, when given,
+ * only tells whether the share is from their own household.
+ */
 export async function readShare(
   code: string,
   fetchImpl: typeof fetch,
   apiUrl: string,
+  token?: string | null,
 ): Promise<
-  { ok: true; snapshot: ShareSnapshot; hasPhoto: boolean } | { ok: false; status: string }
+  | { ok: true; snapshot: ShareSnapshot; hasPhoto: boolean; own: boolean }
+  | { ok: false; status: string }
 > {
   try {
     const response = await fetchImpl(`${apiUrl}/shares/${encodeURIComponent(code)}`, {
       cache: 'no-store',
-      headers: {},
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
     const json = (await response.json().catch(() => null)) as {
       snapshot?: ShareSnapshot;
       has_photo?: boolean;
+      own?: boolean;
       status?: string;
     } | null;
     if (response.ok && json?.snapshot)
-      return { ok: true, snapshot: json.snapshot, hasPhoto: Boolean(json.has_photo) };
+      return {
+        ok: true,
+        snapshot: json.snapshot,
+        hasPhoto: Boolean(json.has_photo),
+        own: json.own === true,
+      };
     return { ok: false, status: json?.status ?? 'unknown' };
   } catch {
     return { ok: false, status: 'offline' };

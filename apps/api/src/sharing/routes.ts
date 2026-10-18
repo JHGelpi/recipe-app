@@ -50,9 +50,10 @@ export function registerSharingRoutes(app: Hono, deps: { sharing: SharingService
   app.get('/api/shares/:code', async (c) => {
     c.header('Cache-Control', 'no-store');
     if (!CODE.test(c.req.param('code'))) return c.json({ status: 'unknown' }, 404);
-    const { status, snapshot } = await sharing.read(c.req.param('code'));
+    const token = bearer(c.req.header('Authorization'));
+    const { status, snapshot, own } = await sharing.read(c.req.param('code'), token);
     if (status !== 'ok' || !snapshot) return c.json({ status }, 404);
-    return c.json({ snapshot, has_photo: snapshot.photo !== null });
+    return c.json({ snapshot, has_photo: snapshot.photo !== null, own });
   });
 
   app.get('/api/shares/:code/photo', async (c) => {

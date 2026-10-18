@@ -1,5 +1,13 @@
 import { expect, test } from '@playwright/test';
-import { createRecipe, freshEmail, requestCode, SEED, signIn, unique } from './helpers';
+import {
+  createRecipe,
+  freshEmail,
+  requestCode,
+  SEED,
+  signIn,
+  unique,
+  waitForServiceWorker,
+} from './helpers';
 
 test.beforeEach(({ page }) => {
   page.on('dialog', (dialog) => void dialog.accept());
@@ -101,4 +109,54 @@ test('a link to a trashed recipe is no longer shared', async ({ page, browser })
     timeout: 30_000,
   });
   await visitor.context().close();
+});
+
+test('the sharing household sees "already in your household" and no Save (Review Focus 5)', async ({
+  page,
+}) => {
+  await signIn(page, freshEmail('share-own'));
+  const title = unique('Own soup');
+  await soup(page, title);
+  await page.getByRole('button', { name: 'Share' }).click();
+  await page.getByRole('button', { name: 'Link' }).click();
+  const url = (await page.getByLabel('Share link').textContent())!.trim();
+  await page.goto(url);
+  await expect(page.getByRole('heading', { name: title })).toBeVisible();
+  await expect(page.getByText('This recipe is already in your household')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Save to my recipes' })).toHaveCount(0);
+});
+
+test('offline, the shared page says so and loads when the connection returns (Final 7, 8)', async ({
+  page,
+  browser,
+}) => {
+  await signIn(page, freshEmail('share-net'));
+  const title = unique('Net soup');
+  await soup(page, title);
+  await page.getByRole('button', { name: 'Share' }).click();
+  await page.getByRole('button', { name: 'Link' }).click();
+  const url = (await page.getByLabel('Share link').textContent())!.trim();
+
+  const context = await browser.newContext();
+  const visitor = await context.newPage();
+  await signIn(visitor, freshEmail('share-net-visitor'));
+  await visitor.goto(url);
+  await expect(visitor.getByRole('heading', { name: title })).toBeVisible();
+  // A save waiting from before sign-in, then the connection drops.
+  const code = url.split('/s/')[1]!;
+  await visitor.evaluate(
+    ([c, t]) =>
+      sessionStorage.setItem('recipes.pendingShare', JSON.stringify({ code: c, title: t })),
+    [code, title],
+  );
+  await waitForServiceWorker(visitor);
+  await context.setOffline(true);
+  // Not reloadOffline(): its brief online blip would let the page take the entry itself.
+  await visitor.reload();
+  await expect(visitor.getByText('Opening a shared recipe needs a connection')).toBeVisible();
+  // Taken even offline, so the list is not sent back here (Final 8).
+  expect(await visitor.evaluate(() => sessionStorage.getItem('recipes.pendingShare'))).toBeNull();
+  await context.setOffline(false);
+  await expect(visitor.getByRole('heading', { name: title })).toBeVisible({ timeout: 15_000 });
+  await context.close();
 });

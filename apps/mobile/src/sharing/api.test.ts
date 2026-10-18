@@ -31,6 +31,22 @@ describe('sharing api', () => {
     expect(new Headers(init?.headers).has('Authorization')).toBe(false);
   });
 
+  it('sends a signed-in reader’s token, and says whether the share is theirs (Review Focus 5)', async () => {
+    const snapshot = { title: 'Soup', photo: null };
+    const fetchImpl = vi.fn(async () =>
+      json(200, { snapshot, has_photo: false, own: true }),
+    ) as unknown as typeof fetch;
+    expect(await readShare(CODE, fetchImpl, 'https://app.test/api', 'jwt')).toEqual({
+      ok: true,
+      snapshot,
+      hasPhoto: false,
+      own: true,
+    });
+    const [, init] = (fetchImpl as unknown as { mock: { calls: [string, RequestInit][] } }).mock
+      .calls[0]!;
+    expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer jwt');
+  });
+
   it.each([
     [403, 'forbidden', "Viewers can't add recipes. Ask an admin of your household."],
     [409, 'own_household', 'This recipe is already in your household'],

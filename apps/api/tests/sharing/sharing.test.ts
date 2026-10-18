@@ -141,4 +141,24 @@ describe('sharing endpoints', () => {
       await adminSql`select id from public.photos where recipe_id = ${recipe_id} and deleted_at is null`;
     expect(live).toHaveLength(0);
   });
+
+  it('tells a signed-in reader from the sharing household that it is already theirs (Review Focus 5)', async () => {
+    const owner = await fresh();
+    const other = await fresh();
+    const recipe = await recipeWithPhoto(owner, 'Ours already');
+    const { code } = (await (
+      await call(owner, 'POST', '/shares', { recipe_id: recipe })
+    ).json()) as {
+      code: string;
+    };
+    expect(await (await call(owner, 'GET', `/shares/${code}`)).json()).toMatchObject({ own: true });
+    expect(await (await call(other, 'GET', `/shares/${code}`)).json()).toMatchObject({
+      own: false,
+    });
+    expect(await (await call(null, 'GET', `/shares/${code}`)).json()).toMatchObject({ own: false });
+    const bad = await fetch(`${env.apiUrl}/shares/${code}`, {
+      headers: { Authorization: 'Bearer nope' },
+    });
+    expect(await bad.json()).toMatchObject({ own: false });
+  });
 });

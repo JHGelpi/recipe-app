@@ -14,7 +14,11 @@ export class ShareRefusal extends Error {
 export type SharingService = {
   create(token: string, recipeId: string): Promise<{ code: string }>;
   stop(token: string, recipeId: string): Promise<number>;
-  read(code: string): Promise<{ status: string; snapshot: ShareSnapshot | null }>;
+  /** `own`: the token, when given and valid, belongs to the household that shared it. */
+  read(
+    code: string,
+    token?: string | null,
+  ): Promise<{ status: string; snapshot: ShareSnapshot | null; own: boolean }>;
   photo(code: string): Promise<Uint8Array | null>;
   save(token: string, code: string): Promise<{ recipe_id: string }>;
 };
@@ -126,9 +130,22 @@ export function createSharingService(deps: {
         }),
       ),
 
-    async read(code) {
-      const { status, snapshot } = await read(code);
-      return { status, snapshot };
+    async read(code, token) {
+      const { status, snapshot, householdId } = await read(code);
+      let own = false;
+      if (token && status === 'ok' && householdId) {
+        // A bad or expired token reads as a visitor: the page needs no account.
+        const home = await deps
+          .asUser(token, async (tx) => {
+            const [me] = await tx<
+              { home: string | null }[]
+            >`select public.auth_household_id() as home`;
+            return me?.home ?? null;
+          })
+          .catch(() => null);
+        own = home === householdId;
+      }
+      return { status, snapshot, own };
     },
 
     async photo(code) {

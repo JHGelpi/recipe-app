@@ -79,7 +79,11 @@ describe('sharing service', () => {
 
   it('reads a share anonymously, and copies the photo file on save; a missing photo still saves (Review Focus 4)', async () => {
     const { service } = setup({ 'public.read_share(': [{ status: 'stopped', snapshot: null }] });
-    expect(await service.read('c'.repeat(43))).toEqual({ status: 'stopped', snapshot: null });
+    expect(await service.read('c'.repeat(43))).toEqual({
+      status: 'stopped',
+      snapshot: null,
+      own: false,
+    });
     const saving = setup(
       {
         'public.save_share(': [

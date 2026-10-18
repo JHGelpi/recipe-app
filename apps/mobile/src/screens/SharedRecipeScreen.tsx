@@ -16,23 +16,54 @@ const heading = { fontSize: 18, fontWeight: '600' } as const;
 export function SharedRecipeScreen({ code }: { code: string }) {
   const { state } = useSession();
   const online = useNetworkOnline();
-  const [share, setShare] = useState<{ snapshot: ShareSnapshot; hasPhoto: boolean } | null>(null);
+  const [share, setShare] = useState<{
+    snapshot: ShareSnapshot;
+    hasPhoto: boolean;
+    own: boolean;
+  } | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const signedIn = state.status === 'signedIn';
+
+  // Coming back from sign-in for this share: nothing more to do than show it.
+  // Taken even offline, so the list does not send the person back here.
+  useEffect(() => {
+    takePendingShare();
+  }, [code]);
 
   useEffect(() => {
     if (!online) {
       setStatus('offline');
       return;
     }
-    void readShare(code, (input, init) => fetch(input, init), config.apiUrl).then((result) => {
-      if (result.ok) setShare({ snapshot: result.snapshot, hasPhoto: result.hasPhoto });
-      else setStatus(result.status);
-    });
-    // Coming back from sign-in for this share: nothing more to do than show it.
-    takePendingShare();
-  }, [code, online]);
+    let live = true;
+    void (async () => {
+      // Signed in, the token only tells whether the share is from this household.
+      const result =
+        (signedIn
+          ? await withSession((deps) => readShare(code, deps.fetch, deps.apiUrl, deps.token))
+          : null) ?? (await readShare(code, (input, init) => fetch(input, init), config.apiUrl));
+      if (!live) return;
+      if (result.ok) {
+        setShare({ snapshot: result.snapshot, hasPhoto: result.hasPhoto, own: result.own });
+        setStatus(null);
+      } else {
+        setStatus(result.status);
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, [code, online, signedIn, attempt]);
+
+  // A phone can report a connection it does not have: try again while it lasts.
+  useEffect(() => {
+    if (status !== 'offline' || !online) return;
+    const timer = setTimeout(() => setAttempt((value) => value + 1), 5_000);
+    return () => clearTimeout(timer);
+  }, [status, online]);
 
   async function save() {
     if (!share) return;
@@ -78,21 +109,25 @@ export function SharedRecipeScreen({ code }: { code: string }) {
         />
       ) : null}
       {times ? <Text>{times}</Text> : null}
-      <Pressable
-        role="button"
-        aria-disabled={saving}
-        disabled={saving}
-        onPress={() => void save()}
-        style={{
-          backgroundColor: '#1a5d3a',
-          borderRadius: 8,
-          minHeight: 44,
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}
-      >
-        <Text style={{ color: '#fff', fontSize: 16 }}>Save to my recipes</Text>
-      </Pressable>
+      {share.own ? (
+        <Text role="status">{SHARE_MESSAGES.own_household}</Text>
+      ) : (
+        <Pressable
+          role="button"
+          aria-disabled={saving}
+          disabled={saving}
+          onPress={() => void save()}
+          style={{
+            backgroundColor: '#1a5d3a',
+            borderRadius: 8,
+            minHeight: 44,
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <Text style={{ color: '#fff', fontSize: 16 }}>Save to my recipes</Text>
+        </Pressable>
+      )}
       {message ? <Text role="alert">{message}</Text> : null}
       {recipe.ingredients.length > 0 ? (
         <View style={{ gap: 4 }}>
