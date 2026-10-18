@@ -58,12 +58,12 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 ### Households & users
 | ID | Requirement | Pri |
 |---|---|---|
-| FR-1 | Sign up / sign in with an email one-time code | M |
+| FR-1 | Sign up / sign in with an email one-time code. Sign-up is limited to allowed addresses and invited people (ADR-0018) | M |
 | FR-2 | Creating an account creates a household; creator becomes Admin | M |
 | FR-3 | Admin invites people into the household by text or email link *(built in sub-project 6)* | M |
 | FR-4 | Roles: Admin, Member, Viewer with permissions per §2 | M |
 | FR-5 | Admin can change roles and remove members *(built in sub-project 6)* | M |
-| FR-6 | Any user can invite someone to create their own household *(built in sub-project 6)* | S |
+| FR-6 | Any user can invite someone to create their own household *(built in sub-project 6; friend links in the production sub-project)* | S |
 
 ### Capture & import
 | ID | Requirement | Pri |
@@ -126,8 +126,8 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 | NFR-5 | Sync latency | Online edits visible on other household devices within ~10 s. |
 | NFR-6 | Performance | Cold start < 2 s on a mid-range phone; local search < 300 ms over 2,000 recipes; photo parse < 30 s p90. |
 | NFR-7 | AI cost | Per-household monthly AI spend tracked and capped: $2.00 by default (`AI_MONTHLY_CAP_USD`). |
-| NFR-8 | Availability | Backend 99.5% monthly (best effort for a family-scale app). |
-| NFR-9 | Data durability | Daily backups with point-in-time recovery; no data loss on device reinstall once synced. |
+| NFR-8 | Availability | Best effort on a home PC; move to a VM when uptime matters (ADR-0018). |
+| NFR-9 | Data durability | Nightly encrypted off-site backups kept 30 days; restore tested (ADR-0018). No data loss on device reinstall once synced. |
 | NFR-10 | Portability | Household can export all recipes (JSON + PDFs). |
 | NFR-11 | Accessibility | Supports OS dynamic text size, VoiceOver/TalkBack, WCAG AA contrast. |
 | NFR-12 | Store compliance | Native builds only: in-app account deletion; Sign in with Apple offered on iOS if other social sign-in is offered. |
@@ -138,5 +138,5 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 1. Confirm one-household-per-user for v1.
 2. Confirm or cut the *(proposed)* FRs.
 3. Review NFR targets. The AI cap is set at $2.00 per household per month; revisit with monetization.
-4. Working app name.
+4. ~~Working app name.~~ Dishkept (ADR-0017).
 5. Monetization, if any, once other households join (affects AI quota design).

@@ -25,6 +25,7 @@
     "prod:status": "node scripts/prod/cli.mjs status",
     "prod:logs": "node scripts/prod/cli.mjs logs",
     "prod:stop": "node scripts/prod/cli.mjs stop",
+    "prod:start": "node scripts/prod/cli.mjs start",
     "prod:allow": "node scripts/prod/cli.mjs allow",
     "prod:disallow": "node scripts/prod/cli.mjs disallow",
     "prod:allowed": "node scripts/prod/cli.mjs allowed",

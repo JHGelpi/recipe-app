@@ -32,6 +32,10 @@ pnpm test:api                # upload and import tests (needs dev:backend:test +
 pnpm test:e2e                # Playwright against the built app at PUBLIC_URL; starts test mode itself
 pnpm eval:import             # parse eval against the real Claude API (needs ANTHROPIC_API_KEY; manual)
 pnpm photos:samples          # regenerate the photo fixtures and eval samples (Playwright's Chromium)
+pnpm test:backup             # backup → restore drill round trip against the test stack (local folder for GCS)
+pnpm test:prod-config        # the production overlay publishes no ports; drills never start the tunnel
+# Production: only `pnpm prod:*` (init, deploy, status, logs, stop, start, allow, disallow, allowed, gate,
+# backup-now, restore, restore-test) touches it; see docs/RUNBOOK.md.
 # After test runs, `pnpm dev:backend` switches the stack back to the real AI service.
 # After changing powersync/sync-config.yaml, restart sync: `docker compose restart sync` (it reads the file only at start).
 pnpm lint && pnpm typecheck
@@ -46,6 +50,7 @@ pnpm lint && pnpm typecheck
 6. **Sync rules mirror RLS.** Changing one means changing the other. RLS lives in `db/migrations/`, sync config in `powersync/sync-config.yaml`.
 7. **AI output is untrusted.** Validate against the zod schema in `packages/domain`; never write raw LLM output to the DB. Prompts live in versioned files, not inline strings.
 8. **Keep the original.** Imports always store the source photo/URL/text (FR-12).
+9. **Production is off-limits to dev and tests.** Never run test, seed or reset commands against the `dishkept` project; `scripts/guard.mjs` refuses them. Only `pnpm prod:*` touches production (ADR-0018).
 
 ## Conventions
 - TypeScript strict mode everywhere. No `any` without a comment explaining why.

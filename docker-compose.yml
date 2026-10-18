@@ -211,6 +211,8 @@ services:
       RCLONE_CONFIG_OFFSITE_TYPE: 'google cloud storage'
       RCLONE_CONFIG_OFFSITE_SERVICE_ACCOUNT_FILE: /run/secrets/gcs.json
       RCLONE_CONFIG_OFFSITE_BUCKET_POLICY_ONLY: 'true'
+      # The service account may only create and read objects, not inspect or create buckets.
+      RCLONE_CONFIG_OFFSITE_NO_CHECK_BUCKET: 'true'
     volumes:
       # Read-write: a restore replaces the files. Back up with the database (ADR-0013).
       - photos:/data/photos

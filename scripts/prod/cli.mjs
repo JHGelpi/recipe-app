@@ -167,6 +167,8 @@ const commands = {
 
   logs: () => compose(['logs', '--tail', '200', ...rest]),
   stop: () => compose(['stop']),
+  // Starts the containers already built, from any branch (deploy is what updates them).
+  start: () => compose(['start']),
 
   allow() {
     const email = normalizeEmail(rest[0] ?? '') ?? fail('Usage: pnpm prod:allow you@example.com');
