@@ -1,4 +1,5 @@
 import { expect, type Browser, type Locator, type Page } from '@playwright/test';
+import postgres from 'postgres';
 import { env } from '../test-support/env';
 import { watchMailbox } from '../test-support/mail';
 
@@ -169,4 +170,14 @@ export async function expectNotListed(page: Page, title: string): Promise<void> 
   await page.getByLabel('Search recipes').fill(title);
   await expect(page.getByText('No recipes match')).toBeVisible();
   await expect(page.getByText(title, { exact: true })).toHaveCount(0);
+}
+
+/** The sign-up gate is shared state; specs that turn it on turn it off in afterEach. */
+export async function setGate(on: boolean): Promise<void> {
+  const sql = postgres(env.adminDbUrl, { max: 1, onnotice: () => {} });
+  try {
+    await sql`update public.signup_settings set gate_on = ${on}`;
+  } finally {
+    await sql.end();
+  }
 }

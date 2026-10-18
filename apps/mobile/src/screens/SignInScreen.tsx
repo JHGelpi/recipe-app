@@ -9,7 +9,7 @@ import { Banner, Button, Card, Screen, Text, TextField } from '../ui';
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- Metro asset
 const MARK = require('../../assets/brand/mark.png');
 
-export function SignInScreen() {
+export function SignInScreen({ intro }: { intro?: string } = {}) {
   const { requestCode, verifyCode } = useSession();
   const [step, setStep] = useState<'email' | 'code'>('email');
   const [email, setEmail] = useState('');
@@ -47,6 +47,7 @@ export function SignInScreen() {
         <Text tone="muted">Keep Your Kitchen Inspired</Text>
       </View>
       <Card title="Sign in">
+        {intro ? <Text>{intro}</Text> : null}
         {pendingShare ? (
           <Text>Sign in or create an account to save {pendingShare.title}</Text>
         ) : null}

@@ -1,7 +1,14 @@
 export type Tab = 'recipes' | 'favorites' | 'household';
 
 // Pages that fill the screen or are seen signed out (UI spec §4).
-const HIDDEN = [/^\/sign-in$/, /^\/invite\//, /^\/s\//, /^\/photo\//, /^\/recipe\/[^/]+\/cook$/];
+const HIDDEN = [
+  /^\/sign-in$/,
+  /^\/invite\//,
+  /^\/s\//,
+  /^\/photo\//,
+  /^\/recipe\/[^/]+\/cook$/,
+  /^\/welcome\//,
+];
 
 export function showTabBar(path: string, signedIn: boolean): boolean {
   return signedIn && !HIDDEN.some((pattern) => pattern.test(path));
