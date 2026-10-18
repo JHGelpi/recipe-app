@@ -59,4 +59,40 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // The Dishkept look: colors come from src/theme, text from src/ui (UI spec §3).
+    files: ['apps/mobile/src/**/*.{ts,tsx}', 'apps/mobile/app/**/*.{ts,tsx}'],
+    ignores: ['apps/mobile/src/theme/**', '**/*.test.ts', 'apps/mobile/src/sharing/pdf.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'Literal[value=/^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/]',
+          message: 'Use a color from src/theme.',
+        },
+        {
+          selector: 'Literal[value=/^rgba?\\(/]',
+          message: 'Use a color from src/theme.',
+        },
+      ],
+    },
+  },
+  {
+    files: ['apps/mobile/src/**/*.tsx', 'apps/mobile/app/**/*.tsx'],
+    ignores: ['apps/mobile/src/ui/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'react-native',
+              importNames: ['Text', 'TextInput'],
+              message: 'Use Text and TextField from src/ui.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 );

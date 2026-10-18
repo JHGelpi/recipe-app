@@ -34,3 +34,12 @@ test('a recipe with no photo shows the quiet placeholder, announced as nothing (
   await expect(page.getByTestId('thumb-placeholder').first()).toBeVisible();
   await expect(page.getByRole('img', { name: `Photo of ${title}` })).toHaveCount(0);
 });
+
+test('if the fonts never load, text uses the system font (Review Focus 3)', async ({ page }) => {
+  await page.route('**/*.ttf', (route) => route.abort());
+  await page.goto('/sign-in');
+  const heading = page.getByRole('heading', { name: 'Dishkept' });
+  await expect(heading).toBeVisible();
+  const family = await heading.evaluate((element) => getComputedStyle(element).fontFamily);
+  expect(family).toContain('system-ui');
+});

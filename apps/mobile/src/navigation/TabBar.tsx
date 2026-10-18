@@ -25,7 +25,7 @@ function TabLink({ tab, current }: { tab: Tab; current: boolean }) {
         aria-label={item.label}
         aria-current={current ? 'page' : undefined}
         style={{
-          minWidth: 72,
+          flex: 1,
           minHeight: 48,
           alignItems: 'center',
           justifyContent: 'center',
@@ -72,43 +72,45 @@ export function TabBar() {
         <TabLink tab="favorites" current={current === 'favorites'} />
         {/* Viewers cannot add recipes: no "+" for them (rule 4). */}
         {canWrite(claims.role) ? (
-          <Pressable
-            role="button"
-            aria-label={addLabel(ready)}
-            onPress={() => setAdding(true)}
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 28,
-              marginTop: -24,
-              backgroundColor: colors.accent,
-              alignItems: 'center',
-              justifyContent: 'center',
-              ...shadow,
-            }}
-          >
-            <Icon name="add" size={30} color={colors.onAccent} />
-            {ready > 0 ? (
-              <View
-                style={{
-                  position: 'absolute',
-                  top: -2,
-                  right: -2,
-                  minWidth: 20,
-                  height: 20,
-                  borderRadius: 10,
-                  paddingHorizontal: 4,
-                  backgroundColor: colors.tag,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Text variant="caption" tone="onAccent">
-                  {ready}
-                </Text>
-              </View>
-            ) : null}
-          </Pressable>
+          <View style={{ flex: 1, alignItems: 'center' }}>
+            <Pressable
+              role="button"
+              aria-label={addLabel(ready)}
+              onPress={() => setAdding(true)}
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: 28,
+                marginTop: -24,
+                backgroundColor: colors.accent,
+                alignItems: 'center',
+                justifyContent: 'center',
+                ...shadow,
+              }}
+            >
+              <Icon name="add" size={30} color={colors.onAccent} />
+              {ready > 0 ? (
+                <View
+                  style={{
+                    position: 'absolute',
+                    top: -2,
+                    right: -2,
+                    minWidth: 20,
+                    height: 20,
+                    borderRadius: 10,
+                    paddingHorizontal: 4,
+                    backgroundColor: colors.tag,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text variant="caption" tone="onAccent">
+                    {ready}
+                  </Text>
+                </View>
+              ) : null}
+            </Pressable>
+          </View>
         ) : null}
         <TabLink tab="household" current={current === 'household'} />
       </View>
