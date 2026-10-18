@@ -5,6 +5,8 @@
 
 ## 1. Vision
 
+The app is named **Dishkept** (ADR-0017).
+
 A shared household cookbook that pulls every recipe out of the places it's scattered (Google Drive, iCloud, Notes, cookbooks, websites), cleans it up automatically with AI, and makes it instantly findable — then helps you shop and plan from it.
 
 **Core problem:** recipes are fragmented across many tools, inconsistently formatted, and hard to search.
