@@ -23,6 +23,9 @@ export function Chip({
     paddingHorizontal: space.md,
     paddingVertical: space.xs,
     maxWidth: 200,
+    // In a row it gives way first, ending in an ellipsis (Review Focus 1).
+    flexShrink: 1,
+    minWidth: 0,
     justifyContent: 'center',
   };
   // A long tag shortens with an ellipsis (Review Focus 1).

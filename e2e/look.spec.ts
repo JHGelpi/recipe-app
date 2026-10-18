@@ -13,6 +13,21 @@ test('a long title wraps and the star stays on screen (Review Focus 1)', async (
   expect(box.x + box.width).toBeLessThanOrEqual(390);
 });
 
+test('a long tag and a total time stay clear of the star (Final 3)', async ({ page }) => {
+  await signIn(page, freshEmail('look-meta'));
+  await createRecipe(page, {
+    title: unique('Meta soup'),
+    prep: '35',
+    cook: '60',
+    tags: 'a-really-long-tag-name-that-goes-on-on',
+  });
+  await page.getByRole('link', { name: 'Recipes', exact: true }).click();
+  const time = page.getByText('1 h 35 min');
+  const star = page.getByRole('button', { name: 'Star', exact: true }).first();
+  const [t, s] = [(await time.boundingBox())!, (await star.boundingBox())!];
+  expect(t.x + t.width).toBeLessThanOrEqual(s.x);
+});
+
 test('the end of the list scrolls clear of the tab bar (Review Focus 2)', async ({ page }) => {
   await signIn(page, freshEmail('look-end'));
   for (let i = 0; i < 6; i++) await createRecipe(page, { title: unique(`End soup ${i}`) });

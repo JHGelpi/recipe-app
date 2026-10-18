@@ -105,7 +105,14 @@ export function RecipeListScreen({
                 >
                   {item.tags[0] ? <Chip label={item.tags[0]} tone="tag" /> : null}
                   {item.totalMinutes !== null ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: space.xs,
+                        flexShrink: 0,
+                      }}
+                    >
                       <Icon name="time-outline" size={14} color={colors.muted} />
                       <Text variant="caption" tone="muted">
                         {durationLabel(item.totalMinutes)}
