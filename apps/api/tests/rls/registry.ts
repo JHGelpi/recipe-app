@@ -13,6 +13,7 @@ export const TENANT_TABLES = [
   'substitutions',
   'invites',
   'shares',
+  'friend_links',
 ] as const;
 
 /** The column that holds the tenant id in each table. */
@@ -27,4 +28,11 @@ export const TENANT_COLUMN: Record<(typeof TENANT_TABLES)[number], string> = {
   substitutions: 'household_id',
   invites: 'household_id',
   shares: 'household_id',
+  friend_links: 'household_id',
 };
+
+/**
+ * Public tables that hold no household data (production spec §4): RLS on,
+ * no policies, no grants. Only security definer functions and postgres reach them.
+ */
+export const SYSTEM_TABLES = ['signup_allowed', 'signup_passes', 'signup_settings'] as const;
