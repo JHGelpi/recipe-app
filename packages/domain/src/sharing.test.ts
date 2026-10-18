@@ -125,4 +125,11 @@ describe('pdfSafeText (Review Focus 3)', () => {
     expect(pdfSafeText('½ cup · 350°F – • ¾')).toBe('½ cup · 350°F – • ¾');
     expect(pdfSafeText('Crème brûlée ≈ 2 → ok')).toBe('Crème brûlée ~ 2 -> ok');
   });
+
+  it('spells out every other fraction, the fraction slash, and stands in for what the font cannot show (Final 3)', () => {
+    expect(pdfSafeText('⅕ ⅙ ⅚ ⅐ ⅑ ⅒ ⅖ ⅗ ⅘ 2⅕')).toBe('1/5 1/6 5/6 1/7 1/9 1/10 2/5 3/5 4/5 2 1/5');
+    expect(pdfSafeText('1⁄2 cup')).toBe('1/2 cup');
+    expect(pdfSafeText('Pierogi z łososiem 🍲 “ok” — €5')).toBe('Pierogi z ?ososiem ? “ok” — €5');
+    expect(pdfSafeText('Line one\nline two')).toBe('Line one\nline two');
+  });
 });

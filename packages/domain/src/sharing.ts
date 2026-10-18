@@ -124,23 +124,35 @@ export function shareText(recipe: Omit<ShareableRecipe, 'tags'>): string {
   return sections.map((lines) => lines.join('\n')).join('\n\n');
 }
 
-// The PDF's built-in font (WinAnsi) has ½ ¼ ¾ ° • – · but not these.
+// The PDF's built-in font (WinAnsi) has ½ ¼ ¾ ° • – · but not the other
+// vulgar fractions (U+2150–215F, U+2189) or the fraction slash.
+const FRACTIONS = /[\u2150-\u215F\u2189]/g;
 const PDF_FALLBACKS: [RegExp, string][] = [
-  [/(\d)([⅓⅔⅛⅜⅝⅞])/g, '$1 $2'],
-  [/⅓/g, '1/3'],
-  [/⅔/g, '2/3'],
-  [/⅛/g, '1/8'],
-  [/⅜/g, '3/8'],
-  [/⅝/g, '5/8'],
-  [/⅞/g, '7/8'],
   [/≈/g, '~'],
   [/→/g, '->'],
+  [/\u2044/g, '/'],
 ];
+// WinAnsi's characters outside Latin-1.
+const WIN_ANSI_EXTRA = new Set('€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ');
 
-/** Text the PDF's built-in font can show (Review Focus 3). */
-export function pdfSafeText(text: string): string {
-  return PDF_FALLBACKS.reduce(
-    (value, [pattern, replacement]) => value.replace(pattern, replacement),
-    text,
+function inWinAnsi(char: string): boolean {
+  const code = char.codePointAt(0)!;
+  return (
+    char === '\n' ||
+    char === '\t' ||
+    (code >= 0x20 && code <= 0x7e) ||
+    (code >= 0xa0 && code <= 0xff) ||
+    WIN_ANSI_EXTRA.has(char)
   );
+}
+
+/** Text the PDF's built-in font can show; anything else becomes "?" (Review Focus 3). */
+export function pdfSafeText(text: string): string {
+  const spelled = PDF_FALLBACKS.reduce(
+    (value, [pattern, replacement]) => value.replace(pattern, replacement),
+    text
+      .replace(/(\d)([\u2150-\u215F\u2189])/g, '$1 $2')
+      .replace(FRACTIONS, (fraction) => fraction.normalize('NFKC')),
+  );
+  return Array.from(spelled, (char) => (inWinAnsi(char) ? char : '?')).join('');
 }
