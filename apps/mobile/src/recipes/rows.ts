@@ -111,7 +111,11 @@ export function trashDaysLeft(deletedAt: string, now: number): number {
   return Math.max(0, Math.ceil((deleted + TRASH_DAYS * DAY_MS - now) / DAY_MS));
 }
 
-export type ListRow = SearchSource & { starred: boolean; photoId: string | null };
+export type ListRow = SearchSource & {
+  starred: boolean;
+  photoId: string | null;
+  totalMinutes: number | null;
+};
 
 function listOf(value: unknown): unknown[] {
   try {
@@ -120,6 +124,17 @@ function listOf(value: unknown): unknown[] {
   } catch {
     return [];
   }
+}
+
+function minutesOf(value: unknown): number | null {
+  const n = typeof value === 'string' ? Number(value) : value;
+  return typeof n === 'number' && Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+/** Prep plus cook, or null when neither is known. */
+function totalOf(prep: unknown, cook: unknown): number | null {
+  const [p, c] = [minutesOf(prep), minutesOf(cook)];
+  return p === null && c === null ? null : (p ?? 0) + (c ?? 0);
 }
 
 /**
@@ -138,5 +153,6 @@ export function listRowFrom(row: Record<string, unknown>): ListRow {
     }),
     starred: Boolean(row.starred),
     photoId: typeof row.photo_id === 'string' ? row.photo_id : null,
+    totalMinutes: totalOf(row.prep_minutes, row.cook_minutes),
   };
 }

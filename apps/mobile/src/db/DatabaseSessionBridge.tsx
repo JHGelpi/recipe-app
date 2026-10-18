@@ -16,6 +16,7 @@ import { useSession } from '../session/SessionProvider';
 import { createConnector } from '../sync/connector';
 import { purgeTrashIfDue } from '../sync/purge';
 import { dbOwner } from './dbOwner';
+import { clearFilter } from '../recipes/listFilter';
 import { useNetworkOnline } from './useNetworkOnline';
 
 const connector = createConnector();
@@ -73,6 +74,8 @@ export function DatabaseSessionBridge({ children }: { children: ReactNode }) {
             console.error('Clearing photos failed', error),
           );
           if (globalThis.localStorage) clearAllPlaces(globalThis.localStorage);
+          // A search typed in the old household means nothing in the new one.
+          clearFilter();
           await db.disconnectAndClear();
           dbOwner.clear();
         }

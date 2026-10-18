@@ -1,16 +1,8 @@
 import { usePowerSync } from '@powersync/react';
-import { Link, router } from 'expo-router';
+import { router } from 'expo-router';
 import { PAGE_EDGE, PHOTO_LIMITS } from '@recipe-app/domain';
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  Image,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Image, View } from 'react-native';
 import { confirm } from '../components/confirm';
 import { PhotoImage } from '../components/PhotoImage';
 import { useNetworkOnline } from '../db/useNetworkOnline';
@@ -25,16 +17,8 @@ import { PhotoReadError, preparePhoto } from '../photos/prepare';
 import { photoSaver } from '../photos/queue';
 import type { PhotoFile } from '../photos/repository';
 import { canWrite, type Claims } from '../session/claims';
-
-const green = '#1a5d3a';
-const link = { textDecorationLine: 'underline' } as const;
-const input = {
-  borderWidth: 1,
-  borderColor: '#888',
-  borderRadius: 6,
-  padding: 10,
-  fontSize: 16,
-} as const;
+import { colors, radius, space } from '../theme';
+import { Banner, Button, Card, IconButton, PillTabs, Screen, Text, TextField } from '../ui';
 
 /** FR-7, FR-8, FR-9, FR-29: photos, pasted text or a link; follow imports until they are ready to review. */
 export function ImportScreen({ claims }: { claims: Claims }) {
@@ -51,7 +35,11 @@ export function ImportScreen({ claims }: { claims: Claims }) {
   const [busy, setBusy] = useState(false);
 
   if (!canWrite(claims.role)) {
-    return <Text style={{ padding: 16 }}>Viewers cannot import recipes.</Text>;
+    return (
+      <Screen>
+        <Text>Viewers cannot import recipes.</Text>
+      </Screen>
+    );
   }
   const value = kind === 'text' ? text : url;
   const empty = kind === 'photo' ? pages.length === 0 : value.trim() === '';
@@ -139,164 +127,158 @@ export function ImportScreen({ claims }: { claims: Claims }) {
   }
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, gap: 12, maxWidth: 640 }}>
-      <Link href="/" style={link}>
-        All recipes
-      </Link>
-      <Text role="heading" aria-level={1} style={{ fontSize: 24, fontWeight: '600' }}>
+    <Screen back={{ href: '/', label: 'All recipes' }}>
+      <Text role="heading" aria-level={1} variant="h1">
         Import a recipe
       </Text>
-      <View style={{ flexDirection: 'row', gap: 16 }}>
-        {(['text', 'url', 'photo'] as const).map((option) => (
-          <Pressable
-            key={option}
-            role="tab"
-            aria-selected={kind === option}
-            onPress={() => {
-              setKind(option);
-              setError(null);
-            }}
-          >
-            <Text style={{ fontWeight: kind === option ? '700' : '400' }}>
-              {{ text: 'Paste text', url: 'Paste link', photo: 'Photo' }[option]}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-      {kind === 'photo' ? (
-        <View style={{ gap: 8 }}>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {pages.map((page, index) => (
-              <View key={page.preview} style={{ gap: 4, alignItems: 'center' }}>
-                <Image
-                  source={{ uri: page.preview }}
-                  accessibilityLabel={`Page ${index + 1}`}
-                  style={{ width: 90, height: 120, borderRadius: 4 }}
-                />
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  {index > 0 ? (
-                    <Pressable
-                      role="button"
-                      aria-label={`Move page ${index + 1} left`}
-                      onPress={() => movePage(index, index - 1)}
-                    >
-                      <Text>◀</Text>
-                    </Pressable>
-                  ) : null}
-                  <Pressable
-                    role="button"
-                    aria-label={`Remove page ${index + 1}`}
-                    onPress={() => removePage(index)}
-                  >
-                    <Text style={{ color: '#b00020' }}>✕</Text>
-                  </Pressable>
-                  {index < pages.length - 1 ? (
-                    <Pressable
-                      role="button"
-                      aria-label={`Move page ${index + 1} right`}
-                      onPress={() => movePage(index, index + 1)}
-                    >
-                      <Text>▶</Text>
-                    </Pressable>
-                  ) : null}
+      <PillTabs
+        tabs={[
+          { value: 'text', label: 'Paste text' },
+          { value: 'url', label: 'Paste link' },
+          { value: 'photo', label: 'Photo' },
+        ]}
+        value={kind}
+        onChange={(option) => {
+          setKind(option);
+          setError(null);
+        }}
+      />
+      <Card>
+        {kind === 'photo' ? (
+          <View style={{ gap: space.sm }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+              {pages.map((page, index) => (
+                <View key={page.preview} style={{ gap: space.xs, alignItems: 'center' }}>
+                  <Image
+                    source={{ uri: page.preview }}
+                    accessibilityLabel={`Page ${index + 1}`}
+                    style={{ width: 90, height: 120, borderRadius: radius.field }}
+                  />
+                  <View style={{ flexDirection: 'row' }}>
+                    {index > 0 ? (
+                      <IconButton
+                        icon="chevron-back"
+                        label={`Move page ${index + 1} left`}
+                        size={18}
+                        onPress={() => movePage(index, index - 1)}
+                      />
+                    ) : null}
+                    <IconButton
+                      icon="close"
+                      label={`Remove page ${index + 1}`}
+                      tone="danger"
+                      size={18}
+                      onPress={() => removePage(index)}
+                    />
+                    {index < pages.length - 1 ? (
+                      <IconButton
+                        icon="chevron-forward"
+                        label={`Move page ${index + 1} right`}
+                        size={18}
+                        onPress={() => movePage(index, index + 1)}
+                      />
+                    ) : null}
+                  </View>
                 </View>
-              </View>
-            ))}
+              ))}
+            </View>
+            {pages.length < PHOTO_LIMITS.pages ? (
+              <Button
+                variant="secondary"
+                icon="camera-outline"
+                label="Add page"
+                onPress={() => void addPages()}
+              />
+            ) : null}
           </View>
-          {pages.length < PHOTO_LIMITS.pages ? (
-            <Pressable role="button" onPress={() => void addPages()}>
-              <Text style={{ ...link, color: green, fontWeight: '600' }}>Add page</Text>
-            </Pressable>
-          ) : null}
-        </View>
-      ) : kind === 'text' ? (
-        <TextInput
-          aria-label="Recipe text"
-          placeholder="Paste a recipe from Notes, a message, or a comment"
-          value={text}
-          onChangeText={setText}
-          multiline
-          numberOfLines={10}
-          textAlignVertical="top"
-          style={{ ...input, minHeight: 180 }}
+        ) : kind === 'text' ? (
+          <TextField
+            label="Recipe text"
+            hideLabel
+            placeholder="Paste a recipe from Notes, a message, or a comment"
+            value={text}
+            onChangeText={setText}
+            multiline
+            numberOfLines={10}
+            textAlignVertical="top"
+            style={{ minHeight: 180 }}
+          />
+        ) : (
+          <TextField
+            label="Recipe link"
+            hideLabel
+            icon="link-outline"
+            placeholder="https://"
+            value={url}
+            onChangeText={setUrl}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+            inputMode="url"
+          />
+        )}
+        {error ? (
+          <Banner tone="danger" role="alert">
+            {error}
+          </Banner>
+        ) : null}
+        <Button
+          full
+          label="Import recipe"
+          disabled={empty}
+          aria-disabled={busy || empty}
+          onPress={() => void submit()}
         />
-      ) : (
-        <TextInput
-          aria-label="Recipe link"
-          placeholder="https://"
-          value={url}
-          onChangeText={setUrl}
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="url"
-          inputMode="url"
-          style={input}
-        />
-      )}
-      {error ? (
-        <Text role="alert" style={{ color: '#b00020' }}>
-          {error}
+        {notice ? <Text aria-live="polite">{notice}</Text> : null}
+        <Text variant="small" tone="muted">
+          AI this month:{' '}
+          {usage ? `${formatUsd(usage.spentUsd)} of ${formatUsd(usage.capUsd)}` : '–'}
         </Text>
-      ) : null}
-      <Pressable
-        role="button"
-        aria-disabled={busy || empty}
-        onPress={() => void submit()}
-        style={{ backgroundColor: empty ? '#999' : green, borderRadius: 6, padding: 12 }}
-      >
-        <Text style={{ color: '#fff', fontSize: 16, textAlign: 'center' }}>Import recipe</Text>
-      </Pressable>
-      {notice ? <Text aria-live="polite">{notice}</Text> : null}
-      <Text>
-        AI this month: {usage ? `${formatUsd(usage.spentUsd)} of ${formatUsd(usage.capUsd)}` : '–'}
-      </Text>
+      </Card>
 
       {imports.length > 0 ? (
-        <Text role="heading" aria-level={2} style={{ fontSize: 18, fontWeight: '600' }}>
+        <Text role="heading" aria-level={2} variant="h2">
           Imports
         </Text>
       ) : null}
       {imports.map((item) => {
         const view = importView(item, online);
         return (
-          <View
-            key={item.id}
-            style={{ gap: 4, borderTopWidth: 1, borderColor: '#ddd', paddingTop: 8 }}
-          >
-            {item.source_type === 'photo' && item.firstPage ? (
-              <PhotoImage
-                id={item.firstPage}
-                label="First page"
-                style={{ width: 48, height: 64, borderRadius: 4 }}
-              />
-            ) : null}
-            <Text numberOfLines={1} style={{ fontSize: 16 }}>
-              {importPreview(item)}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              {view.busy ? <ActivityIndicator size="small" /> : null}
-              <Text style={{ color: '#444', flex: 1 }}>{view.label}</Text>
+          <Card key={item.id}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+              {item.source_type === 'photo' && item.firstPage ? (
+                <PhotoImage
+                  id={item.firstPage}
+                  label="First page"
+                  style={{ width: 48, height: 64, borderRadius: radius.field }}
+                />
+              ) : null}
+              <View style={{ flex: 1, gap: space.xs }}>
+                <Text numberOfLines={1} variant="h3">
+                  {importPreview(item)}
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+                  {view.busy ? <ActivityIndicator size="small" color={colors.accent} /> : null}
+                  <Text variant="small" tone="muted" style={{ flex: 1 }}>
+                    {view.label}
+                  </Text>
+                </View>
+              </View>
             </View>
-            <View style={{ flexDirection: 'row', gap: 16 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
               {view.canReview ? (
-                <Pressable role="button" onPress={() => router.push(`/import/${item.id}`)}>
-                  <Text style={{ ...link, color: green, fontWeight: '600' }}>Review</Text>
-                </Pressable>
+                <Button label="Review" onPress={() => router.push(`/import/${item.id}`)} />
               ) : null}
               {view.canRetry ? (
-                <Pressable role="button" onPress={() => void retry(item.id)}>
-                  <Text style={link}>Try again</Text>
-                </Pressable>
+                <Button variant="secondary" label="Try again" onPress={() => void retry(item.id)} />
               ) : null}
               {!view.busy ? (
-                <Pressable role="button" onPress={() => void dismiss(item.id)}>
-                  <Text style={{ ...link, color: '#b00020' }}>Dismiss</Text>
-                </Pressable>
+                <Button variant="ghost" label="Dismiss" onPress={() => void dismiss(item.id)} />
               ) : null}
             </View>
-          </View>
+          </Card>
         );
       })}
-    </ScrollView>
+    </Screen>
   );
 }

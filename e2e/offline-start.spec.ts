@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import {
   addRecipe,
   expectNotListed,
@@ -117,6 +117,7 @@ test('signing out offline with an expired token signs out and wipes the local da
   await reloadOffline(page);
   await expect(await findRecipe(page, title)).toBeVisible();
 
+  await page.getByRole('link', { name: 'Household' }).click();
   await page.getByRole('button', { name: 'Sign out' }).click();
   await expect(page.getByLabel('Email')).toBeVisible({ timeout: 10_000 });
 

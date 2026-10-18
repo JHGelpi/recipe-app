@@ -6,6 +6,7 @@ export type ListItem = {
   tags: string[];
   starred: boolean;
   photoId: string | null;
+  totalMinutes: number | null;
 };
 
 /**
@@ -22,7 +23,14 @@ export function toListItems(
     const row = rows.get(id);
     if (!row || (favoritesOnly && !starred.has(id))) return [];
     return [
-      { id, title: row.title, tags: row.tags, starred: starred.has(id), photoId: row.photoId },
+      {
+        id,
+        title: row.title,
+        tags: row.tags,
+        starred: starred.has(id),
+        photoId: row.photoId,
+        totalMinutes: row.totalMinutes,
+      },
     ];
   });
 }

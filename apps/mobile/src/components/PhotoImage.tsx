@@ -1,5 +1,7 @@
-import { Image, Text, View, type ImageStyle } from 'react-native';
+import { Image, View, type ImageStyle } from 'react-native';
 import { usePhotoUri } from '../photos/usePhotoUri';
+import { colors } from '../theme';
+import { Text } from '../ui';
 
 /**
  * A household photo by id. While it cannot be shown it is a quiet grey box:
@@ -42,10 +44,13 @@ export function PhotoImage({
       testID="photo-placeholder"
       role="img"
       aria-label={label}
-      style={[style, { backgroundColor: '#eee', alignItems: 'center', justifyContent: 'center' }]}
+      style={[
+        style,
+        { backgroundColor: colors.raised, alignItems: 'center', justifyContent: 'center' },
+      ]}
     >
       {view.state === 'offline' ? (
-        <Text style={{ color: '#666', fontSize: 12, textAlign: 'center' }}>
+        <Text variant="caption" tone="muted" style={{ textAlign: 'center' }}>
           Available when online
         </Text>
       ) : null}

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { addRecipe, findRecipe, freshEmail, signIn } from './helpers';
 
 const CANNOT_STORE =

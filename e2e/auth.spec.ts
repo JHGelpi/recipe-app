@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { env } from '../test-support/env';
 import { watchMailbox } from '../test-support/mail';
 import { addRecipe, expectNotListed, freshEmail, requestCode, signIn } from './helpers';
@@ -50,6 +50,7 @@ test('the session survives a reload', async ({ page }) => {
 test('signing out wipes the local database', async ({ page }) => {
   await signIn(page, freshEmail('first'));
   await addRecipe(page, 'Secret stew');
+  await page.getByRole('link', { name: 'Household' }).click();
   await page.getByRole('button', { name: 'Sign out' }).click();
   await expect(page.getByLabel('Email')).toBeVisible();
 

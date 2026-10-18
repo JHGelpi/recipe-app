@@ -1,16 +1,16 @@
 import { usePowerSync } from '@powersync/react';
 import { DISH_EDGE } from '@recipe-app/domain';
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { View } from 'react-native';
 import { pickPhotos } from '../photos/pick';
 import { preparePhoto, PhotoReadError } from '../photos/prepare';
 import { photoSaver } from '../photos/queue';
 import { removeDishPhoto, setDishPhoto } from '../photos/repository';
 import { canWrite, type Claims } from '../session/claims';
+import { radius, space } from '../theme';
+import { Banner, Button } from '../ui';
 import { confirm } from './confirm';
 import { PhotoImage } from './PhotoImage';
-
-const link = { textDecorationLine: 'underline' } as const;
 
 /** FR-15: the recipe's dish photo, with Add / Change / Remove for admins and members. */
 export function DishPhoto({
@@ -42,36 +42,38 @@ export function DishPhoto({
   }
 
   return (
-    <View style={{ gap: 6 }}>
+    <View style={{ gap: space.sm }}>
       {photoId ? (
         <PhotoImage
           id={photoId}
           label="Dish photo"
-          style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: 6 }}
+          style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: radius.card }}
         />
       ) : null}
       {writer ? (
-        <View style={{ flexDirection: 'row', gap: 16 }}>
-          <Pressable role="button" onPress={() => void choose()}>
-            <Text style={link}>{photoId ? 'Change photo' : 'Add photo'}</Text>
-          </Pressable>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+          <Button
+            variant="secondary"
+            icon="camera-outline"
+            label={photoId ? 'Change photo' : 'Add photo'}
+            onPress={() => void choose()}
+          />
           {photoId ? (
-            <Pressable
-              role="button"
+            <Button
+              variant="ghost"
+              label="Remove photo"
               onPress={async () => {
                 if (await confirm('Remove the dish photo?'))
                   await removeDishPhoto(db, claims, recipeId);
               }}
-            >
-              <Text style={{ ...link, color: '#b00020' }}>Remove photo</Text>
-            </Pressable>
+            />
           ) : null}
         </View>
       ) : null}
       {error ? (
-        <Text role="alert" style={{ color: '#b00020' }}>
+        <Banner tone="danger" role="alert">
           {error}
-        </Text>
+        </Banner>
       ) : null}
     </View>
   );

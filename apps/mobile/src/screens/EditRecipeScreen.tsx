@@ -1,21 +1,30 @@
 import { usePowerSync } from '@powersync/react';
 import { router } from 'expo-router';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { RecipeEditor } from '../components/RecipeEditor';
 import { emptyForm, formFromRecipe } from '../recipes/form';
 import { useRecipe } from '../recipes/hooks';
 import { createRecipe, updateRecipe } from '../recipes/repository';
 import { canWrite, type Claims } from '../session/claims';
+import { Screen, Text } from '../ui';
 
 /** New recipe when `id` is null; otherwise edits that recipe. */
 export function EditRecipeScreen({ claims, id }: { claims: Claims; id: string | null }) {
   const db = usePowerSync();
   const { recipe } = useRecipe(id ?? '', claims.userId);
   if (!canWrite(claims.role))
-    return <Text style={{ padding: 16 }}>Viewers cannot edit recipes.</Text>;
+    return (
+      <Screen>
+        <Text>Viewers cannot edit recipes.</Text>
+      </Screen>
+    );
   if (id !== null && recipe === undefined) return null;
   if (id !== null && recipe === null) {
-    return <Text style={{ padding: 16 }}>This recipe could not be read.</Text>;
+    return (
+      <Screen>
+        <Text>This recipe could not be read.</Text>
+      </Screen>
+    );
   }
   const previous = recipe ?? null;
 

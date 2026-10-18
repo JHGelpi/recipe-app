@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Recipes",
+    "name": "Dishkept",
     "slug": "mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": true
     },
@@ -24,6 +24,6 @@
       "output": "single"
     },
     "scheme": "recipeapp",
-    "plugins": ["expo-router", "expo-status-bar"]
+    "plugins": ["expo-router", "expo-status-bar", "expo-font"]
   }
 }

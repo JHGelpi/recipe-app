@@ -1,13 +1,13 @@
 import { usePowerSync } from '@powersync/react';
 import { scaleFactor } from '@recipe-app/domain';
-import { Link, router } from 'expo-router';
+import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { View } from 'react-native';
 import { DishPhoto } from '../components/DishPhoto';
 import { IngredientList } from '../components/IngredientList';
 import { OriginalPhotos } from '../components/OriginalPhotos';
 import { ServingsBar } from '../components/ServingsBar';
-import { ShareMenu } from '../components/ShareMenu';
+import { SharePanel } from '../components/ShareMenu';
 import { SharedLinks } from '../components/SharedLinks';
 import { SourceView } from '../components/SourceView';
 import { StarButton } from '../components/StarButton';
@@ -18,6 +18,8 @@ import { restoreRecipe, trashRecipe } from '../recipes/repository';
 import type { RecipeRecord } from '../recipes/rows';
 import { canWrite, type Claims } from '../session/claims';
 import { takeSavedFlash } from '../sharing/pending';
+import { colors, space } from '../theme';
+import { Banner, Button, Card, Chip, Icon, IconButton, Screen, Text } from '../ui';
 import { useSubstitutions } from '../substitutions/hooks';
 
 function summary(recipe: RecipeRecord): string {
@@ -30,136 +32,146 @@ function summary(recipe: RecipeRecord): string {
     .join(' · ');
 }
 
-const link = { textDecorationLine: 'underline' } as const;
-
 export function RecipeScreen({ claims, id }: { claims: Claims; id: string }) {
   const db = usePowerSync();
   const { recipe, starred } = useRecipe(id, claims.userId);
   const writer = canWrite(claims.role);
   const pages = useRecipePages(id);
   const [saved] = useState(() => takeSavedFlash());
+  const [panel, setPanel] = useState<'share' | 'more' | null>(null);
   if (recipe === undefined) return null;
+  const toggle = (next: 'share' | 'more') =>
+    setPanel((current) => (current === next ? null : next));
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, gap: 12, maxWidth: 640 }}>
-      <Link href="/" style={link}>
-        All recipes
-      </Link>
+    <Screen back={{ href: '/', label: 'All recipes' }}>
       {recipe === null ? (
-        <Text role="alert">This recipe could not be read.</Text>
+        <Banner tone="danger" role="alert">
+          This recipe could not be read.
+        </Banner>
       ) : (
         <>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text
-              role="heading"
-              aria-level={1}
-              style={{ fontSize: 24, fontWeight: '600', flex: 1 }}
-            >
-              {recipe.title}
-            </Text>
-            <StarButton claims={claims} recipeId={recipe.id} starred={starred} />
-          </View>
-          {saved ? (
-            <Text
-              role="status"
-              style={{ backgroundColor: '#e6f0ea', padding: 10, borderRadius: 6 }}
-            >
-              Saved to your recipes
-            </Text>
-          ) : null}
           <DishPhoto
             claims={claims}
             recipeId={recipe.id}
             photoId={recipe.photo_id}
             editable={!recipe.deleted_at}
           />
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.sm }}>
+            <Text role="heading" aria-level={1} variant="h1" style={{ flex: 1 }}>
+              {recipe.title}
+            </Text>
+            <StarButton claims={claims} recipeId={recipe.id} starred={starred} />
+          </View>
+          {saved ? <Banner>Saved to your recipes</Banner> : null}
           {recipe.deleted_at ? (
-            <View style={{ gap: 8 }}>
-              <Text role="alert">This recipe is in the Trash</Text>
-              {writer ? (
-                <Pressable role="button" onPress={() => void restoreRecipe(db, claims, recipe.id)}>
-                  <Text style={link}>Restore</Text>
-                </Pressable>
-              ) : null}
+            <Banner
+              tone="tag"
+              role="alert"
+              action={
+                writer ? (
+                  <Button
+                    variant="ghost"
+                    label="Restore"
+                    onPress={() => void restoreRecipe(db, claims, recipe.id)}
+                  />
+                ) : null
+              }
+            >
+              This recipe is in the Trash
+            </Banner>
+          ) : null}
+          {summary(recipe) ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
+              <Icon name="time-outline" size={16} color={colors.muted} />
+              <Text tone="muted">{summary(recipe)}</Text>
             </View>
           ) : null}
-          {summary(recipe) ? <Text>{summary(recipe)}</Text> : null}
           {recipe.tags.length > 0 ? (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
               {recipe.tags.map((tag) => (
-                <Text
-                  key={tag}
-                  style={{ backgroundColor: '#e6f0ea', borderRadius: 10, paddingHorizontal: 8 }}
-                >
-                  {tag}
-                </Text>
+                <Chip key={tag} label={tag} tone="tag" />
               ))}
             </View>
           ) : null}
           {!recipe.deleted_at ? (
-            <Pressable
-              role="button"
-              onPress={() => router.push(`/recipe/${recipe.id}/cook`)}
-              style={{
-                backgroundColor: '#1a5d3a',
-                borderRadius: 8,
-                minHeight: 44,
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}
-            >
-              <Text style={{ color: '#fff', fontSize: 18 }}>Cook</Text>
-            </Pressable>
-          ) : null}
-          {!recipe.deleted_at ? <ShareMenu recipe={recipe} /> : null}
-          <SharedLinks claims={claims} recipe={recipe} />
-          {recipe.ingredients.length > 0 ? (
-            <IngredientsSection claims={claims} recipe={recipe} />
-          ) : null}
-          {recipe.steps.length > 0 ? (
-            <View style={{ gap: 6 }}>
-              <Text role="heading" aria-level={2} style={{ fontSize: 18, fontWeight: '600' }}>
-                Steps
-              </Text>
-              {recipe.steps.map((step, index) => (
-                <View key={step.id} style={{ flexDirection: 'row', gap: 8 }}>
-                  <Text aria-hidden>{index + 1}.</Text>
-                  <Text style={{ flex: 1 }}>{step.text}</Text>
-                </View>
-              ))}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+              <View style={{ flex: 1 }}>
+                <Button
+                  full
+                  icon="restaurant-outline"
+                  label="Cook"
+                  onPress={() => router.push(`/recipe/${recipe.id}/cook`)}
+                />
+              </View>
+              <IconButton
+                icon="share-outline"
+                label="Share"
+                filled
+                aria-expanded={panel === 'share'}
+                onPress={() => toggle('share')}
+              />
+              {writer ? (
+                <>
+                  <IconButton
+                    icon="create-outline"
+                    label="Edit"
+                    filled
+                    onPress={() => router.push(`/recipe/${recipe.id}/edit`)}
+                  />
+                  <IconButton
+                    icon="ellipsis-horizontal"
+                    label="More"
+                    filled
+                    aria-expanded={panel === 'more'}
+                    onPress={() => toggle('more')}
+                  />
+                </>
+              ) : null}
             </View>
           ) : null}
-          {recipe.notes ? (
-            <View style={{ gap: 4 }}>
-              <Text role="heading" aria-level={2} style={{ fontSize: 18, fontWeight: '600' }}>
-                Notes
-              </Text>
-              <Text>{recipe.notes}</Text>
-            </View>
-          ) : null}
-          <SourceView source={recipe} />
-          <OriginalPhotos ids={pages} />
-          {writer && !recipe.deleted_at ? (
-            <View style={{ flexDirection: 'row', gap: 16 }}>
-              <Pressable role="button" onPress={() => router.push(`/recipe/${recipe.id}/edit`)}>
-                <Text style={link}>Edit</Text>
-              </Pressable>
-              <Pressable
-                role="button"
+          {panel === 'share' && !recipe.deleted_at ? <SharePanel recipe={recipe} /> : null}
+          {panel === 'more' && writer && !recipe.deleted_at ? (
+            <Card>
+              <Button
+                variant="danger"
+                icon="trash-outline"
+                label="Move to Trash"
                 onPress={async () => {
                   if (await confirm(`Move "${recipe.title}" to the Trash?`)) {
                     await trashRecipe(db, claims, recipe.id);
                     router.replace('/');
                   }
                 }}
-              >
-                <Text style={{ ...link, color: '#b00020' }}>Move to Trash</Text>
-              </Pressable>
-            </View>
+              />
+            </Card>
           ) : null}
+          <SharedLinks claims={claims} recipe={recipe} />
+          {recipe.ingredients.length > 0 ? (
+            <IngredientsSection claims={claims} recipe={recipe} />
+          ) : null}
+          {recipe.steps.length > 0 ? (
+            <Card title="Steps">
+              {recipe.steps.map((step, index) => (
+                <View key={step.id} style={{ flexDirection: 'row', gap: space.md }}>
+                  <Text aria-hidden tone="accent" variant="h3">
+                    {index + 1}
+                  </Text>
+                  <Text style={{ flex: 1 }}>{step.text}</Text>
+                </View>
+              ))}
+            </Card>
+          ) : null}
+          {recipe.notes ? (
+            <Card title="Notes">
+              <Text>{recipe.notes}</Text>
+            </Card>
+          ) : null}
+          <SourceView source={recipe} />
+          <OriginalPhotos ids={pages} />
         </>
       )}
-    </ScrollView>
+    </Screen>
   );
 }
 
@@ -172,10 +184,7 @@ function IngredientsSection({ claims, recipe }: { claims: Claims; recipe: Recipe
   const substitutions = useSubstitutions(recipe.id);
   const factor = scaleFactor(recipe.servings, place.servings, place.scale);
   return (
-    <View style={{ gap: 8 }}>
-      <Text role="heading" aria-level={2} style={{ fontSize: 18, fontWeight: '600' }}>
-        Ingredients
-      </Text>
+    <Card title="Ingredients">
       <ServingsBar recipeServings={recipe.servings} place={place} onChange={update} />
       <IngredientList
         claims={claims}
@@ -185,6 +194,6 @@ function IngredientsSection({ claims, recipe }: { claims: Claims; recipe: Recipe
         units={place.units}
         substitutions={substitutions}
       />
-    </View>
+    </Card>
   );
 }

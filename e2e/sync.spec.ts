@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { addRecipe, expectNotListed, findRecipe, SEED, session, unique } from './helpers';
 
 const NFR5_MS = 10_000; // NFR-5: visible on other devices within ~10 s

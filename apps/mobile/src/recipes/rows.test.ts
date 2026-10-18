@@ -106,6 +106,7 @@ describe('listRowFrom', () => {
       ingredients: ['2 cups flour', '1 tsp salt'],
       starred: true,
       photoId: null,
+      totalMinutes: null,
     });
   });
 
@@ -114,6 +115,16 @@ describe('listRowFrom', () => {
       'quick',
       'two words',
     ]);
+  });
+
+  it('adds prep and cook into a total, or null when neither is known', () => {
+    expect(
+      listRowFrom({ id: 'r1', title: 'x', prep_minutes: 15, cook_minutes: 40 }).totalMinutes,
+    ).toBe(55);
+    expect(
+      listRowFrom({ id: 'r1', title: 'x', prep_minutes: null, cook_minutes: 20 }).totalMinutes,
+    ).toBe(20);
+    expect(listRowFrom({ id: 'r1', title: 'x' }).totalMinutes).toBeNull();
   });
 
   it('keeps the title and drops what it cannot read', () => {
@@ -132,6 +143,7 @@ describe('listRowFrom', () => {
       ingredients: ['ok'],
       starred: false,
       photoId: null,
+      totalMinutes: null,
     });
     expect(listRowFrom({ id: 'r2', title: 'Old', tags: null, ingredients: null })).toMatchObject({
       tags: [],

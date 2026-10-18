@@ -1,8 +1,10 @@
 import { displayIngredient, type Ingredient, type UnitSystem } from '@recipe-app/domain';
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import type { Claims } from '../session/claims';
 import type { SubstitutionRecord } from '../substitutions/rows';
+import { colors, radius, space } from '../theme';
+import { Button, Icon, Text } from '../ui';
 import { SubstitutePanel } from './SubstitutePanel';
 
 /**
@@ -35,11 +37,11 @@ export function IngredientList({
   const [open, setOpen] = useState<string | null>(null);
   const size = large ? 20 : 16;
   return (
-    <View style={{ gap: 6 }}>
+    <View style={{ gap: space.xs }}>
       {ingredients.map((ingredient) => {
         if (ingredient.heading) {
           return (
-            <Text key={ingredient.id} style={{ fontSize: size, fontWeight: '600', marginTop: 6 }}>
+            <Text key={ingredient.id} variant="h3" style={{ fontSize: size, marginTop: space.sm }}>
               {ingredient.raw}
             </Text>
           );
@@ -63,12 +65,26 @@ export function IngredientList({
                     minHeight: 44,
                   }}
                 >
-                  <Text style={{ fontSize: size }}>{done ? '☑' : '☐'}</Text>
+                  <View
+                    aria-hidden
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: radius.field / 2,
+                      borderWidth: 2,
+                      borderColor: done ? colors.accent : colors.line,
+                      backgroundColor: done ? colors.accent : 'transparent',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {done ? <Icon name="checkmark" size={18} color={colors.onAccent} /> : null}
+                  </View>
                   <Text
+                    tone={done ? 'muted' : 'text'}
                     style={{
                       fontSize: size,
                       flex: 1,
-                      color: done ? '#888' : '#000',
                       textDecorationLine: done ? 'line-through' : 'none',
                     }}
                   >
@@ -78,19 +94,15 @@ export function IngredientList({
               ) : (
                 <Text style={{ fontSize: size, flex: 1 }}>{shown}</Text>
               )}
-              <Pressable
-                role="button"
+              <Button
+                variant="ghost"
+                label="Substitute"
                 aria-label={`Substitute for ${ingredient.raw}`}
                 aria-expanded={open === ingredient.id}
                 onPress={() =>
                   setOpen((current) => (current === ingredient.id ? null : ingredient.id))
                 }
-                style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 6 }}
-              >
-                <Text style={{ textDecorationLine: 'underline', fontSize: size - 2 }}>
-                  Substitute
-                </Text>
-              </Pressable>
+              />
             </View>
             {open === ingredient.id ? (
               <SubstitutePanel

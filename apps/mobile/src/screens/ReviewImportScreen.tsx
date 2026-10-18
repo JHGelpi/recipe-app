@@ -1,7 +1,7 @@
 import { usePowerSync } from '@powersync/react';
 import { Link, router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { PhotoImage } from '../components/PhotoImage';
 import { RecipeEditor } from '../components/RecipeEditor';
 import { SourceView } from '../components/SourceView';
@@ -10,6 +10,8 @@ import { dismissImport, saveImportedRecipe, sourceOf } from '../imports/reposito
 import { draftRecord, flaggedFields } from '../imports/review';
 import { formFromRecipe } from '../recipes/form';
 import { canWrite, type Claims } from '../session/claims';
+import { colors, radius, space } from '../theme';
+import { Banner, Button, Icon, Screen, Text } from '../ui';
 
 /** FR-11: the draft in the recipe editor; nothing becomes a recipe until Save. */
 export function ReviewImportScreen({ claims, id }: { claims: Claims; id: string }) {
@@ -30,17 +32,21 @@ export function ReviewImportScreen({ claims, id }: { claims: Claims; id: string 
   );
 
   if (!canWrite(claims.role)) {
-    return <Text style={{ padding: 16 }}>Viewers cannot import recipes.</Text>;
+    return (
+      <Screen>
+        <Text>Viewers cannot import recipes.</Text>
+      </Screen>
+    );
   }
   if (record === undefined || leaving) return null;
   if (record === null || record.status !== 'ready' || !record.draft || !recipe) {
     return (
-      <View style={{ padding: 16, gap: 12 }}>
-        <Text role="alert">This import is no longer available</Text>
-        <Link href="/import" style={{ textDecorationLine: 'underline' }}>
-          Imports
-        </Link>
-      </View>
+      <Screen>
+        <Banner tone="danger" role="alert">
+          This import is no longer available
+        </Banner>
+        <Button variant="ghost" label="Imports" onPress={() => router.replace('/import')} />
+      </Screen>
     );
   }
 
@@ -54,20 +60,20 @@ export function ReviewImportScreen({ claims, id }: { claims: Claims; id: string 
         cancelLabel="Discard"
         cancelPrompt="Discard this import?"
         header={
-          <View style={{ gap: 8 }}>
-            <Text role="heading" aria-level={1} style={{ fontSize: 24, fontWeight: '600' }}>
+          <View style={{ gap: space.md }}>
+            <Text role="heading" aria-level={1} variant="h1">
               Review import
             </Text>
             <SourceView source={sourceOf(record)} />
             {pages.length > 0 ? (
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.md }}>
                 {pages.map((page, index) => (
                   <View key={page.id} style={{ gap: 4 }}>
                     <Link href={`/photo/${page.id}`} aria-label={`Page ${index + 1}`}>
                       <PhotoImage
                         id={page.id}
                         label={`Page ${index + 1}`}
-                        style={{ width: 90, height: 120, borderRadius: 4 }}
+                        style={{ width: 90, height: 120, borderRadius: radius.field }}
                       />
                     </Link>
                     <Pressable
@@ -77,8 +83,19 @@ export function ReviewImportScreen({ claims, id }: { claims: Claims; id: string 
                       onPress={() =>
                         setDishPage((current) => (current === page.id ? null : page.id))
                       }
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: space.xs,
+                        minHeight: 44,
+                      }}
                     >
-                      <Text>{dishPage === page.id ? '☑' : '☐'} Dish photo</Text>
+                      <Icon
+                        name={dishPage === page.id ? 'checkmark-circle-outline' : 'add'}
+                        size={18}
+                        color={dishPage === page.id ? colors.accent : colors.muted}
+                      />
+                      <Text variant="small">Dish photo</Text>
                     </Pressable>
                   </View>
                 ))}

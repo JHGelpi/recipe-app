@@ -20,5 +20,6 @@ Lightweight ADRs ([Michael Nygard format](https://cognitect.com/blog/2011/11/15/
 | [0014](0014-cook-mode-and-substitutions.md) | Cook mode on the phone; substitutions asked live and remembered | Accepted |
 | [0015](0015-household-moves-and-live-roles.md) | Household moves through narrow definer functions; live role checks | Accepted |
 | [0016](0016-shared-recipe-snapshots.md) | Shared recipe snapshots, read anonymously through a definer function | Accepted |
+| [0017](0017-dishkept-design-system.md) | Dishkept: a small design system of our own, dark only | Accepted |
 
 Template: [`template.md`](template.md)

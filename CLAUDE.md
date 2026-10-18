@@ -50,6 +50,7 @@ pnpm lint && pnpm typecheck
 ## Conventions
 - TypeScript strict mode everywhere. No `any` without a comment explaining why.
 - Domain logic goes in `packages/domain` with unit tests; screens stay thin.
+- UI: screens use `apps/mobile/src/ui` and `src/theme` (ADR-0017); no color literals, and no `react-native` `Text`/`TextInput` outside `src/ui`.
 - Migrations: `db/migrations/<timestamp>_<verb>_<thing>.sql` with dbmate's `-- migrate:up` marker; never edit an applied migration.
 - Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`, `test:`).
 - New dependency or cross-cutting pattern → new ADR in `docs/adr/`.

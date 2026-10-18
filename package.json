@@ -19,7 +19,8 @@
     "test:api": "vitest run -c vitest.integration.config.ts apps/api/tests/upload apps/api/tests/imports apps/api/tests/photos apps/api/tests/substitutions apps/api/tests/household apps/api/tests/sharing",
     "test:e2e": "pnpm dev:backend:test && playwright test",
     "eval:import": "vitest run -c vitest.eval.config.ts",
-    "photos:samples": "node scripts/make-photo-samples.mjs"
+    "photos:samples": "node scripts/make-photo-samples.mjs",
+    "icons:make": "node scripts/make-icons.mjs"
   },
   "packageManager": "pnpm@12.11.2+sha512.25a51652a196785af5f28bda6dfe8dc582ebefa4ac1d180221ce1390231c5fb76637822ea4b6e4633ce74acdcb0a77f725af11bad38177fdeddaee818a955cb9",
   "devDependencies": {

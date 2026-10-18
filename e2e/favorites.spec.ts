@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import postgres from 'postgres';
 import { env } from '../test-support/env';
 import { createRecipe, expectNotListed, findRecipe, SEED, session, unique } from './helpers';
@@ -17,12 +17,12 @@ test('starring shows a recipe under Favorites, only for the user who starred it'
   await member.getByRole('button', { name: 'Star', exact: true }).click();
   await expect(member.getByRole('button', { name: 'Unstar', exact: true })).toBeVisible();
   await member.getByRole('link', { name: 'All recipes' }).click();
-  await member.getByRole('tab', { name: 'Favorites' }).click();
+  await member.getByRole('link', { name: 'Favorites', exact: true }).click();
   await expect(await findRecipe(member, title)).toBeVisible();
   await expectNotListed(member, 'Seed pancakes');
 
   await expect(await findRecipe(admin, title)).toBeVisible({ timeout: 10_000 });
-  await admin.getByRole('tab', { name: 'Favorites' }).click();
+  await admin.getByRole('link', { name: 'Favorites', exact: true }).click();
   await expectNotListed(admin, title);
 });
 
@@ -40,6 +40,6 @@ test('a viewer can star a recipe', async ({ browser }) => {
   await viewer.getByRole('button', { name: 'Star', exact: true }).click();
   await expect(viewer.getByRole('button', { name: 'Unstar', exact: true })).toBeVisible();
   await viewer.getByRole('link', { name: 'All recipes' }).click();
-  await viewer.getByRole('tab', { name: 'Favorites' }).click();
+  await viewer.getByRole('link', { name: 'Favorites', exact: true }).click();
   await expect(await findRecipe(viewer, 'Seed pancakes')).toBeVisible();
 });

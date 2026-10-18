@@ -6,15 +6,16 @@ import {
   type SubstitutionAnswer,
 } from '@recipe-app/domain';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { useNetworkOnline } from '../db/useNetworkOnline';
 import { withSession } from '../imports/api';
 import { canWrite, type Claims } from '../session/claims';
 import { askSubstitutes } from '../substitutions/api';
 import { addSubstitutionToNotes } from '../substitutions/repository';
 import type { SubstitutionRecord } from '../substitutions/rows';
+import { colors, radius, space } from '../theme';
+import { Banner, Button, Text } from '../ui';
 
-const link = { textDecorationLine: 'underline' } as const;
 /** Half-second checks for queued uploads before asking (10 s). */
 const UPLOAD_WAIT_TRIES = 20;
 
@@ -72,24 +73,30 @@ export function SubstitutePanel({
   }
 
   return (
-    <View style={{ gap: 8, backgroundColor: '#f6f6f2', borderRadius: 8, padding: 10 }}>
+    <View
+      style={{
+        gap: space.sm,
+        backgroundColor: colors.raised,
+        borderRadius: radius.field,
+        padding: space.md,
+      }}
+    >
       {answer ? (
         <>
-          {stale ? <Text style={{ color: '#7a5b00' }}>This was for {askedFor}</Text> : null}
-          {scaled ? <Text style={{ color: '#555' }}>For the original amount</Text> : null}
+          {stale ? <Text tone="tag">This was for {askedFor}</Text> : null}
+          {scaled ? <Text tone="muted">For the original amount</Text> : null}
           {answer.options.map((option, index) => (
             <View key={index} style={{ gap: 2 }}>
-              <Text style={{ fontWeight: '600' }}>{option.substitute}</Text>
+              <Text variant="h3">{option.substitute}</Text>
               <Text>{option.amount}</Text>
-              {option.how ? <Text style={{ color: '#444' }}>{option.how}</Text> : null}
-              <Text style={{ color: '#444' }}>{option.effect}</Text>
+              {option.how ? <Text tone="muted">{option.how}</Text> : null}
+              <Text tone="muted">{option.effect}</Text>
               {writer ? (
-                <Pressable
-                  role="button"
+                <Button
+                  variant="ghost"
+                  label="Add to notes"
                   onPress={() => void addToNotes(substitutionNoteLine(askedFor, option))}
-                >
-                  <Text style={link}>Add to notes</Text>
-                </Pressable>
+                />
               ) : null}
             </View>
           ))}
@@ -98,26 +105,22 @@ export function SubstitutePanel({
       ) : null}
       {asking ? (
         <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-          <ActivityIndicator size="small" />
+          <ActivityIndicator size="small" color={colors.accent} />
           <Text>Finding substitutes…</Text>
         </View>
       ) : writer && online ? (
-        <Pressable
-          role="button"
+        <Button
+          variant={answer ? 'secondary' : 'primary'}
+          label={answer ? 'Ask again' : 'Ask for substitutes'}
           onPress={() => void ask()}
-          style={{ minHeight: 44, justifyContent: 'center' }}
-        >
-          <Text style={{ ...link, fontWeight: '600' }}>
-            {answer ? 'Ask again' : 'Ask for substitutes'}
-          </Text>
-        </Pressable>
+        />
       ) : !answer ? (
         <Text>{writer ? 'Substitutions need a connection.' : 'No substitutes saved yet.'}</Text>
       ) : null}
       {error ? (
-        <Text role="alert" style={{ color: '#b00020' }}>
+        <Banner tone="danger" role="alert">
           {error}
-        </Text>
+        </Banner>
       ) : null}
       {notice ? <Text aria-live="polite">{notice}</Text> : null}
     </View>

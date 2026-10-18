@@ -1,5 +1,6 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import {
+  openAdd,
   createRecipe,
   fillEditor,
   findRecipe,
@@ -65,6 +66,7 @@ test('editing ingredients and steps reaches the other session', async ({ browser
 
 test('an empty title or 0 servings shows messages and saves nothing', async ({ page }) => {
   await signIn(page, freshEmail('invalid'));
+  await openAdd(page);
   await page.getByRole('button', { name: 'New recipe' }).click();
   await fillEditor(page, { title: '   ', servings: '0' });
   await page.getByRole('button', { name: 'Save' }).click();
@@ -77,6 +79,7 @@ test('an empty title or 0 servings shows messages and saves nothing', async ({ p
 
 test('cancel with changes asks before discarding', async ({ page }) => {
   await signIn(page, freshEmail('cancel'));
+  await openAdd(page);
   await page.getByRole('button', { name: 'New recipe' }).click();
   await fillEditor(page, { title: 'Half typed' });
 
@@ -94,6 +97,7 @@ test('cancel with changes asks before discarding', async ({ page }) => {
 
 test('a double tap on Save creates one recipe', async ({ page }) => {
   await signIn(page, freshEmail('double'));
+  await openAdd(page);
   await page.getByRole('button', { name: 'New recipe' }).click();
   await fillEditor(page, { title: 'Only once' });
   await page.getByRole('button', { name: 'Save' }).dblclick();
@@ -122,6 +126,7 @@ test('tag chips offer tags the household already uses', async ({ page }) => {
   await signIn(page, freshEmail('tags'));
   await createRecipe(page, { title: 'First', tags: 'dinner' });
   await page.getByRole('link', { name: 'All recipes' }).click();
+  await openAdd(page);
   await page.getByRole('button', { name: 'New recipe' }).click();
   await fillEditor(page, { title: 'Second' });
   await page.getByRole('button', { name: 'Add tag dinner' }).click();
@@ -132,10 +137,14 @@ test('a viewer sees recipes but no New recipe, Edit, Move to Trash, or Trash', a
   await signIn(page, SEED.viewerA);
   await expect(await findRecipe(page, 'Seed pancakes')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole('button', { name: 'New recipe' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Add a recipe/ })).toHaveCount(0);
+  await page.getByRole('link', { name: 'Household' }).click();
   await expect(page.getByRole('link', { name: 'Trash' })).toHaveCount(0);
+  await page.getByRole('link', { name: 'Recipes', exact: true }).click();
   await (await findRecipe(page, 'Seed pancakes')).click();
   await expect(page.getByRole('heading', { name: 'Seed pancakes', level: 1 })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Edit' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Move to Trash' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'More', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /^(Star|Unstar)$/ })).toBeVisible();
 });
