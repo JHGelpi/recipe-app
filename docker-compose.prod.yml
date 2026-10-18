@@ -1,0 +1,26 @@
+# Production (production spec §2): `docker compose` + this file, project
+# dishkept, .env.production. Only the scripts in scripts/prod run it.
+services:
+  db:
+    ports: !reset []
+  proxy:
+    ports: !reset []
+    environment:
+      # The tunnel connector is on the Docker network.
+      TRUSTED_PROXIES: private_ranges
+    volumes: !override
+      - caddy_data:/data
+  # backup: (added with the backup service, Task 5)
+  cloudflared:
+    image: cloudflare/cloudflared:2026.10.0
+    profiles: [tunnel]
+    restart: unless-stopped
+    command: ['tunnel', '--no-autoupdate', 'run']
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?set TUNNEL_TOKEN in .env.production}
+    depends_on:
+      proxy:
+        condition: service_healthy
+
+volumes:
+  caddy_data:
