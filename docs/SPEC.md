@@ -101,8 +101,8 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 ### Sharing out
 | ID | Requirement | Pri |
 |---|---|---|
-| FR-26 | Share recipe as formatted PDF or plain text via OS share sheet | M |
-| FR-27 | Share import link; recipient saves a copy into own household (sign-up prompt if needed) | M |
+| FR-26 | Share recipe as formatted PDF or plain text via OS share sheet *(built in sub-project 7)* | M |
+| FR-27 | Share import link; recipient saves a copy into own household (sign-up prompt if needed) *(built in sub-project 7)* | M |
 
 ### Offline & sync
 | ID | Requirement | Pri |
