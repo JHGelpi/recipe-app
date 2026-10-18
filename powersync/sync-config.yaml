@@ -79,3 +79,12 @@ streams:
     auto_subscribe: true
     query: >-
       SELECT id, name FROM households WHERE id = auth.parameter('household_id')
+
+  # A subset of shares_select: the household's live shares, without the
+  # snapshot or the code hash, so the recipe screen can count links.
+  household_shares:
+    auto_subscribe: true
+    query: >-
+      SELECT id, household_id, recipe_id, created_at, deleted_at
+      FROM shares
+      WHERE household_id = auth.parameter('household_id') AND deleted_at IS NULL

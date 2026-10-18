@@ -60,6 +60,7 @@ describe('database roles (spec §4)', () => {
       photos: ['DELETE', 'INSERT', 'SELECT', 'UPDATE'],
       substitutions: ['INSERT', 'SELECT', 'UPDATE'],
       invites: ['SELECT'],
+      shares: ['DELETE', 'SELECT'],
     });
   });
 

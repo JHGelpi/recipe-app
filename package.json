@@ -16,7 +16,7 @@
     "db:reset": "docker compose --profile dev down -v && pnpm dev:backend && pnpm db:seed",
     "test:stack": "vitest run -c vitest.integration.config.ts apps/api/tests/stack",
     "test:rls": "vitest run -c vitest.integration.config.ts apps/api/tests/rls",
-    "test:api": "vitest run -c vitest.integration.config.ts apps/api/tests/upload apps/api/tests/imports apps/api/tests/photos apps/api/tests/substitutions apps/api/tests/household",
+    "test:api": "vitest run -c vitest.integration.config.ts apps/api/tests/upload apps/api/tests/imports apps/api/tests/photos apps/api/tests/substitutions apps/api/tests/household apps/api/tests/sharing",
     "test:e2e": "pnpm dev:backend:test && playwright test",
     "eval:import": "vitest run -c vitest.eval.config.ts",
     "photos:samples": "node scripts/make-photo-samples.mjs"

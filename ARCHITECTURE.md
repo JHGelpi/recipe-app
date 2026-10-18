@@ -93,7 +93,7 @@ C4Container
   Rel(auth, email, "Sign-in codes, invites", "SMTP")
 ```
 
-Photo files live on the API's `photos` volume, served only after an RLS check on their row (ADR-0013); the share landing page comes with sharing.
+Photo files live on the API's `photos` volume, served only after an RLS check on their row (ADR-0013); the share landing page (`/s/<code>`) reads a snapshot through `read_share` (ADR-0016).
 
 ### Container responsibilities```
 
@@ -126,7 +126,7 @@ C4Component
     Component(repo, "Recipe Repository", "TypeScript over PowerSync", "CRUD on local DB; soft delete/trash; role checks for UI")
     Component(search, "Search", "In-memory index over the local DB (ADR-0011)", "Title/ingredient/tag search + tag filters, offline (FR-19/20)")
     Component(cook, "Cook Engine", "Pure TS", "Scaling, unit conversion, step state, keep-awake (FR-21–23)")
-    Component(shareOut, "Share Builder", "expo-print / expo-sharing", "Formats PDF/text; requests share links (FR-26/27)")
+    Component(sharing, "Sharing", "Share menu, PDF, /s page", "Text and PDF on the phone; links read snapshots anonymously (FR-26, FR-27)")
     Component(apiClient, "API Client", "fetch", "Typed calls to the API; attaches JWT")
     Component(authC, "Session", "@supabase/auth-js against GoTrue", "Sign-in, token refresh, household/role claims")
   }
@@ -140,11 +140,11 @@ C4Component
   Rel(nav, repo, "Reads/writes recipes")
   Rel(nav, search, "Queries")
   Rel(nav, cook, "Cook mode")
-  Rel(nav, shareOut, "Share")
+  Rel(nav, sharing, "Share")
   Rel(repo, localDb, "SQL")
   Rel(search, localDb, "FTS queries")
   Rel(apiClient, api, "HTTPS + JWT")
-  Rel(shareOut, apiClient, "Create share token")
+  Rel(sharing, apiClient, "Create, stop, read and save share links")
 ```
 
 ### 3b. API
@@ -167,7 +167,7 @@ C4Component
     Component(llmGw, "LLM Gateway", "Module", "Single place for model choice, retries, timeouts, prompt versions")
     Component(writeFn, "Write Upload Handler", "Route: /api/upload", "Applies queued local writes; last-write-wins on updated_at (FR-30)")
     Component(inviteFn, "Invite Service", "Function: /invites", "Household invites & new-household invites (FR-3, FR-6)")
-    Component(shareFn, "Share Service", "Function: /shares", "Creates snapshot + token; imports snapshot into recipient household (FR-27)")
+    Component(shareFn, "Share Service", "/api/shares", "Creates and stops links; serves snapshots to signed-out visitors through asAnonymous; saves a copy into the recipient household (FR-27, ADR-0016)")
   }
 
   ContainerDb(db, "Cloud DB")
@@ -289,6 +289,7 @@ Conventions for every tenant table:
 - Ingredients and steps are JSON arrays on the recipe row (ADR-0010), each element with a stable id; ingredients keep the typed line (`raw`) plus parsed `quantity`, `quantity_max`, `unit`, `item`, `note`, so scaling, search, and the Phase 2 shopping list can use them
 - Favorites are a per-user table (`favorites`), synced only to that user
 - `INVITE` (`invites`): role, sha256 of the link's code, expiry, accepted and cancelled times; read by the household's Admins only and written only by the ADR-0015 functions. Roles are checked live from `memberships`, which syncs to phones (`household_members`, `my_membership`)
+- `SHARE` (`shares`): `recipe_id`, the validated `snapshot` (with its dish photo's size), sha256 of the link's code, `deleted_at` when stopped; read by the household, written only by the ADR-0016 functions; a stopped share and its photo copy go in the 30-day purge
 - `PHOTO` (`photos`): `kind` (page or dish), `import_id` and `position` for pages, `recipe_id`, `media_type`, `bytes`, `width`, `height`, `uploaded_at`; the bytes are on the `photos` volume. A recipe's dish photo is `recipes.photo_id` (ADR-0013)
 
 `SHARE` stores an immutable JSON **snapshot** of the recipe. Recipients import from the snapshot, never from the sender's live row.

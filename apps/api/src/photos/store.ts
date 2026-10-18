@@ -9,6 +9,8 @@ export type PhotoStore = {
   read(householdId: string, id: string): Promise<Uint8Array | null>;
   remove(householdId: string, id: string): Promise<void>;
   move(fromHousehold: string, toHousehold: string, id: string): Promise<void>;
+  /** False when the source file is missing. */
+  copy(fromHousehold: string, fromId: string, toHousehold: string, toId: string): Promise<boolean>;
 };
 
 function pathOf(root: string, householdId: string, id: string): string {
@@ -45,6 +47,21 @@ export function createDiskPhotoStore(root: string): PhotoStore {
         // Never uploaded, or already moved: nothing to do.
         if ((error as { code?: string }).code !== 'ENOENT') throw error;
       }
+    },
+    async copy(fromHousehold, fromId, toHousehold, toId) {
+      let bytes: Buffer;
+      try {
+        bytes = await readFile(pathOf(root, fromHousehold, fromId));
+      } catch (error) {
+        if ((error as { code?: string }).code === 'ENOENT') return false;
+        throw error;
+      }
+      const target = pathOf(root, toHousehold, toId);
+      await mkdir(dirname(target), { recursive: true });
+      const temporary = `${target}.${randomUUID()}.tmp`;
+      await writeFile(temporary, bytes);
+      await rename(temporary, target);
+      return true;
     },
     async remove(householdId, id) {
       await rm(pathOf(root, householdId, id), { force: true });

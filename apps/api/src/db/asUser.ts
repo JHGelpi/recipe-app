@@ -40,6 +40,16 @@ export function createAsClaims(sql: Sql): AsClaims {
   };
 }
 
+/**
+ * For signed-out visitors (ADR-0016): the authenticated role with no claims,
+ * so every RLS policy denies. Only the ADR-0016 functions (read_share) may be
+ * called through it.
+ */
+export function createAsAnonymous(sql: Sql) {
+  const asClaims = createAsClaims(sql);
+  return <T>(fn: (tx: UserTx) => Promise<T>): Promise<T> => asClaims({} as TokenClaims, fn);
+}
+
 /** For the health check: proves the database answers, reads no table. */
 export function createPing(sql: Sql): () => Promise<void> {
   return async () => {

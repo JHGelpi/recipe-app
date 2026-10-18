@@ -2,11 +2,12 @@ import { serve } from '@hono/node-server';
 import { createApp } from './app';
 import { createVerifier } from './auth/verify';
 import { loadConfig } from './config';
-import { connect, createAsClaims, createAsUser, createPing } from './db/asUser';
+import { connect, createAsAnonymous, createAsClaims, createAsUser, createPing } from './db/asUser';
 import { fetchPage, FETCH_DEFAULTS } from './import/fetchPage';
 import { createImportService } from './import/service';
 import { createImportStore } from './import/store';
 import { createHouseholdService } from './household/service';
+import { createSharingService } from './sharing/service';
 import { createGateway } from './llm/gateway';
 import { createSubstitutionService } from './substitutions/service';
 import { createPhotoService } from './photos/service';
@@ -43,6 +44,11 @@ const household = createHouseholdService({
   photos: photoStore,
   log: (event) => console.log(JSON.stringify(event)),
 });
+const sharing = createSharingService({
+  asUser: createAsUser(sql, verify),
+  asAnonymous: createAsAnonymous(sql),
+  store: photoStore,
+});
 const app = createApp({
   verify,
   asUser: createAsUser(sql, verify),
@@ -51,6 +57,7 @@ const app = createApp({
   photos,
   substitutions,
   household,
+  sharing,
 });
 
 const server = serve({ fetch: app.fetch, port: config.port, hostname: '0.0.0.0' });

@@ -3,6 +3,8 @@ import { Hono } from 'hono';
 import { UnauthorizedError, type VerifyToken } from './auth/verify';
 import type { AsUser } from './db/asUser';
 import { bearer } from './bearer';
+import { registerSharingRoutes } from './sharing/routes';
+import type { SharingService } from './sharing/service';
 import { registerHouseholdRoutes } from './household/routes';
 import type { HouseholdService } from './household/service';
 import { isGuid } from './ids';
@@ -19,6 +21,7 @@ export type AppDeps = {
   photos: PhotoService;
   substitutions: SubstitutionService;
   household: HouseholdService;
+  sharing: SharingService;
 };
 
 const MAX_BODY_BYTES = 1024 * 1024;
@@ -81,9 +84,16 @@ export function createApp(deps: AppDeps): Hono {
            or recipe_id in (
              select id from public.recipes where deleted_at < now() - interval '30 days')
         returning id, household_id`;
+      // Stopped links and links of expired recipes, with their photo copies (ADR-0016).
+      const shares = await tx<{ id: string; household_id: string; photo: boolean }[]>`
+        delete from public.shares
+        where (deleted_at is not null and deleted_at < now() - interval '30 days')
+           or recipe_id in (
+             select id from public.recipes where deleted_at < now() - interval '30 days')
+        returning id, household_id, jsonb_typeof(snapshot -> 'photo') = 'object' as photo`;
       const rows = await tx`
         delete from public.recipes where deleted_at < now() - interval '30 days' returning id`;
-      return { purged: rows.length, photos };
+      return { purged: rows.length, photos: [...photos, ...shares.filter((share) => share.photo)] };
     });
     for (const photo of photos) {
       // A file left behind can no longer be served: its row is gone.
@@ -198,6 +208,7 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   registerHouseholdRoutes(app, deps);
+  registerSharingRoutes(app, deps);
 
   return app;
 }

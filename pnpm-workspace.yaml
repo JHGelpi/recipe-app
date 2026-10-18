@@ -4,6 +4,8 @@ packages:
 # Install scripts are declined explicitly; an undecided one fails the install
 # in Docker. esbuild's binary comes from its @esbuild/<platform> package.
 allowBuilds:
+  # core-js (from jsPDF) only prints a donation message on install.
+  core-js: false
   esbuild: false
 minimumReleaseAgeExclude:
   - '@expo/cli@57.0.29'

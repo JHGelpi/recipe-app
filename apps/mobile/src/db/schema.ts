@@ -117,6 +117,17 @@ const memberships = new Table(
 // The household's name (household_info).
 const households = new Table({ name: column.text });
 
+// The household's live share links, without snapshots (household_shares).
+const shares = new Table(
+  {
+    household_id: column.text,
+    recipe_id: column.text,
+    created_at: column.text,
+    deleted_at: column.text,
+  },
+  { indexes: { recipe: ['recipe_id'] } },
+);
+
 // attachments is PowerSync's local-only queue table: never uploaded.
 export const AppSchema = new Schema({
   recipes,
@@ -126,6 +137,7 @@ export const AppSchema = new Schema({
   substitutions,
   memberships,
   households,
+  shares,
   attachments: new AttachmentTable(),
 });
 

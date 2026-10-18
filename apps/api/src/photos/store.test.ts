@@ -50,4 +50,16 @@ describe('createDiskPhotoStore', () => {
     expect([...((await store.read(OTHER, ID)) ?? [])]).toEqual([7]);
     await store.move(H, OTHER, ID);
   });
+
+  it('copies a file to another household under a new id, and says when the source is missing', async () => {
+    root = await mkdtemp(join(tmpdir(), 'photos-'));
+    const store = createDiskPhotoStore(root);
+    const OTHER = '00000000-0000-0000-0000-00000000000b';
+    const NEW = '44444444-4444-4444-8444-444444444444';
+    await store.put(H, ID, Uint8Array.from([5]));
+    expect(await store.copy(H, ID, OTHER, NEW)).toBe(true);
+    expect([...((await store.read(OTHER, NEW)) ?? [])]).toEqual([5]);
+    expect([...((await store.read(H, ID)) ?? [])]).toEqual([5]);
+    expect(await store.copy(H, NEW, OTHER, ID)).toBe(false);
+  });
 });

@@ -15,6 +15,7 @@ export * from './photos';
 export * from './cooking';
 export * from './substitutions';
 export * from './household';
+export * from './sharing';
 export { RECIPE_LIMITS, TITLE_MAX } from './limits';
 
 export const recipeTitleSchema = z
