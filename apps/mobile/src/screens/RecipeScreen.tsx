@@ -6,6 +6,8 @@ import { DishPhoto } from '../components/DishPhoto';
 import { IngredientList } from '../components/IngredientList';
 import { OriginalPhotos } from '../components/OriginalPhotos';
 import { ServingsBar } from '../components/ServingsBar';
+import { ShareMenu } from '../components/ShareMenu';
+import { SharedLinks } from '../components/SharedLinks';
 import { SourceView } from '../components/SourceView';
 import { StarButton } from '../components/StarButton';
 import { confirm } from '../components/confirm';
@@ -98,6 +100,8 @@ export function RecipeScreen({ claims, id }: { claims: Claims; id: string }) {
               <Text style={{ color: '#fff', fontSize: 18 }}>Cook</Text>
             </Pressable>
           ) : null}
+          {!recipe.deleted_at ? <ShareMenu recipe={recipe} /> : null}
+          <SharedLinks claims={claims} recipe={recipe} />
           {recipe.ingredients.length > 0 ? (
             <IngredientsSection claims={claims} recipe={recipe} />
           ) : null}
