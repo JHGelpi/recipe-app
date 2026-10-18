@@ -1,6 +1,8 @@
 import { Redirect } from 'expo-router';
 import type { ReactNode } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { View } from 'react-native';
+import { colors, space } from '../theme';
+import { Banner, Button } from '../ui';
 import type { Claims } from './claims';
 import { useSession } from './SessionProvider';
 
@@ -11,14 +13,12 @@ export function SignedIn({ children }: { children: (claims: Claims) => ReactNode
   if (state.status === 'signedOut') return <Redirect href="/sign-in" />;
   if (state.claims === null) {
     return (
-      <View style={{ padding: 16, gap: 12, maxWidth: 640 }}>
-        <Text role="alert">
+      <View style={{ flex: 1, padding: space.lg, gap: space.md, backgroundColor: colors.bg }}>
+        <Banner tone="danger" role="alert">
           Your account is not linked to a household. Sign out and back in; if this continues,
           contact your household admin.
-        </Text>
-        <Pressable role="button" onPress={() => void signOut()}>
-          <Text style={{ textDecorationLine: 'underline' }}>Sign out</Text>
-        </Pressable>
+        </Banner>
+        <Button variant="secondary" label="Sign out" onPress={() => void signOut()} />
       </View>
     );
   }

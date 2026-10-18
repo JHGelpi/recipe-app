@@ -1,10 +1,12 @@
 import { usePowerSync } from '@powersync/react';
-import { Link, Redirect } from 'expo-router';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Redirect } from 'expo-router';
+import { View } from 'react-native';
 import { useTrash } from '../recipes/hooks';
 import { restoreRecipe } from '../recipes/repository';
 import { trashDaysLeft } from '../recipes/rows';
 import { canWrite, type Claims } from '../session/claims';
+import { space } from '../theme';
+import { Button, RowCard, Screen, Text } from '../ui';
 
 function deletesIn(days: number): string {
   if (days <= 0) return 'Deletes soon';
@@ -18,40 +20,34 @@ export function TrashScreen({ claims }: { claims: Claims }) {
   const now = Date.now();
 
   return (
-    <View style={{ padding: 16, gap: 12, maxWidth: 640, flex: 1 }}>
-      <Link href="/" style={{ textDecorationLine: 'underline' }}>
-        All recipes
-      </Link>
-      <Text role="heading" aria-level={1} style={{ fontSize: 24, fontWeight: '600' }}>
+    <Screen back={{ href: '/household', label: 'Household' }}>
+      <Text role="heading" aria-level={1} variant="h1">
         Trash
       </Text>
-      <Text>Recipes here are deleted for good 30 days after they were moved to the Trash.</Text>
-      <ScrollView style={{ flex: 1 }}>
-        {items.length === 0 ? (
-          <Text>The Trash is empty</Text>
-        ) : (
-          items.map((item) => (
-            <View
+      <Text tone="muted">
+        Recipes here are deleted for good 30 days after they were moved to the Trash.
+      </Text>
+      {items.length === 0 ? (
+        <Text>The Trash is empty</Text>
+      ) : (
+        <View style={{ gap: space.sm }}>
+          {items.map((item) => (
+            <RowCard
               key={item.id}
-              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, gap: 8 }}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 18 }}>{item.title}</Text>
-                <Text style={{ color: '#666' }}>
-                  {deletesIn(trashDaysLeft(item.deleted_at, now))}
-                </Text>
-              </View>
-              <Pressable
-                role="button"
-                aria-label={`Restore ${item.title}`}
-                onPress={() => void restoreRecipe(db, claims, item.id)}
-              >
-                <Text style={{ textDecorationLine: 'underline' }}>Restore</Text>
-              </Pressable>
-            </View>
-          ))
-        )}
-      </ScrollView>
-    </View>
+              title={item.title}
+              subtitle={deletesIn(trashDaysLeft(item.deleted_at, now))}
+              trailing={
+                <Button
+                  variant="secondary"
+                  label="Restore"
+                  aria-label={`Restore ${item.title}`}
+                  onPress={() => void restoreRecipe(db, claims, item.id)}
+                />
+              }
+            />
+          ))}
+        </View>
+      )}
+    </Screen>
   );
 }

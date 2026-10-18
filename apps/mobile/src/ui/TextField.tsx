@@ -11,6 +11,8 @@ type Props = TextInputProps & {
   error?: string | null;
   icon?: IconName;
   trailing?: ReactNode;
+  /** An AI guess to check (FR-11): amber until edited. */
+  warn?: boolean;
 };
 
 export function TextField({
@@ -19,6 +21,7 @@ export function TextField({
   error,
   icon,
   trailing,
+  warn,
   style,
   onFocus,
   onBlur,
@@ -40,7 +43,13 @@ export function TextField({
           backgroundColor: colors.surface,
           borderRadius: radius.field,
           borderWidth: 2,
-          borderColor: error ? colors.danger : focused ? colors.accent : colors.line,
+          borderColor: error
+            ? colors.danger
+            : focused
+              ? colors.accent
+              : warn
+                ? colors.tag
+                : colors.line,
           paddingHorizontal: space.md,
         }}
       >

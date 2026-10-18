@@ -1,20 +1,12 @@
 import { useState, type ReactNode } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { View } from 'react-native';
 import { useHouseholdTags } from '../recipes/hooks';
 import { valuesFromForm, type RecipeForm, type RecipeValues } from '../recipes/form';
 import type { RecipeRecord } from '../recipes/rows';
 import { normalizeTags } from '@recipe-app/domain';
+import { space } from '../theme';
+import { Button, Card, Chip, Screen, Text, TextField } from '../ui';
 import { confirm } from './confirm';
-
-const input = {
-  borderWidth: 1,
-  borderColor: '#888',
-  borderRadius: 6,
-  padding: 10,
-  fontSize: 16,
-} as const;
-const amber = { borderColor: '#d08700', borderWidth: 2, backgroundColor: '#fff8e6' } as const;
-const button = { backgroundColor: '#1a5d3a', borderRadius: 6, padding: 12, flex: 1 } as const;
 
 type Props = {
   initial: RecipeForm;
@@ -82,80 +74,77 @@ export function RecipeEditor({
 
   function field(key: keyof RecipeForm, label: string, extra: object = {}) {
     return (
-      <View style={{ gap: 4 }}>
-        <Text>{label}</Text>
-        {unsure(key) ? <Text style={{ color: '#8a5a00' }}>Check this</Text> : null}
-        <TextInput
-          aria-label={label}
-          value={form[key]}
-          onChangeText={set(key)}
-          style={unsure(key) ? { ...input, ...amber } : input}
-          {...extra}
-        />
-        {errors[key] ? (
-          <Text role="alert" style={{ color: '#b00020' }}>
-            {errors[key]}
+      <View style={{ gap: space.xs }}>
+        {unsure(key) ? (
+          <Text variant="small" tone="tag">
+            Check this
           </Text>
         ) : null}
+        <TextField
+          label={label}
+          value={form[key]}
+          onChangeText={set(key)}
+          warn={unsure(key)}
+          error={errors[key] ?? null}
+          {...extra}
+        />
       </View>
     );
   }
 
-  const multiline = { multiline: true, numberOfLines: 6, textAlignVertical: 'top' as const };
+  const multiline = {
+    multiline: true,
+    numberOfLines: 6,
+    textAlignVertical: 'top' as const,
+    style: { minHeight: 132 },
+  };
   const numeric = { keyboardType: 'number-pad' as const, inputMode: 'numeric' as const };
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, gap: 12, maxWidth: 640 }}>
+    <Screen>
       {header}
-      {field('title', 'Title')}
-      <View style={{ flexDirection: 'row', gap: 8 }}>
-        <View style={{ flex: 1 }}>{field('servings', 'Servings', numeric)}</View>
-        <View style={{ flex: 1 }}>{field('prep', 'Prep (min)', numeric)}</View>
-        <View style={{ flex: 1 }}>{field('cook', 'Cook (min)', numeric)}</View>
-      </View>
-      {field('ingredients', 'Ingredients', {
-        ...multiline,
-        placeholder: 'One per line, e.g. 2 cups flour, sifted',
-      })}
-      {field('steps', 'Steps', { ...multiline, placeholder: 'One step per line' })}
-      {field('tags', 'Tags', {
-        placeholder: 'Comma-separated, e.g. dinner, quick',
-        autoCapitalize: 'none',
-      })}
-      {suggestions.length > 0 ? (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-          {suggestions.map((tag) => (
-            <Pressable
-              key={tag}
-              role="button"
-              aria-label={`Add tag ${tag}`}
-              onPress={() => set('tags')([...current, tag].join(', '))}
-              style={{
-                borderWidth: 1,
-                borderColor: '#1a5d3a',
-                borderRadius: 12,
-                paddingHorizontal: 10,
-                paddingVertical: 4,
-              }}
-            >
-              <Text>{tag}</Text>
-            </Pressable>
-          ))}
+      <Card>
+        {field('title', 'Title')}
+        <View style={{ flexDirection: 'row', gap: space.sm }}>
+          <View style={{ flex: 1 }}>{field('servings', 'Servings', numeric)}</View>
+          <View style={{ flex: 1 }}>{field('prep', 'Prep (min)', numeric)}</View>
+          <View style={{ flex: 1 }}>{field('cook', 'Cook (min)', numeric)}</View>
         </View>
-      ) : null}
-      {field('notes', 'Notes', multiline)}
-      <View style={{ flexDirection: 'row', gap: 8 }}>
-        <Pressable role="button" aria-disabled={busy} onPress={() => void save()} style={button}>
-          <Text style={{ color: '#fff', fontSize: 16, textAlign: 'center' }}>Save</Text>
-        </Pressable>
-        <Pressable
-          role="button"
-          onPress={() => void cancel()}
-          style={{ ...button, backgroundColor: '#666' }}
-        >
-          <Text style={{ color: '#fff', fontSize: 16, textAlign: 'center' }}>{cancelLabel}</Text>
-        </Pressable>
+      </Card>
+      <Card>
+        {field('ingredients', 'Ingredients', {
+          ...multiline,
+          placeholder: 'One per line, e.g. 2 cups flour, sifted',
+        })}
+        {field('steps', 'Steps', { ...multiline, placeholder: 'One step per line' })}
+      </Card>
+      <Card>
+        {field('tags', 'Tags', {
+          placeholder: 'Comma-separated, e.g. dinner, quick',
+          autoCapitalize: 'none',
+        })}
+        {suggestions.length > 0 ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+            {suggestions.map((tag) => (
+              <Chip
+                key={tag}
+                label={tag}
+                aria-label={`Add tag ${tag}`}
+                onPress={() => set('tags')([...current, tag].join(', '))}
+              />
+            ))}
+          </View>
+        ) : null}
+        {field('notes', 'Notes', multiline)}
+      </Card>
+      <View style={{ flexDirection: 'row', gap: space.sm }}>
+        <View style={{ flex: 1 }}>
+          <Button full label="Save" aria-disabled={busy} onPress={() => void save()} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Button full variant="secondary" label={cancelLabel} onPress={() => void cancel()} />
+        </View>
       </View>
-    </ScrollView>
+    </Screen>
   );
 }

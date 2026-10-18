@@ -1,7 +1,7 @@
 import { usePowerSync } from '@powersync/react';
 import { Link, router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator } from 'react-native';
 import { withSession } from '../imports/api';
 import {
   acceptInvite,
@@ -14,6 +14,8 @@ import { setPendingInvite } from '../household/pendingInvite';
 import { waitForUploads } from '../household/uploads';
 import { auth } from '../session/auth';
 import { useSession } from '../session/SessionProvider';
+import { colors, type } from '../theme';
+import { Banner, Button, Card, Screen, Text } from '../ui';
 
 const ROLE_LABEL: Record<string, string> = { admin: 'Admin', member: 'Member', viewer: 'Viewer' };
 const STATUS_TEXT: Record<string, string> = {
@@ -32,14 +34,17 @@ export function InviteScreen({ code }: { code: string }) {
   if (state.status === 'loading') return null;
   if (state.status === 'signedOut') {
     return (
-      <View style={{ padding: 16, gap: 12, maxWidth: 480 }}>
-        <Text style={{ fontSize: 18 }}>
-          You've been invited to a household. Sign in to see the invite.
-        </Text>
-        <Link href="/sign-in" style={{ textDecorationLine: 'underline' }}>
-          Sign in
-        </Link>
-      </View>
+      <Screen>
+        <Card>
+          <Text variant="h2">You've been invited to a household. Sign in to see the invite.</Text>
+          <Link
+            href="/sign-in"
+            style={[type.label, { color: colors.accent, textDecorationLine: 'underline' }]}
+          >
+            Sign in
+          </Link>
+        </Card>
+      </Screen>
     );
   }
   return <SignedInInvite code={code} />;
@@ -91,46 +96,45 @@ function SignedInInvite({ code }: { code: string }) {
   const name = preview?.household_name ?? 'household';
   const blocked = preview?.blocker === 'only_admin';
   return (
-    <View style={{ padding: 16, gap: 12, maxWidth: 480 }}>
-      {!preview && !message ? <ActivityIndicator /> : null}
+    <Screen back={{ href: '/', label: 'All recipes' }}>
+      {!preview && !message ? <ActivityIndicator color={colors.accent} /> : null}
       {preview?.status === 'ok' ? (
-        <>
-          <Text style={{ fontSize: 20 }}>
+        <Card>
+          <Text variant="h2">
             Join the {name} as a {ROLE_LABEL[preview.role ?? 'member']}
           </Text>
           {preview.moving_recipes > 0 ? (
-            <Text>
+            <Text tone="muted">
               Your {preview.moving_recipes} {preview.moving_recipes === 1 ? 'recipe' : 'recipes'}{' '}
               will move to the {name}
             </Text>
           ) : null}
-          {blocked ? <Text role="alert">{HOUSEHOLD_MESSAGES.only_admin}</Text> : null}
+          {blocked ? (
+            <Banner tone="tag" role="alert">
+              {HOUSEHOLD_MESSAGES.only_admin}
+            </Banner>
+          ) : null}
           {!blocked ? (
-            <Pressable
-              role="button"
+            <Button
+              full
+              label={joining ? 'Joining…' : 'Join'}
               aria-disabled={joining}
               onPress={() => void join()}
-              style={{
-                backgroundColor: '#1a5d3a',
-                borderRadius: 8,
-                minHeight: 44,
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}
-            >
-              <Text style={{ color: '#fff', fontSize: 16 }}>{joining ? 'Joining…' : 'Join'}</Text>
-            </Pressable>
+            />
           ) : null}
-        </>
+        </Card>
       ) : null}
       {preview?.status === 'already_member' ? <Text>You're already in the {name}</Text> : null}
       {preview && STATUS_TEXT[preview.status] ? (
-        <Text role="alert">{STATUS_TEXT[preview.status]}</Text>
+        <Banner tone="danger" role="alert">
+          {STATUS_TEXT[preview.status]}
+        </Banner>
       ) : null}
-      {message ? <Text role="alert">{message}</Text> : null}
-      <Link href="/" style={{ textDecorationLine: 'underline' }}>
-        All recipes
-      </Link>
-    </View>
+      {message ? (
+        <Banner tone="danger" role="alert">
+          {message}
+        </Banner>
+      ) : null}
+    </Screen>
   );
 }

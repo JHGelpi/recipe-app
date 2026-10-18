@@ -1,17 +1,19 @@
 import { router } from 'expo-router';
-import { Pressable, Text, View } from 'react-native';
+import { View } from 'react-native';
 import { PhotoImage } from '../components/PhotoImage';
+import { colors, space } from '../theme';
+import { Button } from '../ui';
 
 /** A photo full size; the browser's pinch-zoom works on it. */
 export function PhotoScreen({ id }: { id: string }) {
   return (
-    <View style={{ flex: 1, padding: 16, gap: 12 }}>
-      <Pressable
-        role="button"
+    <View style={{ flex: 1, padding: space.lg, gap: space.md, backgroundColor: colors.bg }}>
+      <Button
+        variant="ghost"
+        icon="chevron-back"
+        label="Back"
         onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
-      >
-        <Text style={{ textDecorationLine: 'underline' }}>Back</Text>
-      </Pressable>
+      />
       <PhotoImage
         id={id}
         label="Photo"
