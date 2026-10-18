@@ -6,6 +6,7 @@ const reasons = productionSignals({
   env: process.env,
   argv: process.argv.slice(2),
   dotenv: existsSync('.env') ? readFileSync('.env', 'utf8') : '',
+  prodEnvPresent: existsSync('.env.production'),
 });
 if (reasons.length > 0) {
   console.error(

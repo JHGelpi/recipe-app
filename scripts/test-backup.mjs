@@ -49,6 +49,13 @@ const newest = local.sort().at(-1);
 if (!/dishkept-\d{4}-\d{2}-\d{2}\.tar\.age$/.test(newest)) fail(`bad name ${newest}`);
 if (!listing.includes(newest.split('/').pop())) fail('not uploaded to the remote');
 
+// 1b. Catch-up: a slot never tried (PC off at BACKUP_TIME) runs at the next tick; the next tick does not.
+dc(['run', '--rm', '--entrypoint', 'sh', 'backup', '-c', 'echo 0 > /backups/last-attempt']);
+const due = dc(['run', '--rm', ...env, 'backup', 'tick']);
+if (!due.includes('backup ok')) fail(`a missed slot did not back up:\n${due}`);
+const again = dc(['run', '--rm', ...env, 'backup', 'tick']);
+if (!again.includes('not due')) fail(`a tried slot backed up again:\n${again}`);
+
 // 2. A failing upload emails an alert (Mailpit).
 const failed = spawnSync('docker', [
   'compose',

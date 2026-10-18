@@ -1,6 +1,8 @@
 #!/bin/sh
 # One backup: app database + photos + manifest, age-encrypted, uploaded, 7 kept locally.
 set -eu
+# A failing tar or age inside a pipe must fail the script, not upload a partial file.
+set -o pipefail
 export PGHOST=db PGUSER=postgres PGDATABASE=app PGPASSWORD="$POSTGRES_PASSWORD"
 step=start
 work=$(mktemp -d)

@@ -6,6 +6,8 @@ import {
   deployBlockers,
   DRILL_PROFILES,
   drillCounts,
+  checkoutBlockers,
+  deploySequence,
   normalizeEmail,
   productionSignals,
 } from './lib.mjs';
@@ -14,6 +16,7 @@ describe('the production guard', () => {
   const safe = { env: {}, argv: [], dotenv: 'PUBLIC_URL=http://localhost:8090\n' };
   it('passes plain dev', () => expect(productionSignals(safe)).toEqual([]));
   it.each([
+    [{ ...safe, prodEnvPresent: true }],
     [{ ...safe, env: { COMPOSE_PROJECT_NAME: 'dishkept' } }],
     [{ ...safe, env: { COMPOSE_FILE: 'docker-compose.yml:docker-compose.prod.yml' } }],
     [{ ...safe, env: { COMPOSE_ENV_FILES: '.env.production' } }],
@@ -79,4 +82,28 @@ it('the drill reports every count that differs from the manifest', () => {
   expect(drillCounts(manifest, { users: 2, recipes: 10 })).toEqual([
     'photo_files: backup 3, restored missing',
   ]);
+});
+
+describe('the production checkout', () => {
+  it('passes a dedicated clone on the Linux disk', () =>
+    expect(checkoutBlockers({ cwd: '/home/wes/dishkept', hasDevEnv: false })).toEqual([]));
+  it('refuses a dev checkout and a Windows drive', () => {
+    expect(checkoutBlockers({ cwd: '/home/wes/dishkept', hasDevEnv: true })).toHaveLength(1);
+    expect(
+      checkoutBlockers({ cwd: '/mnt/d/github_projects/recipe-app', hasDevEnv: false }),
+    ).toHaveLength(1);
+  });
+});
+
+it('a drill starts neither the tunnel nor the nightly backup loop', () => {
+  expect(DRILL_PROFILES).toEqual([]);
+});
+
+it('deploy turns the gate on before the tunnel makes the site public', () => {
+  const steps = deploySequence();
+  const tunnel = steps.findIndex((step) => step.profiles?.includes('tunnel'));
+  const gate = steps.findIndex((step) => step.gate);
+  expect(steps[0].profiles).not.toContain('tunnel');
+  expect(gate).toBeGreaterThan(0);
+  expect(tunnel).toBeGreaterThan(gate);
 });

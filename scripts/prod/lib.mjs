@@ -4,8 +4,12 @@ export const PROJECT = 'dishkept';
 export const ENV_FILE = '.env.production';
 /** backup: the nightly job. tunnel: cloudflared, which only production may run. */
 export const PROD_PROFILES = ['backup', 'tunnel'];
-/** A drill must never start the tunnel: a second connector would serve it publicly. */
-export const DRILL_PROFILES = ['backup'];
+/**
+ * A drill starts no profiled service: not the tunnel (a second connector would
+ * serve the drill publicly) and not the nightly loop (it holds the real bucket key).
+ * Its restore runs `backup` by name, which needs no profile.
+ */
+export const DRILL_PROFILES = [];
 
 export function composeArgs(project = PROJECT) {
   return [
@@ -21,8 +25,9 @@ export function composeArgs(project = PROJECT) {
 }
 
 /** Reasons a dev or test command must not run here; empty when it is safe. */
-export function productionSignals({ env, argv, dotenv }) {
+export function productionSignals({ env, argv, dotenv, prodEnvPresent = false }) {
   const reasons = [];
+  if (prodEnvPresent) reasons.push('.env.production is here: this is the production checkout');
   if (env.COMPOSE_PROJECT_NAME === PROJECT) reasons.push('COMPOSE_PROJECT_NAME is dishkept');
   if ((env.COMPOSE_FILE ?? '').includes('docker-compose.prod.yml'))
     reasons.push('COMPOSE_FILE names the production overlay');
@@ -78,4 +83,32 @@ export function drillCounts(manifest, actual) {
       ? []
       : [`${name}: backup ${expected}, restored ${actual[name] ?? 'missing'}`],
   );
+}
+
+/**
+ * Production runs from its own clone on the Linux disk: the stack reads sync
+ * rules and migrations from the checkout on every start, and a Windows drive
+ * cannot keep .env.production private.
+ */
+export function checkoutBlockers({ cwd, hasDevEnv }) {
+  const blockers = [];
+  if (cwd.startsWith('/mnt/')) {
+    blockers.push(
+      `${cwd} is on a Windows drive; clone the repo to ~/dishkept and run prod:* there`,
+    );
+  }
+  if (hasDevEnv) {
+    blockers.push('this checkout has a dev .env; production runs from its own clone (~/dishkept)');
+  }
+  return blockers;
+}
+
+/** First deploy order: services, then the gate, and only then the public tunnel. */
+export function deploySequence() {
+  return [
+    { profiles: ['backup'], args: ['up', '-d', '--build', '--wait', '--remove-orphans'] },
+    { restartSync: true },
+    { gate: true },
+    { profiles: PROD_PROFILES, args: ['up', '-d', '--wait', 'cloudflared'] },
+  ];
 }

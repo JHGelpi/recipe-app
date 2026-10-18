@@ -1,30 +1,34 @@
 // The prod:* commands (production spec §2–§5). Never reads .env.
 import { execFileSync, spawnSync } from 'node:child_process';
 import { generateKeyPairSync, randomBytes, randomUUID } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import {
   backupAge,
   drillCounts,
   DRILL_PROFILES,
   buildProdEnv,
+  checkoutBlockers,
   composeArgs,
   deployBlockers,
+  deploySequence,
   ENV_FILE,
   normalizeEmail,
   PROD_PROFILES,
 } from './lib.mjs';
 
 const profiles = (list) => list.flatMap((p) => ['--profile', p]);
-const compose = (args, opts = {}) =>
-  spawnSync('docker', ['compose', ...composeArgs(), ...profiles(PROD_PROFILES), ...args], {
+const compose = (args, opts = {}, profileList = PROD_PROFILES) =>
+  spawnSync('docker', ['compose', ...composeArgs(), ...profiles(profileList), ...args], {
     stdio: 'inherit',
     ...opts,
   });
 const git = (...args) => execFileSync('git', args, { encoding: 'utf8' }).trim();
+/** Thrown rather than exiting, so every `finally` (the drill's teardown) still runs. */
+class Stop extends Error {}
 const fail = (message) => {
-  console.error(message);
-  process.exit(1);
+  throw new Stop(message);
 };
 const psql = (sql) => {
   const result = compose(
@@ -49,8 +53,26 @@ const psql = (sql) => {
 };
 const literal = (value) => `'${value.replaceAll("'", "''")}'`;
 
-if (process.env.COMPOSE_FILE) fail('Unset COMPOSE_FILE first: prod:* names its own files.');
 const [command, ...rest] = process.argv.slice(2);
+
+/** Clean, current main: what the stack reads its sync rules and migrations from. */
+function requireCurrentMain(action) {
+  git('fetch', 'origin', 'main');
+  const blockers = deployBlockers({
+    branch: git('rev-parse', '--abbrev-ref', 'HEAD'),
+    dirty: git('status', '--porcelain') !== '',
+    head: git('rev-parse', 'HEAD'),
+    originMain: git('rev-parse', 'origin/main'),
+  });
+  if (blockers.length) fail(`Not ${action}:\n- ${blockers.join('\n- ')}`);
+}
+
+/** The private key file, as an absolute path (a bare name would be a Compose volume). */
+async function askKeyPath(rl) {
+  const keyPath = resolve((await rl.question('Path to your age private key file: ')).trim());
+  if (!existsSync(keyPath) || !statSync(keyPath).isFile()) fail(`No key file at ${keyPath}`);
+  return keyPath;
+}
 
 /** The newest local copy, or the named day's; fetched from GCS when it is not local. */
 async function fetchBackup(date) {
@@ -63,9 +85,21 @@ async function fetchBackup(date) {
     ? `dishkept-${date}.tar.age`
     : name('ls -1 /backups/dishkept-*.tar.age 2>/dev/null | sort | tail -n 1 | xargs -r basename');
   if (!wanted) fail('No local backup; name a date to fetch one from GCS.');
-  name(
-    `[ -f /backups/${wanted} ] || rclone copyto "offsite:$BACKUP_BUCKET/${wanted}" /backups/${wanted}`,
+  const fetched = compose(
+    [
+      'run',
+      '--rm',
+      '-T',
+      '--entrypoint',
+      'sh',
+      'backup',
+      '-c',
+      `[ -f /backups/${wanted} ] || rclone copyto "offsite:$BACKUP_BUCKET/${wanted}" /backups/${wanted}; [ -s /backups/${wanted} ]`,
+    ],
+    { stdio: ['ignore', 'inherit', 'inherit'] },
   );
+  if (fetched.status !== 0)
+    fail(`Could not get ${wanted} locally or from GCS. Nothing was changed.`);
   return `/backups/${wanted}`;
 }
 
@@ -116,27 +150,17 @@ const commands = {
   },
 
   deploy() {
-    git('fetch', 'origin', 'main');
-    const blockers = deployBlockers({
-      branch: git('rev-parse', '--abbrev-ref', 'HEAD'),
-      dirty: git('status', '--porcelain') !== '',
-      head: git('rev-parse', 'HEAD'),
-      originMain: git('rev-parse', 'origin/main'),
-    });
-    if (blockers.length) fail(`Not deploying:\n- ${blockers.join('\n- ')}`);
-    if (compose(['up', '-d', '--build', '--wait', '--remove-orphans']).status !== 0)
-      fail('Deploy failed: pnpm prod:logs');
-    compose(['restart', 'sync']);
-    const owner = readFileSync(ENV_FILE, 'utf8')
-      .match(/^OWNER_EMAIL=(.+)$/m)?.[1]
-      ?.trim();
-    // First deploy: turn the gate on and list the owner. Later deploys change nothing here.
-    if (owner && psql(`select count(*) from public.signup_allowed`) === '0') {
-      psql(
-        `insert into public.signup_allowed (email) values (${literal(normalizeEmail(owner) ?? fail('OWNER_EMAIL is not an email'))})`,
-      );
-      psql(`update public.signup_settings set gate_on = true`);
-      console.log(`Gate on; ${owner} is allowed.`);
+    requireCurrentMain('deploying');
+    // The site goes public only once the gate is on (deploySequence).
+    for (const step of deploySequence()) {
+      if (step.args) {
+        if (compose(step.args, {}, step.profiles).status !== 0)
+          fail('Deploy failed: pnpm prod:logs');
+      } else if (step.restartSync) {
+        compose(['restart', 'sync']);
+      } else if (step.gate) {
+        ensureGate();
+      }
     }
     commands.status();
   },
@@ -167,8 +191,12 @@ const commands = {
 
   logs: () => compose(['logs', '--tail', '200', ...rest]),
   stop: () => compose(['stop']),
-  // Starts the containers already built, from any branch (deploy is what updates them).
-  start: () => compose(['start']),
+  // Starts the containers already built. They reread sync rules and migrations
+  // from this checkout, so it must be clean, current main too.
+  start() {
+    requireCurrentMain('starting');
+    compose(['start']);
+  },
 
   allow() {
     const email = normalizeEmail(rest[0] ?? '') ?? fail('Usage: pnpm prod:allow you@example.com');
@@ -196,9 +224,9 @@ const commands = {
   async restore() {
     const date = rest[0];
     if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) fail('Usage: pnpm prod:restore [YYYY-MM-DD]');
+    requireCurrentMain('restoring');
     const rl = createInterface({ input: process.stdin, output: process.stdout });
-    const keyPath = (await rl.question('Path to your age private key file: ')).trim();
-    if (!existsSync(keyPath)) fail(`No file at ${keyPath}`);
+    const keyPath = await askKeyPath(rl);
     const file = await fetchBackup(date);
     console.log(
       `Restoring ${file}. Everything saved after it is lost unless a phone still holds it unsynced.`,
@@ -207,16 +235,23 @@ const commands = {
       fail('Cancelled.');
     rl.close();
     compose(['stop', 'api', 'auth', 'sync', 'proxy']);
-    const result = compose([
-      'run',
-      '--rm',
-      '-v',
-      `${keyPath}:/run/secrets/age.key:ro`,
-      'backup',
-      'restore',
-      file,
-    ]);
-    if (result.status !== 0) fail('Restore failed; the stack is stopped. pnpm prod:logs backup');
+    const result = compose(
+      ['run', '--rm', '-v', `${keyPath}:/run/secrets/age.key:ro`, 'backup', 'restore', file],
+      { stdio: ['ignore', 'pipe', 'inherit'], encoding: 'utf8' },
+    );
+    process.stdout.write(result.stdout ?? '');
+    if (result.status !== 0) {
+      // restore.sh prints "restore: replacing" only once decryption and unpacking worked.
+      if (!(result.stdout ?? '').includes('restore: replacing')) {
+        compose(['up', '-d', '--wait']);
+        fail(
+          'Restore failed before anything was replaced (wrong key or damaged file). Production is running again.',
+        );
+      }
+      fail(
+        'Restore failed while replacing the data; the stack is stopped. Run prod:restore again with the same backup.',
+      );
+    }
     compose(['up', '-d', '--wait']);
     compose(['restart', 'sync']);
     commands.status();
@@ -224,7 +259,7 @@ const commands = {
 
   async 'restore-test'() {
     const rl = createInterface({ input: process.stdin, output: process.stdout });
-    const keyPath = (await rl.question('Path to your age private key file: ')).trim();
+    const keyPath = await askKeyPath(rl);
     rl.close();
     const file = await fetchBackup();
     const drill = (args, opts = {}) =>
@@ -234,7 +269,8 @@ const commands = {
         { encoding: 'utf8', ...opts },
       );
     try {
-      drill(['up', '-d', '--wait', 'db']);
+      if (drill(['up', '-d', '--wait', 'db'], { stdio: 'inherit' }).status !== 0)
+        fail('The drill database did not start');
       // Read the file straight from production's backups volume, read-only.
       const source = `/source/${file.split('/').pop()}`;
       const restored = drill([
@@ -303,6 +339,28 @@ const commands = {
   },
 };
 
-const run = commands[command];
-if (!run) fail(`Unknown command: ${command}. One of: ${Object.keys(commands).join(', ')}`);
-await run();
+/** First deploy: list the owner and turn the gate on. Later deploys change nothing here. */
+function ensureGate() {
+  if (psql(`select count(*) from public.signup_allowed`) !== '0') return;
+  const owner = readFileSync(ENV_FILE, 'utf8')
+    .match(/^OWNER_EMAIL=(.+)$/m)?.[1]
+    ?.trim();
+  const email = normalizeEmail(owner ?? '') ?? fail('Set OWNER_EMAIL in .env.production first.');
+  psql(`insert into public.signup_allowed (email) values (${literal(email)})`);
+  psql(`update public.signup_settings set gate_on = true`);
+  console.log(`Gate on; ${email} is allowed.`);
+}
+
+try {
+  if (process.env.COMPOSE_FILE) fail('Unset COMPOSE_FILE first: prod:* names its own files.');
+  const blockers = checkoutBlockers({ cwd: process.cwd(), hasDevEnv: existsSync('.env') });
+  if (blockers.length) fail(`Not here:\n- ${blockers.join('\n- ')}`);
+  const run = commands[command];
+  if (!run) fail(`Unknown command: ${command}. One of: ${Object.keys(commands).join(', ')}`);
+  await run();
+} catch (error) {
+  if (!(error instanceof Stop)) throw error;
+  console.error(error.message);
+  // An open prompt would keep the process alive; every finally has already run.
+  process.exit(1);
+}

@@ -54,6 +54,7 @@ Production starts empty; dev data stays in dev.
 
 ## Consequences
 
+- Production runs from its own clone on the Linux disk (`~/dishkept`). The stack rereads sync rules and migrations from the checkout on every start, so the dev checkout must never be the one it runs from. `prod:*` refuses a checkout that has a dev `.env` or sits on a Windows drive, and `start`, `deploy` and `restore` require a clean, current `main`.
 - The app is down whenever the PC is off, asleep or rebooting (NFR-8 is now best effort). Moving to a VM means a restore plus running the tunnel connector there.
 - **Losing the `age` private key makes every backup unreadable.**
 - A restore loses changes made after that night's backup, unless a phone still holds them unsynced.

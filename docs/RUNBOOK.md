@@ -7,6 +7,25 @@ Production is the Compose project **`dishkept`** on this PC, reached at **https:
 
 ## First-time setup
 
+### 0. A separate clone for production
+
+Production runs from **its own clone of the repo on the Linux disk**, never from the checkout you develop in.
+- The stack reads its sync rules and migrations from the checkout every time it starts, including after a reboot. A feature branch must never be what production starts from.
+- A Windows drive (`/mnt/c`, `/mnt/d`) can't keep `.env.production` private.
+
+The `prod:*` commands refuse to run from a dev checkout (one with a `.env`) or from a Windows drive.
+
+```sh
+git clone https://github.com/JHGelpi/recipe-app.git ~/dishkept
+cd ~/dishkept
+corepack pnpm install
+```
+
+Run every command below from `~/dishkept`, and never run `pnpm dev:*` or tests there; the guard refuses them.
+
+**Check:** `pwd` shows `/home/<you>/dishkept`, and `ls .env` says there is no such file.
+
+
 Do these steps in order. Each ends with a **Check:**; don't go on until it holds.
 
 ### 1. Move geltech.dev's DNS to Cloudflare
@@ -59,7 +78,7 @@ gcloud iam service-accounts keys create gcs-backup-key.json --iam-account=$SA
 
 Then:
 1. In Cloud Shell's **⋮** menu, choose **Download** and save `gcs-backup-key.json`.
-2. Put it in this repo at `.local/gcs-backup-key.json`. The file is git-ignored.
+2. Put it in the production clone at `~/dishkept/.local/gcs-backup-key.json` (`mkdir -p ~/dishkept/.local` first). The file is git-ignored.
 3. Delete the copy in Cloud Shell: `rm gcs-backup-key.json`.
 
 The service account can add and read backups but **cannot delete or overwrite** them, so a compromised PC can't erase old backups. The lifecycle rule removes them after 30 days.
@@ -97,12 +116,12 @@ It generates fresh database passwords and a signing key, then asks for:
 - the `age1…` public key;
 - your sign-in email.
 
-**Check:** `ls -l .env.production` shows `-rw-------`.
+**Check:** in `~/dishkept`, `ls -l .env.production` shows `-rw-------`.
 
 ### 7. First deploy
 
 ```sh
-git checkout main && git pull
+cd ~/dishkept && git pull
 pnpm prod:deploy
 ```
 
@@ -143,13 +162,13 @@ The drill asks for the path to a file holding your secret key. See "Restore" for
 |---|---|
 | Health, deployed build, last backup | `pnpm prod:status` (warns if no backup in 26 hours) |
 | Logs | `pnpm prod:logs` or `pnpm prod:logs api` |
-| Update to the latest `main` | `git checkout main && git pull && pnpm prod:deploy` |
+| Update to the latest `main` | `cd ~/dishkept && git pull && pnpm prod:deploy` |
 | Let someone sign up without an invite | `pnpm prod:allow them@example.com` |
 | Remove them from the list | `pnpm prod:disallow them@example.com` |
 | See the list | `pnpm prod:allowed` |
 | Open or close sign-up for everyone | `pnpm prod:gate off` / `pnpm prod:gate on` |
 | Back up now | `pnpm prod:backup-now` |
-| Stop production (for example before a long e2e run) | `pnpm prod:stop`; start it again with `pnpm prod:start` (any branch) |
+| Stop production (for example before a long e2e run) | `pnpm prod:stop`; start it again with `pnpm prod:start` (needs a clean, current `main` in `~/dishkept`) |
 
 People with an invite, share or friend link don't need to be on the list. The app gets them a 24-hour pass. People who already have an account can always sign in.
 
@@ -160,7 +179,7 @@ Phones pick up a new build on their own. A phone at the home screen may take it 
 **A restore replaces everything with that night's backup.** Changes made after it are lost, unless a phone still holds them unsynced; those upload afterwards.
 
 1. Put your secret key in a temporary file:
-   `printf '%s\n' 'AGE-SECRET-KEY-1…' > /tmp/age.key && chmod 600 /tmp/age.key`
+   `(umask 077; cat > /tmp/age.key)`, then paste the `AGE-SECRET-KEY-1…` line, press Enter, then Ctrl-D. Pasting it into `cat` keeps it out of your shell history.
 2. Run `pnpm prod:restore` for the latest backup, or `pnpm prod:restore 2026-10-19` for a given day. A day not on this PC is fetched from the bucket.
 3. Enter `/tmp/age.key` when asked. Check the manifest it prints, then type `restore`.
 4. When it finishes: `rm /tmp/age.key`.

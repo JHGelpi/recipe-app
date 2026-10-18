@@ -38,5 +38,9 @@ if (published.length) {
   throw new Error(`Production publishes ports: ${published.map(([name]) => name).join(', ')}`);
 }
 if (!prod.services.cloudflared) throw new Error('Production has no tunnel');
-if (config(DRILL_PROFILES).services.cloudflared) throw new Error('A drill would start the tunnel');
-console.log('Production compose config: no published ports; tunnel only in production.');
+const drill = config(DRILL_PROFILES).services;
+if (drill.cloudflared) throw new Error('A drill would start the tunnel');
+if (drill.backup) throw new Error('A drill would start the nightly backup loop');
+console.log(
+  'Production compose config: no published ports; tunnel and backup loop only in production.',
+);
