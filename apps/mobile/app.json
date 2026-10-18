@@ -24,6 +24,10 @@
       "output": "single"
     },
     "scheme": "recipeapp",
-    "plugins": ["expo-router", "expo-status-bar"]
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      "expo-font"
+    ]
   }
 }

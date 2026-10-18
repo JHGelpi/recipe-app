@@ -2,7 +2,10 @@
 // nothing from Workbox is bundled into the app except this generated worker.
 module.exports = {
   globDirectory: 'dist',
-  globPatterns: ['**/*'],
+  // Metro puts package assets (fonts, router images) under
+  // assets/__node_modules/.pnpm/…, and the glob skips dot-directories unless
+  // a pattern names one.
+  globPatterns: ['**/*', 'assets/__node_modules/.pnpm/**/*'],
   globIgnores: ['sw.js', 'workbox-*.js', '**/*.map'],
   swDest: 'dist/sw.js',
   // PowerSync's WebAssembly builds are up to 2.4 MB; all four are precached
