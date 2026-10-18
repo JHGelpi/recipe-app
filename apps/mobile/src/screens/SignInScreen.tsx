@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { BuildFooter } from '../components/BuildFooter';
 import { useSession } from '../session/SessionProvider';
+import { peekPendingShare } from '../sharing/pending';
 
 const input = {
   borderWidth: 1,
@@ -20,6 +21,7 @@ export function SignInScreen() {
   const [code, setCode] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [pendingShare] = useState(() => peekPendingShare());
 
   async function run(action: () => Promise<{ ok: true } | { ok: false; message: string }>) {
     if (busy) return false;
@@ -45,6 +47,7 @@ export function SignInScreen() {
       <Text role="heading" aria-level={1} style={{ fontSize: 24, fontWeight: '600' }}>
         Sign in
       </Text>
+      {pendingShare ? <Text>Sign in or create an account to save {pendingShare.title}</Text> : null}
       {step === 'email' ? (
         <>
           <TextInput

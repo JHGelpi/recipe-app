@@ -1,6 +1,7 @@
 import { usePowerSync } from '@powersync/react';
 import { scaleFactor } from '@recipe-app/domain';
 import { Link, router } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { DishPhoto } from '../components/DishPhoto';
 import { IngredientList } from '../components/IngredientList';
@@ -16,6 +17,7 @@ import { useRecipe, useRecipePages } from '../recipes/hooks';
 import { restoreRecipe, trashRecipe } from '../recipes/repository';
 import type { RecipeRecord } from '../recipes/rows';
 import { canWrite, type Claims } from '../session/claims';
+import { takeSavedFlash } from '../sharing/pending';
 import { useSubstitutions } from '../substitutions/hooks';
 
 function summary(recipe: RecipeRecord): string {
@@ -35,6 +37,7 @@ export function RecipeScreen({ claims, id }: { claims: Claims; id: string }) {
   const { recipe, starred } = useRecipe(id, claims.userId);
   const writer = canWrite(claims.role);
   const pages = useRecipePages(id);
+  const [saved] = useState(() => takeSavedFlash());
   if (recipe === undefined) return null;
 
   return (
@@ -56,6 +59,14 @@ export function RecipeScreen({ claims, id }: { claims: Claims; id: string }) {
             </Text>
             <StarButton claims={claims} recipeId={recipe.id} starred={starred} />
           </View>
+          {saved ? (
+            <Text
+              role="status"
+              style={{ backgroundColor: '#e6f0ea', padding: 10, borderRadius: 6 }}
+            >
+              Saved to your recipes
+            </Text>
+          ) : null}
           <DishPhoto
             claims={claims}
             recipeId={recipe.id}
