@@ -118,7 +118,7 @@ Adds two rows at the end:
   - back arrow ("All recipes");
   - the dish photo full width (16 radius), or the add-photo control as today;
   - the title in `h1` with the star `IconButton`;
-  - meta chips: Serves · Prep · Cook;
+  - the meta as one muted line with a clock icon: Serves · Prep · Cook;
   - an action row with a primary **Cook** button and icon buttons for **Share** and **Edit**;
   - a "⋯" `IconButton` ("More") holding Move to Trash or Restore;
   - `Card`s for Ingredients (with the servings bar), Steps, Notes, Source and Shared links;
@@ -130,11 +130,11 @@ Adds two rows at the end:
   - Back and Next as large pill buttons pinned to the bottom;
   - ingredients and substitutions in a `Card`;
   - no tab bar.
-- **Edit, New, Import, Review import:** form `Card`s with `TextField`s; the main action is a full-width primary button; errors appear as `Banner`s.
+- **Edit, New, Import, Review import:** form `Card`s with `TextField`s; the main action is a full-width primary button; errors appear as `Banner`s. The review page's way back to Imports is a ghost button.
 - **Household:**
   - members as `ListRow`s with a role `Chip`;
   - an invites `Card`, and rename in a `Card`;
-  - Leave and Invite a friend as secondary buttons;
+  - Leave household as a danger button, and Invite a friend as a ghost button;
   - then Trash and Sign out (§4).
 - **Trash:** `ListRow`s with Restore.
 - **Invite page:** a `Card` with the preview and the Join primary button.
@@ -150,11 +150,11 @@ Adds two rows at the end:
 
 - **Icon files:**
   - Crop `app_icon.png` to its navy rounded square: the supplied file includes the board's gradient and a stray "P" at the top right.
-  - Fill the corners with `#0E121A` so it's full-bleed. iOS and Android round the corners themselves.
+  - Fill the corners with `#101B31`, the icon's own navy, so it's full-bleed. iOS and Android round the corners themselves.
   - Generate:
     - `public/icons/apple-touch-icon.png` (180);
     - `icon-192.png`, `icon-512.png`;
-    - `icon-maskable-512.png`, with the mark inside the central 80% safe zone on `#0E121A`;
+    - `icon-maskable-512.png`, with the mark inside the central 80% safe zone on `#101B31`;
     - `favicon.png` (48);
     - `assets/brand/mark.png` (the in-app logo).
   - The script lives in `scripts/` so a larger original can be dropped in and rerun. 512 px will be slightly soft, upscaled from about 360 px of real icon.

@@ -47,3 +47,5 @@ Like everything else, the list must work offline, sync across the household's de
 - **Rows added on a phone have no server timestamps until they sync.** The merge treats them as the newest rows.
 - **A list row keeps its recipe's title** after the recipe is renamed or deleted; it has no foreign key to the recipe.
 - **A household's list holds at most 500 live rows.** Past that, clearing ticked items makes room.
+- **A partly ticked line stays whole until every row is ticked.** Its amount counts only the rows still to buy, and Clear ticked removes only fully ticked lines (owner's choice, 2026-10-19).
+- **Add to list adds the amounts the sheet shows,** in the cook's chosen units, with "a pinch" where the sheet shows one.

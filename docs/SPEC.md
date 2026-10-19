@@ -121,7 +121,7 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 | FR-32 | Add a recipe's ingredients at the viewed servings, choosing which ones | M |
 | FR-33 | Same items merge into one line, adding amounts where units allow; the line shows its recipes | M |
 | FR-34 | Items are grouped by aisle: a built-in guess, overridden by the household's own choices | M |
-| FR-35 | Tick items off while shopping, clear ticked items, remove items, add typed items | M |
+| FR-35 | Tick items off while shopping, clear ticked items, remove items, add typed items. Clear ticked removes fully ticked lines; a partly ticked line stays, counting what is left | M |
 
 ## 6. Non-functional requirements
 
