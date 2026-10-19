@@ -161,3 +161,30 @@ test('signing out leaves no photo in the browser (Review Focus 4)', async ({ pag
     });
   await expect.poll(left, { timeout: 15_000 }).toEqual({ count: 0, cached: false });
 });
+
+test('a shown dish photo stays shown while the network drops and returns (final review)', async ({
+  page,
+}) => {
+  await signIn(page, freshEmail('photo-flip'));
+  const title = unique('Flip soup');
+  await addRecipe(page, title);
+  await (await findRecipe(page, title)).click();
+  await choose(page, 'Add photo', ['dish.jpg']);
+  await expect(shown(page, 'Dish photo')).toBeVisible();
+  // Record any moment the grey placeholder replaces the photo.
+  await page.evaluate(() => {
+    const flag = window as unknown as { blanked: boolean };
+    flag.blanked = false;
+    new MutationObserver(() => {
+      if (document.querySelector('[data-testid="photo-placeholder"]')) flag.blanked = true;
+    }).observe(document.body, { subtree: true, childList: true, attributes: true });
+  });
+  await page.context().setOffline(true);
+  await page.waitForTimeout(1500);
+  await page.context().setOffline(false);
+  await page.waitForTimeout(1500);
+  expect(await page.evaluate(() => (window as unknown as { blanked: boolean }).blanked)).toBe(
+    false,
+  );
+  await expect(shown(page, 'Dish photo')).toBeVisible();
+});

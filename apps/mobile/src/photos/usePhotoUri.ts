@@ -25,13 +25,19 @@ export function usePhotoUri(id: string | null): PhotoView {
   // Another phone may not have uploaded it yet: look again while it is missing.
   const [attempt, setAttempt] = useState(0);
 
+  // A changed photo never shows the previous one while the new one loads, and
+  // gets its own retries. Only an id change resets: a network flip or the
+  // upload finishing must not blank a photo already shown (final review).
+  useEffect(() => {
+    setView({ state: 'loading', uri: null });
+    setAttempt(0);
+  }, [id]);
+
   useEffect(() => {
     if (!id) {
       setView({ state: 'missing', uri: null });
       return;
     }
-    // A changed photo never shows the previous one while the new one loads.
-    setView({ state: 'loading', uri: null });
     let live = true;
     let made: string | null = null;
     let retry: ReturnType<typeof setTimeout> | null = null;

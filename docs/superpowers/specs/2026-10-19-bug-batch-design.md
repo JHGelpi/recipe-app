@@ -101,7 +101,7 @@ While the "+" sheet animates closed (about 0.3 s), its focus trap pulls focus ba
   - a 404 on ask says "This recipe is no longer on the server.";
   - a stale answer label shows until a fresh answer arrives, then goes.
 - **Amount display:**
-  - tiny US weights and metric volumes show "a pinch" below ⅛ oz or 1 ml, not "⅛ oz" or "1 ml";
+  - tiny metric volumes show "a pinch" below 1 ml, not "1 ml"; a weight shows "a pinch" only below half a gram, so halved yeast still reads "⅛ oz" (final review);
   - count ranges read "½–1 clove", and a count of 1 takes the singular ("1 egg");
   - unit stepping uses the rounded value ("1 lb", not "16 oz"; "1 kg", not "1000 g").
 

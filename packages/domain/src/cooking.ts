@@ -20,6 +20,8 @@ const ML: Partial<Record<Unit, number>> = {
   l: 1000,
 };
 const GRAMS: Partial<Record<Unit, number>> = { oz: 28.3495, lb: 453.592, g: 1, kg: 1000 };
+// A weight smaller than this is a pinch: about what fingers pick up.
+const PINCH_GRAMS = 0.5;
 const US_UNITS = new Set<Unit>(['tsp', 'tbsp', 'cup', 'pint', 'quart', 'gallon', 'oz', 'lb']);
 const METRIC_UNITS = new Set<Unit>(['ml', 'l', 'g', 'kg']);
 const PLURAL: Partial<Record<Unit, string>> = {
@@ -136,9 +138,12 @@ export function stepUnits(amount: Amount): Amount | 'pinch' {
   if (current.unit === 'cup' && current.value < 0.25) down(16, 'tbsp');
   if (current.unit === 'tbsp' && current.value < 1) down(3, 'tsp');
   if (current.unit === 'tsp' && current.value < 0.125) return 'pinch';
-  // Below what the shown units can say: a pinch, not "⅛ oz" or "1 ml" (spec §2).
-  if (current.unit === 'oz' && current.value < 0.125) return 'pinch';
-  if ((current.unit === 'ml' || current.unit === 'g') && current.value < 1) return 'pinch';
+  // Below what the shown units can say: a pinch, not "1 ml" (spec §2). Weights
+  // become a pinch only below half a gram: halved yeast (3.5 g) must read
+  // "⅛ oz", never "a pinch" (final review I1).
+  if (current.unit === 'ml' && current.value < 1) return 'pinch';
+  if (current.unit === 'g' && current.value < PINCH_GRAMS) return 'pinch';
+  if (current.unit === 'oz' && current.value * GRAMS.oz! < PINCH_GRAMS) return 'pinch';
   if (current.unit === 'tsp' && atLeast(current, 3)) up(3, 'tbsp');
   if (current.unit === 'tbsp' && atLeast(current, 16)) up(16, 'cup');
   if (current.unit === 'g' && atLeast(current, 1000)) up(1000, 'kg');

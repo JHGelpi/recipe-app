@@ -258,16 +258,22 @@ describe('review fixes', () => {
 });
 
 describe('bug batch display (spec §2)', () => {
-  it('tiny weights and volumes show as a pinch', () => {
-    expect(show(line({ raw: '1 oz salt', quantity: 1, unit: 'oz', item: 'salt' }), 0.1, 'us')).toBe(
-      'a pinch of salt',
-    );
+  it('tiny volumes and crumbs of weight show as a pinch', () => {
+    expect(
+      show(line({ raw: '1 oz salt', quantity: 1, unit: 'oz', item: 'salt' }), 0.01, 'us'),
+    ).toBe('a pinch of salt');
     expect(
       show(line({ raw: '1 tsp salt', quantity: 1, unit: 'tsp', item: 'salt' }), 0.1, 'metric'),
     ).toBe('a pinch of salt');
     expect(
-      show(line({ raw: '5 g yeast', quantity: 5, unit: 'g', item: 'yeast' }), 0.1, 'metric'),
-    ).toBe('a pinch of yeast');
+      show(line({ raw: '5 g saffron', quantity: 5, unit: 'g', item: 'saffron' }), 0.05, 'metric'),
+    ).toBe('a pinch of saffron');
+  });
+
+  it('a small weight a baker measures is never a pinch (final review I1)', () => {
+    const yeast = line({ raw: '7 g instant yeast', quantity: 7, unit: 'g', item: 'instant yeast' });
+    expect(show(yeast, 0.5, 'us')).toBe('⅛ oz instant yeast');
+    expect(show(yeast, 0.5, 'metric')).toBe('4 g instant yeast');
   });
 
   it('count ranges read cleanly and take the singular at one', () => {
