@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { adminSql } from '../helpers/db';
-import { TENANT_TABLES } from './registry';
+import { SYSTEM_TABLES, TENANT_TABLES } from './registry';
 
 it('every public table has RLS enabled and is in the test registry', async () => {
   const tables = await adminSql<{ name: string; rls: boolean }[]>`
@@ -11,7 +11,7 @@ it('every public table has RLS enabled and is in the test registry', async () =>
     order by c.relname`;
 
   expect(tables.filter((table) => !table.rls).map((table) => table.name)).toEqual([]);
-  expect(tables.map((table) => table.name)).toEqual([...TENANT_TABLES].sort());
+  expect(tables.map((table) => table.name)).toEqual([...TENANT_TABLES, ...SYSTEM_TABLES].sort());
 });
 
 it('the sync service can read every table it replicates (rule 6)', async () => {

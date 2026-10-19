@@ -24,6 +24,7 @@ Recipes end up scattered across Google Drive, iCloud, the Notes app, bookmarks, 
 | [`docs/SPEC.md`](docs/SPEC.md) | Product requirements (functional & non-functional) |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | C4 architecture: context, containers, components, deployment |
 | [`docs/adr/`](docs/adr/) | Architecture decision records |
+| [`docs/RUNBOOK.md`](docs/RUNBOOK.md) | Running production: setup, deploys, backups, restores |
 | [`CLAUDE.md`](CLAUDE.md) | Rules and context for AI coding agents |
 
 ## Tech stack

@@ -41,6 +41,8 @@ jobs:
       - run: pnpm test:stack
       - run: pnpm test:rls
       - run: pnpm test:api
+      - run: pnpm test:prod-config
+      - run: pnpm test:backup
       - name: Stack logs
         if: failure()
         run: docker compose -f docker-compose.yml -f docker-compose.test.yml --profile dev logs --tail 200

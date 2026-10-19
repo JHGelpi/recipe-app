@@ -8,7 +8,9 @@ import {
   type ReactNode,
 } from 'react';
 import { AUTH_STORAGE_KEY, auth, readSavedSession } from './auth';
+import { config } from '../config';
 import { normalizeEmail } from './email';
+import { askForPass, INVITE_ONLY, isInviteOnly, LINK_EXPIRED, passSource } from './signupPass';
 import {
   provisionalSession,
   resolveSession,
@@ -58,9 +60,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       async requestCode(input) {
         const email = normalizeEmail(input);
         if (!email) return { ok: false, message: 'Enter a valid email address.' };
+        // A visitor from an invite, share or friend link gets a sign-up pass
+        // first; existing accounts sign in whatever the pass says.
+        const source = passSource();
+        const pass = source
+          ? await askForPass(source, email, {
+              fetch: (input, init) => fetch(input, init),
+              apiUrl: config.apiUrl,
+            })
+          : null;
+        if (pass === 'offline') return { ok: false, message: UNREACHABLE };
         try {
           const { error } = await auth.signInWithOtp({ email });
           if (!error) return { ok: true };
+          if (isInviteOnly(error)) {
+            return { ok: false, message: pass === 'expired' ? LINK_EXPIRED : INVITE_ONLY };
+          }
           return {
             ok: false,
             message: error.status ? 'Could not send a code. Try again in a moment.' : UNREACHABLE,

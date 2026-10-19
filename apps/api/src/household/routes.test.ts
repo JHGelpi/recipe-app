@@ -17,6 +17,7 @@ function app(over: Partial<HouseholdService> = {}) {
     removeMember: vi.fn().mockResolvedValue(undefined),
     leave: vi.fn().mockResolvedValue(undefined),
     rename: vi.fn().mockResolvedValue(undefined),
+    createFriendLink: vi.fn().mockResolvedValue({ code: CODE, expires_at: 'x' }),
     ...over,
   } as HouseholdService;
   const hono = new Hono();

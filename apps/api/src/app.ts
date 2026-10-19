@@ -4,6 +4,8 @@ import { UnauthorizedError, type VerifyToken } from './auth/verify';
 import type { AsUser } from './db/asUser';
 import { bearer } from './bearer';
 import { registerSharingRoutes } from './sharing/routes';
+import { registerSignupRoutes } from './signup/routes';
+import type { SignupService } from './signup/service';
 import type { SharingService } from './sharing/service';
 import { registerHouseholdRoutes } from './household/routes';
 import type { HouseholdService } from './household/service';
@@ -22,6 +24,9 @@ export type AppDeps = {
   substitutions: SubstitutionService;
   household: HouseholdService;
   sharing: SharingService;
+  signup: SignupService;
+  /** Per-email and per-link limits for signed-out pass requests. */
+  limits: { email: (key: string) => boolean; code: (key: string) => boolean };
 };
 
 const MAX_BODY_BYTES = 1024 * 1024;
@@ -211,6 +216,11 @@ export function createApp(deps: AppDeps): Hono {
 
   registerHouseholdRoutes(app, deps);
   registerSharingRoutes(app, deps);
+  registerSignupRoutes(app, {
+    signup: deps.signup,
+    limitEmail: deps.limits.email,
+    limitCode: deps.limits.code,
+  });
 
   return app;
 }

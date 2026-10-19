@@ -30,7 +30,10 @@ function deps(overrides: Partial<AppDeps> = {}): AppDeps {
       removeMember: vi.fn(),
       leave: vi.fn(),
       rename: vi.fn(),
+      createFriendLink: vi.fn(),
     },
+    signup: { grant: vi.fn().mockResolvedValue(true) },
+    limits: { email: () => true, code: () => true },
     photos: {
       put: vi.fn().mockResolvedValue('stored'),
       get: vi.fn().mockResolvedValue(null),

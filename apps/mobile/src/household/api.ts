@@ -76,6 +76,14 @@ export const leaveHousehold = (deps: ApiDeps) => request<void>(deps, 'POST', '/h
 export const renameHousehold = (name: string, deps: ApiDeps) =>
   request<void>(deps, 'PATCH', '/household', { name });
 
+export const createFriendLink = (deps: ApiDeps) =>
+  request<{ code: string; expires_at: string }>(deps, 'POST', '/friend-links', {});
+
+/** The friend link a person opens (production spec §4). */
+export function friendUrl(code: string): string {
+  return `${globalThis.location?.origin ?? ''}/welcome/${code}`;
+}
+
 /** The link a person opens; built here so it is right on any host (Decisions). */
 export function inviteUrl(code: string): string {
   return `${globalThis.location?.origin ?? ''}/invite/${code}`;

@@ -73,6 +73,8 @@ C4Container
     Container(api, "API", "Node / TypeScript (Hono)", "Upload of local writes; import pipeline and AI calls (ADR-0012); invites and share links later")
     Container(auth, "Auth", "GoTrue (self-hosted container)", "Sign-in (email one-time code); issues JWTs with household_id and household_role claims")
     ContainerDb(db, "Database", "PostgreSQL 17 with RLS", "System of record: households, users, recipes; also holds the sync service's storage database")
+    Container(tunnel, "Tunnel", "cloudflared (production only)", "Dials out to Cloudflare; the public address reaches the proxy without open ports (ADR-0018)")
+    Container(backup, "Backup", "pg_dump, age, rclone", "Nightly encrypted database and photo backups to Google Cloud Storage (ADR-0018)")
   }
 
   System_Ext(llm, "Claude API")
@@ -81,7 +83,9 @@ C4Container
 
   Rel(user, mobile, "Uses")
   Rel(mobile, localDb, "Reads/writes (always local-first)")
-  Rel(mobile, proxy, "All network traffic", "HTTPS")
+  Rel(mobile, proxy, "All network traffic", "HTTPS (through the tunnel in production)")
+  Rel(tunnel, proxy, "Forwards dishkept.geltech.dev")
+  Rel(backup, db, "Nightly dump")
   Rel(proxy, auth, "/auth")
   Rel(proxy, api, "/api")
   Rel(proxy, syncSvc, "/sync", "HTTP streaming / WebSocket")
@@ -105,9 +109,11 @@ Photo files live on the API's `photos` volume, served only after an RLS check on
 | **On-device DB** | Local copy of the household's data; source for the in-memory search index (FR-19/20, ADR-0011) | Writes go here first, then upload queue → API |
 | **Sync Service** | Change streaming, per-household sync rules | Sync rules mirror RLS; a device only receives its household's rows |
 | **API** | Business logic that must be server-side: import pipeline, AI, invites, share tokens, write validation | Stateless; verifies the JWT, then runs every statement as the user through asUser |
-| **Auth** | Identity; JWT custom claims `household_id`, `household_role` (added by an access-token hook) | Sign in with Apple required on iOS (NFR-12) |
-| **Database** | System of record; RLS on every tenant table | Backups arrive with the hosting sub-project (NFR-9) |
-| **Proxy** | TLS, routing, static web app | Only container with a published port |
+| **Auth** | Identity; JWT custom claims `household_id`, `household_role` (added by an access-token hook); the sign-up gate (`before_user_created` hook: allowed emails and 24-hour passes from live links, ADR-0018) | Sign in with Apple required on iOS (NFR-12) |
+| **Database** | System of record; RLS on every tenant table | Backed up nightly by the Backup container (NFR-9, ADR-0018) |
+| **Proxy** | Routing, static web app; TLS locally (Cloudflare terminates it in production) | Only container with a published port in dev; none in production, where the tunnel reaches it |
+| **Tunnel** | The public address `dishkept.geltech.dev` | Production only (`docker-compose.prod.yml`, profile `tunnel`); never in a restore drill |
+| **Backup** | Nightly `age`-encrypted dump of `app` plus the `photos` volume, uploaded to GCS (30 days), 7 local copies; email on failure; restore and drill | Profile `backup`; connects as `postgres` (operations only); `pnpm test:backup` runs it in CI |
 
 ## 3. Level 3 — Components
 
@@ -242,7 +248,9 @@ C4Deployment
     ContainerDb(localDb, "SQLite", "On-device")
   }
 
-  Deployment_Node(host, "Owner's server", "Docker Compose, one stack") {
+  Deployment_Node(host, "Owner's Windows PC", "Docker Desktop on WSL; Compose project dishkept") {
+    Container(tunnel, "cloudflared", "Cloudflare Tunnel")
+    Container(backupSvc, "backup", "pg_dump, age, rclone")
     Container(proxy, "proxy", "Caddy")
     Container(api, "api", "Node")
     Container(auth, "auth", "GoTrue")
@@ -250,11 +258,22 @@ C4Deployment
     ContainerDb(db, "db", "PostgreSQL 17")
   }
 
+  Deployment_Node(cf, "Cloudflare", "DNS for geltech.dev; tunnel edge") {
+    Container(edge, "dishkept.geltech.dev", "HTTPS")
+  }
+
+  Deployment_Node(gcp, "Google Cloud", "") {
+    ContainerDb(bucket, "Backup bucket", "GCS, 30-day lifecycle")
+  }
+
   Deployment_Node(anth, "Anthropic", "") {
     Container(llm, "Claude API", "")
   }
 
-  Rel(mobile, proxy, "HTTPS")
+  Rel(mobile, edge, "HTTPS")
+  Rel(tunnel, edge, "Outbound tunnel")
+  Rel(tunnel, proxy, "HTTP")
+  Rel(backupSvc, bucket, "Nightly, encrypted")
   Rel(proxy, api, "")
   Rel(proxy, auth, "")
   Rel(proxy, sync, "")
@@ -263,7 +282,10 @@ C4Deployment
   Rel(api, llm, "HTTPS")
 ```
 
-**Environments:** local (the Compose stack with the dev profile, which adds a mail catcher; Expo web dev server or the built app from the proxy). Production is the same Compose file on the owner's server with a different .env; it arrives with the hosting sub-project. A single cloud VM running the same file is the fallback (ADR-0008).
+**Environments:**
+- **Local:** Compose project `recipe-app` with `.env` and the dev profile, which adds a mail catcher; the Expo web dev server, or the built app from the proxy.
+- **Production:** project `dishkept` on the owner's PC, using the same Compose file plus `docker-compose.prod.yml` and `.env.production`, run only through `pnpm prod:*`, from a dedicated clone on the Linux disk (`~/dishkept`), never the development checkout. It is reached at `https://dishkept.geltech.dev` through Cloudflare Tunnel (ADR-0018). `scripts/guard.mjs` keeps dev and test commands away from it.
+- **Fallback:** a single cloud VM running the same files (ADR-0008); moving is a restore. The steps are in `docs/RUNBOOK.md`.
 
 ## 6. Data model (conceptual)
 
@@ -282,6 +304,7 @@ erDiagram
   RECIPE ||--o{ SHARE : "shared as"
   HOUSEHOLD ||--o{ INVITE : issues
   HOUSEHOLD ||--o{ AI_USAGE : accrues
+  HOUSEHOLD ||--o{ FRIEND_LINK : issues
   HOUSEHOLD ||--o{ SHOPPING_ITEM : lists
   HOUSEHOLD ||--o{ AISLE_CHOICE : remembers
 ```
@@ -298,6 +321,9 @@ Conventions for every tenant table:
 - `SHARE` (`shares`): `recipe_id`, the validated `snapshot` (with its dish photo's size), sha256 of the link's code, `deleted_at` when stopped; read by the household, written only by the ADR-0016 functions; a stopped share and its photo copy go in the 30-day purge
 - `PHOTO` (`photos`): `kind` (page or dish), `import_id` and `position` for pages, `recipe_id`, `media_type`, `bytes`, `width`, `height`, `uploaded_at`; the bytes are on the `photos` volume. A recipe's dish photo is `recipes.photo_id` (ADR-0013)
 
+- `FRIEND_LINK` (`friend_links`): sha256 of a `/welcome/<code>` link's code and a 30-day expiry; made by `create_friend_link`, read by the household's Admins and Members, not synced
+- The sign-up gate's `signup_settings`, `signup_allowed` and `signup_passes` hold no household data: RLS on, no policies, no grants, not synced (ADR-0018)
+
 `SHARE` stores an immutable JSON **snapshot** of the recipe. Recipients import from the snapshot, never from the sender's live row.
 
 ## 7. Cross-cutting concerns
@@ -310,7 +336,7 @@ Conventions for every tenant table:
 | **AI** | All prompts versioned in `apps/api/src/llm/prompts/`; output validated against a JSON schema; usage metered per household | NFR-3, NFR-7 |
 | **Secrets** | The web app ships no keys. Database passwords, the token signing key, and the Claude API key live in .env on the server | NFR-3 |
 | **Observability** | Structured logs in the API; Sentry for app crashes; AI latency/cost dashboard from `ai_usage` | NFR-6, NFR-7 |
-| **Backups** | Off-site Postgres backups with point-in-time recovery, plus the `photos` volume, set up in the hosting sub-project; household JSON export | NFR-9, NFR-10 |
+| **Backups** | Nightly `age`-encrypted dumps of the database and the `photos` volume to GCS, kept 30 days, by a service account that cannot delete; a monthly restore drill (ADR-0018). Household JSON export later | NFR-9, NFR-10 |
 | **Accessibility** | Dynamic type, screen-reader labels, contrast checks in review | NFR-11 |
 
 ## 8. Future evolution

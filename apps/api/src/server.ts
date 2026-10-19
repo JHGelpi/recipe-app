@@ -8,6 +8,8 @@ import { createImportService } from './import/service';
 import { createImportStore } from './import/store';
 import { createHouseholdService } from './household/service';
 import { createSharingService } from './sharing/service';
+import { createSignupService } from './signup/service';
+import { createRateLimiter } from './rateLimit';
 import { createGateway } from './llm/gateway';
 import { createSubstitutionService } from './substitutions/service';
 import { createPhotoService } from './photos/service';
@@ -49,6 +51,12 @@ const sharing = createSharingService({
   asAnonymous: createAsAnonymous(sql),
   store: photoStore,
 });
+const signup = createSignupService({ asAnonymous: createAsAnonymous(sql) });
+// 10 asks per email and 30 per link an hour; GoTrue rate-limits the emails themselves.
+const limits = {
+  email: createRateLimiter({ limit: 10, windowMs: 3_600_000 }),
+  code: createRateLimiter({ limit: 30, windowMs: 3_600_000 }),
+};
 const app = createApp({
   verify,
   asUser: createAsUser(sql, verify),
@@ -58,6 +66,8 @@ const app = createApp({
   substitutions,
   household,
   sharing,
+  signup,
+  limits,
 });
 
 const server = serve({ fetch: app.fetch, port: config.port, hostname: '0.0.0.0' });

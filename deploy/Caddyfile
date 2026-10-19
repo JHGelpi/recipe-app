@@ -7,6 +7,10 @@
 	default_sni {$LAN_HTTPS_HOST:localhost}
 	# A browser that sends plain HTTP to the HTTPS port is redirected to
 	# HTTPS rather than shown an error.
+	# Production: the tunnel connector forwards the visitor's scheme and address.
+	servers :8080 {
+		trusted_proxies static {$TRUSTED_PROXIES:127.0.0.1/32}
+	}
 	servers :8443 {
 		listener_wrappers {
 			http_redirect

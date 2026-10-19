@@ -1,0 +1,36 @@
+import type { Hono } from 'hono';
+import type { PassKind, SignupService } from './service';
+
+const KINDS: readonly string[] = ['invite', 'share', 'friend'];
+const CODE = /^[A-Za-z0-9_-]{43}$/;
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Production spec §4. Signed out; answers only "pass" or "link_expired". */
+export function registerSignupRoutes(
+  app: Hono,
+  deps: {
+    signup: SignupService;
+    limitEmail: (key: string) => boolean;
+    limitCode: (key: string) => boolean;
+  },
+): void {
+  app.post('/api/signup-pass', async (c) => {
+    const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null;
+    const kind = body?.kind;
+    const code = body?.code;
+    const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : '';
+    if (
+      typeof kind !== 'string' ||
+      !KINDS.includes(kind) ||
+      typeof code !== 'string' ||
+      !CODE.test(code) ||
+      email.length > 254 ||
+      !EMAIL.test(email)
+    ) {
+      return c.json({ error: 'invalid_body' }, 400);
+    }
+    if (!deps.limitEmail(email) || !deps.limitCode(code)) return c.json({ error: 'too_many' }, 429);
+    const granted = await deps.signup.grant(kind as PassKind, code, email);
+    return granted ? c.body(null, 204) : c.json({ error: 'link_expired' }, 404);
+  });
+}
