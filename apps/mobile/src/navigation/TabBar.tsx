@@ -3,26 +3,62 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useReadyCount } from '../imports/hooks';
+import { useToBuyCount } from '../shopping/hooks';
 import { canWrite } from '../session/claims';
 import { useSession } from '../session/SessionProvider';
 import { colors, shadow, space } from '../theme';
 import { Icon, Text, type IconName } from '../ui';
 import { AddSheet } from './AddSheet';
-import { activeTab, addLabel, showTabBar, type Tab } from './tabs';
+import { activeTab, addLabel, listLabel, showTabBar, type Tab } from './tabs';
 
 const TABS: Record<Tab, { label: string; href: Href; icon: IconName; on: IconName }> = {
   recipes: { label: 'Recipes', href: '/', icon: 'book-outline', on: 'book' },
   favorites: { label: 'Favorites', href: '/favorites', icon: 'heart-outline', on: 'heart' },
+  list: { label: 'List', href: '/list', icon: 'cart-outline', on: 'cart' },
   household: { label: 'Household', href: '/household', icon: 'people-outline', on: 'people' },
 };
 
-function TabLink({ tab, current }: { tab: Tab; current: boolean }) {
+/** The amber count on "+" and on List. */
+function Badge({ count }: { count: number }) {
+  return (
+    <View
+      style={{
+        position: 'absolute',
+        top: -2,
+        right: -2,
+        minWidth: 20,
+        height: 20,
+        borderRadius: 10,
+        paddingHorizontal: 4,
+        backgroundColor: colors.tag,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Text variant="caption" tone="onAccent">
+        {count}
+      </Text>
+    </View>
+  );
+}
+
+function TabLink({
+  tab,
+  current,
+  name,
+  badge = 0,
+}: {
+  tab: Tab;
+  current: boolean;
+  name?: string;
+  badge?: number;
+}) {
   const item = TABS[tab];
   return (
     <Link href={item.href} asChild>
       <Pressable
         role="link"
-        aria-label={item.label}
+        aria-label={name ?? item.label}
         aria-current={current ? 'page' : undefined}
         style={{
           flex: 1,
@@ -32,7 +68,13 @@ function TabLink({ tab, current }: { tab: Tab; current: boolean }) {
           gap: 2,
         }}
       >
-        <Icon name={current ? item.on : item.icon} color={current ? colors.accent : colors.muted} />
+        <View>
+          <Icon
+            name={current ? item.on : item.icon}
+            color={current ? colors.accent : colors.muted}
+          />
+          {badge > 0 ? <Badge count={badge} /> : null}
+        </View>
         <Text variant="caption" tone={current ? 'accent' : 'muted'}>
           {item.label}
         </Text>
@@ -47,6 +89,7 @@ export function TabBar() {
   const { state } = useSession();
   const insets = useSafeAreaInsets();
   const ready = useReadyCount();
+  const toBuy = useToBuyCount();
   const [adding, setAdding] = useState(false);
   const claims = state.status === 'signedIn' ? state.claims : null;
   if (!claims || !showTabBar(path, true)) return null;
@@ -89,29 +132,11 @@ export function TabBar() {
               }}
             >
               <Icon name="add" size={30} color={colors.onAccent} />
-              {ready > 0 ? (
-                <View
-                  style={{
-                    position: 'absolute',
-                    top: -2,
-                    right: -2,
-                    minWidth: 20,
-                    height: 20,
-                    borderRadius: 10,
-                    paddingHorizontal: 4,
-                    backgroundColor: colors.tag,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Text variant="caption" tone="onAccent">
-                    {ready}
-                  </Text>
-                </View>
-              ) : null}
+              {ready > 0 ? <Badge count={ready} /> : null}
             </Pressable>
           </View>
         ) : null}
+        <TabLink tab="list" current={current === 'list'} name={listLabel(toBuy)} badge={toBuy} />
         <TabLink tab="household" current={current === 'household'} />
       </View>
       <AddSheet open={adding} ready={ready} onClose={() => setAdding(false)} />

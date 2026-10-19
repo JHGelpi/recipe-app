@@ -170,3 +170,9 @@ export async function expectNotListed(page: Page, title: string): Promise<void> 
   await expect(page.getByText('No recipes match')).toBeVisible();
   await expect(page.getByText(title, { exact: true })).toHaveCount(0);
 }
+
+/** Opens the List tab (FR-31). Its name carries the count left to buy. */
+export async function openList(page: Page): Promise<void> {
+  await page.getByRole('link', { name: /^Shopping list/ }).click();
+  await expect(page.getByRole('heading', { name: 'Shopping list', level: 1 })).toBeVisible();
+}
