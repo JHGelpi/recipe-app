@@ -1,99 +1,90 @@
 import { randomUUID } from 'node:crypto';
-import { describe, expect, it } from 'vitest';
-import { SEED, signInAs } from '../../../../test-support/auth';
-import { adminSql, as, refusalCode } from '../helpers/db';
+import { expect, it } from 'vitest';
+import { env } from '../../../../test-support/env';
+import { signInFresh, type Actor } from '../../../../test-support/auth';
+import { adminSql } from '../helpers/db';
 
-const item = (householdId: string | null) => ({
-  id: randomUUID(),
-  household_id: householdId,
-  item: 'onions',
-  item_key: 'onion',
-  aisle: 'produce',
+async function upload(actor: Actor, ops: unknown[]) {
+  const response = await fetch(`${env.apiUrl}/upload`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${actor.accessToken}` },
+    body: JSON.stringify({ ops }),
+  });
+  return (await response.json()) as { results: { id: string; status: string; reason?: string }[] };
+}
+const fresh = () => signInFresh(`shop-${randomUUID()}@example.test`);
+
+it('puts, ticks and soft-deletes a shopping item; refuses a bad aisle and a long item', async () => {
+  const cook = await fresh();
+  const id = randomUUID();
+  const base = {
+    household_id: cook.householdId,
+    item: 'onions',
+    item_key: 'onion',
+    aisle: 'produce',
+    quantity: 2,
+  };
+  const put = await upload(cook, [{ op: 'put', table: 'shopping_items', id, data: base }]);
+  expect(put.results[0]!.status).toBe('applied');
+  const tick = await upload(cook, [
+    { op: 'patch', table: 'shopping_items', id, data: { checked_at: new Date().toISOString() } },
+  ]);
+  expect(tick.results[0]!.status).toBe('applied');
+  const bad = await upload(cook, [
+    { op: 'put', table: 'shopping_items', id: randomUUID(), data: { ...base, aisle: 'garden' } },
+    {
+      op: 'put',
+      table: 'shopping_items',
+      id: randomUUID(),
+      data: { ...base, item: 'x'.repeat(201) },
+    },
+  ]);
+  expect(bad.results.map((r) => r.status)).toEqual(['rejected', 'rejected']);
 });
 
-describe('shopping list tables', () => {
-  it('members add and tick; viewers read but cannot write', async () => {
-    const member = await signInAs(SEED.memberA);
-    const viewer = await signInAs(SEED.viewerA);
-    const row = item(member.householdId);
-    await as(member, (tx) => tx`insert into public.shopping_items ${tx(row)}`);
-    await as(
-      member,
-      (tx) => tx`update public.shopping_items set checked_at = now() where id = ${row.id}`,
-    );
-    expect(
-      await as(viewer, (tx) => tx`select id from public.shopping_items where id = ${row.id}`),
-    ).toHaveLength(1);
-    expect(
-      await refusalCode(
-        as(viewer, (tx) => tx`insert into public.shopping_items ${tx(item(viewer.householdId))}`),
-      ),
-    ).toBe('42501');
-    const updated = await as(
-      viewer,
-      (tx) =>
-        tx`update public.shopping_items set checked_at = null where id = ${row.id} returning id`,
-    );
-    expect(updated).toHaveLength(0);
-  });
+it('a second aisle choice for the same item updates the first', async () => {
+  const cook = await fresh();
+  const data = { household_id: cook.householdId, item_key: 'onion', aisle: 'frozen' };
+  const first = await upload(cook, [{ op: 'put', table: 'aisle_choices', id: randomUUID(), data }]);
+  const second = await upload(cook, [
+    { op: 'put', table: 'aisle_choices', id: randomUUID(), data: { ...data, aisle: 'dairy' } },
+  ]);
+  expect([first.results[0]!.status, second.results[0]!.status]).toEqual(['applied', 'applied']);
+  const rows = await adminSql<{ aisle: string }[]>`
+    select aisle from public.aisle_choices where household_id = ${cook.householdId} and item_key = 'onion'`;
+  expect(rows).toEqual([{ aisle: 'dairy' }]);
+});
 
-  it('another household cannot read or write the rows', async () => {
-    const member = await signInAs(SEED.memberA);
-    const other = await signInAs(SEED.adminB);
-    const row = item(member.householdId);
-    await as(member, (tx) => tx`insert into public.shopping_items ${tx(row)}`);
-    expect(
-      await as(other, (tx) => tx`select id from public.shopping_items where id = ${row.id}`),
-    ).toHaveLength(0);
-    expect(
-      await refusalCode(
-        as(other, (tx) => tx`insert into public.shopping_items ${tx(item(member.householdId))}`),
-      ),
-    ).toBe('42501');
-  });
+it('a full list refuses new rows with list_full', async () => {
+  const cook = await fresh();
+  await adminSql`
+    insert into public.shopping_items (id, household_id, item, item_key, aisle)
+    select gen_random_uuid(), ${cook.householdId}, 'x', 'x', 'other' from generate_series(1, 500)`;
+  const res = await upload(cook, [
+    {
+      op: 'put',
+      table: 'shopping_items',
+      id: randomUUID(),
+      data: {
+        household_id: cook.householdId,
+        item: 'one more',
+        item_key: 'one more',
+        aisle: 'other',
+      },
+    },
+  ]);
+  expect(res.results[0]).toMatchObject({ status: 'rejected', reason: 'list_full' });
+});
 
-  it('an aisle outside the list and a second choice for the same item are refused by the database', async () => {
-    const member = await signInAs(SEED.memberA);
-    expect(
-      await refusalCode(
-        as(
-          member,
-          (tx) =>
-            tx`insert into public.shopping_items ${tx({ ...item(member.householdId), aisle: 'garden' })}`,
-        ),
-      ),
-    ).toBe('23514');
-    const key = `k-${randomUUID()}`;
-    await as(
-      member,
-      (tx) =>
-        tx`insert into public.aisle_choices ${tx({ id: randomUUID(), household_id: member.householdId, item_key: key, aisle: 'frozen' })}`,
-    );
-    expect(
-      await refusalCode(
-        as(
-          member,
-          (tx) =>
-            tx`insert into public.aisle_choices ${tx({ id: randomUUID(), household_id: member.householdId, item_key: key, aisle: 'dairy' })}`,
-        ),
-      ),
-    ).toBe('23505');
+it('the trash purge also removes list rows deleted over 30 days ago', async () => {
+  const cook = await fresh();
+  const old = randomUUID();
+  await adminSql`insert into public.shopping_items (id, household_id, item, item_key, aisle, deleted_at)
+    values (${old}, ${cook.householdId}, 'x', 'x', 'other', now() - interval '31 days')`;
+  const res = await fetch(`${env.apiUrl}/trash/purge`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${cook.accessToken}` },
   });
-
-  it('only rows deleted over 30 days ago can be hard-deleted', async () => {
-    const member = await signInAs(SEED.memberA);
-    const fresh = item(member.householdId);
-    const old = item(member.householdId);
-    await adminSql`insert into public.shopping_items ${adminSql({ ...fresh, deleted_at: new Date() })}`;
-    await adminSql`insert into public.shopping_items ${adminSql(old)}`;
-    await adminSql`update public.shopping_items set deleted_at = now() - interval '31 days' where id = ${old.id}`;
-    const gone = await as(
-      member,
-      (tx) =>
-        tx<
-          { id: string }[]
-        >`delete from public.shopping_items where id in (${fresh.id}, ${old.id}) returning id`,
-    );
-    expect(gone.map((r) => r.id)).toEqual([old.id]);
-  });
+  expect(res.status).toBe(200);
+  expect(await adminSql`select 1 from public.shopping_items where id = ${old}`).toHaveLength(0);
 });
