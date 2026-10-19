@@ -70,6 +70,7 @@ describe('photo imports', () => {
     uploaded: 2,
     localPending: 1,
     firstPage: 'p1',
+    refused: 0,
     ...over,
   });
 

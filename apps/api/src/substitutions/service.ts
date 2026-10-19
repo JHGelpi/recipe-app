@@ -9,6 +9,7 @@ import type { AsClaims } from '../db/asUser';
 import { AiUnavailableError, costMicroUsd, type AiConfig, type Gateway } from '../llm/gateway';
 import { buildSubstituteRequest, RECORD_SUBSTITUTES_TOOL } from '../llm/suggestSubstitutes';
 import { AI_RESERVE_MICROUSD, reserveSpend, settleSpend } from '../llm/usage';
+import { json } from '../db/json';
 
 export type SubstitutionOutcome =
   | { kind: 'answer'; answer: SubstitutionAnswer; ingredient_raw: string }
@@ -88,7 +89,7 @@ export function createSubstitutionService(deps: {
           insert into public.substitutions
             (id, household_id, recipe_id, ingredient_id, ingredient_raw, options, note)
           values (${ask.id}, (select public.auth_household_id()), ${ask.recipe_id},
-                  ${ask.ingredient_id}, ${line.raw}, ${tx.json(answer.options as never)}, ${answer.note})
+                  ${ask.ingredient_id}, ${line.raw}, ${json(tx, answer.options)}, ${answer.note})
           on conflict (recipe_id, ingredient_id) where deleted_at is null
           do update set ingredient_raw = excluded.ingredient_raw,
                         options = excluded.options, note = excluded.note`;

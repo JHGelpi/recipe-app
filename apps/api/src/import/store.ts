@@ -7,6 +7,7 @@ import {
 import type { TokenClaims } from '../auth/verify';
 import type { AsClaims } from '../db/asUser';
 import { AI_RESERVE_MICROUSD, monthSpentMicroUsd, reserveSpend, settleSpend } from '../llm/usage';
+import { json } from '../db/json';
 
 export type ClaimedImport = {
   id: string;
@@ -113,7 +114,7 @@ export function createImportStore(asClaims: AsClaims): ImportStore {
         await tx`
           update public.imports
           set status = ${result.status},
-              draft = ${result.status === 'ready' ? tx.json(result.draft as never) : null},
+              draft = ${result.status === 'ready' ? json(tx, result.draft) : null},
               error = ${result.status === 'failed' ? result.error : null}
           where id = ${row.id} and status = 'parsing' and parse_started_at::text = ${row.claim}`;
       });

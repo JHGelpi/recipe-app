@@ -15,6 +15,7 @@ import {
 } from '@recipe-app/domain';
 import { z } from 'zod';
 import type { UserTx } from '../db/asUser';
+import { json } from '../db/json';
 
 export const MAX_OPS = 500;
 const ALLOWED_TABLES = new Set([
@@ -68,7 +69,7 @@ function columns(tx: UserTx, data: Record<string, unknown>): Record<string, unkn
     Object.entries(data).map(([key, value]) => [
       key,
       // postgres.js accepts any JSON value here; its declared type is narrower.
-      JSON_COLUMNS.has(key) ? tx.json(value as never) : value,
+      JSON_COLUMNS.has(key) ? json(tx, value) : value,
     ]),
   );
 }

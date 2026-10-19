@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { buildShareSnapshot, shareSnapshotSchema, type ShareSnapshot } from '@recipe-app/domain';
 import type { AsUser, UserTx } from '../db/asUser';
 import type { PhotoStore } from '../photos/store';
+import { json } from '../db/json';
 
 export type ShareRefusalKey = 'forbidden' | 'share_unavailable' | 'own_household' | 'not_found';
 export class ShareRefusal extends Error {
@@ -117,7 +118,7 @@ export function createSharingService(deps: {
             ),
           );
           const [row] = await tx<{ token: string }[]>`
-            select token from public.create_share(${shareId}, ${recipeId}, ${tx.json(snapshot as never)})`;
+            select token from public.create_share(${shareId}, ${recipeId}, ${json(tx, snapshot)})`;
           return { code: row!.token };
         }),
       ),
