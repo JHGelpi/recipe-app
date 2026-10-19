@@ -1,5 +1,7 @@
 import { expect, test, type Page } from './fixtures';
 import { addRecipe, findRecipe, freshEmail, session, signIn, unique } from './helpers';
+import { env } from '../test-support/env';
+import { watchMailbox } from '../test-support/mail';
 
 test.beforeEach(({ page }) => {
   page.on('dialog', (dialog) => void dialog.accept());
@@ -90,4 +92,35 @@ test('the Household screen offline shows members and disables changes', async ({
   await context.setOffline(true);
   await expect(page.getByText('Changing the household needs a connection')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Share invite' })).toHaveCount(0);
+});
+
+test('an invite opened signed out resumes after sign-in, and a double tap on Join joins once (FR-3)', async ({
+  page,
+  browser,
+}) => {
+  await signIn(page, freshEmail('resume-admin'));
+  await page.getByRole('link', { name: 'Household', exact: true }).click();
+  await page.getByRole('button', { name: 'Share invite' }).click();
+  const url = (await page.getByLabel('Invite link').textContent())!.trim();
+
+  const guest = await (await browser.newContext()).newPage();
+  await guest.goto(url);
+  await guest.getByRole('link', { name: 'Sign in' }).click();
+  const email = freshEmail('resume-guest');
+  const mailbox = await watchMailbox(env.mailUrl, email);
+  await guest.getByLabel('Email').fill(email);
+  await guest.getByRole('button', { name: 'Send code' }).click();
+  await guest.getByLabel('Code').fill(await mailbox.nextCode());
+  await guest.getByRole('button', { name: 'Sign in' }).click();
+  const join = guest.getByRole('button', { name: 'Join' });
+  await expect(join).toBeVisible();
+
+  let accepts = 0;
+  guest.on('request', (request) => {
+    if (request.url().endsWith('/api/invites/accept')) accepts += 1;
+  });
+  await join.dblclick();
+  await expect(guest.getByText(/^You've joined the /)).toBeVisible({ timeout: 30_000 });
+  expect(accepts).toBe(1);
+  await guest.context().close();
 });

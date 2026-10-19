@@ -39,7 +39,11 @@ export function RecipeScreen({ claims, id }: { claims: Claims; id: string }) {
   const { recipe, starred } = useRecipe(id, claims.userId);
   const writer = canWrite(claims.role);
   const pages = useRecipePages(id);
-  const [saved] = useState(() => takeSavedFlash());
+  const [saved, setSaved] = useState(false);
+  // Read in an effect: a second render would find the flash already taken.
+  useEffect(() => {
+    if (takeSavedFlash()) setSaved(true);
+  }, []);
   const [panel, setPanel] = useState<'share' | 'more' | null>(null);
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(0);
