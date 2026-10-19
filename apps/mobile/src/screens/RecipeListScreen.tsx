@@ -1,5 +1,5 @@
 import { useDeferredValue } from 'react';
-import { FlatList, ScrollView, View } from 'react-native';
+import { FlatList, View } from 'react-native';
 import { BuildFooter } from '../components/BuildFooter';
 import { HouseholdNoticeBanner } from '../components/HouseholdNoticeBanner';
 import { StarButton } from '../components/StarButton';
@@ -10,7 +10,7 @@ import { clearFilter, setFilter, toggleTag, useListFilter } from '../recipes/lis
 import type { Claims } from '../session/claims';
 import { Thumb } from '../components/Thumb';
 import { colors, space } from '../theme';
-import { Button, Chip, Icon, IconButton, RowCard, Screen, Text, TextField } from '../ui';
+import { Button, Chip, ChipBar, Icon, IconButton, RowCard, Screen, Text, TextField } from '../ui';
 
 /** FR-15, FR-19, FR-20: the household's recipes, or the user's favorites. */
 export function RecipeListScreen({
@@ -59,12 +59,7 @@ export function RecipeListScreen({
         }
       />
       {chips.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: space.sm }}
-          style={{ flexGrow: 0 }}
-        >
+        <ChipBar label="Tags">
           {chips.map((tag) => (
             <Chip
               key={tag}
@@ -75,7 +70,7 @@ export function RecipeListScreen({
               onPress={() => toggleTag(tag)}
             />
           ))}
-        </ScrollView>
+        </ChipBar>
       ) : null}
       {filtering && items.length > 0 ? (
         <Text variant="small" tone="muted" aria-live="polite">

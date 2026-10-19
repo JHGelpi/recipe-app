@@ -125,7 +125,7 @@ C4Component
 
   Container_Boundary(mobile, "Mobile App") {
     Component(nav, "Navigation & Screens", "Expo Router + tab bar", "Recipes, Favorites, + (New recipe / Import), List, Household; recipe, edit, import review, cook mode, shopping list, household")
-    Component(ui, "Design system", "src/theme + src/ui", "Dishkept tokens and building blocks; screens use only these (ADR-0017)")
+    Component(ui, "Design system", "src/theme + src/ui", "Dishkept tokens and building blocks, including ChipBar (sideways chips with ‹ › buttons, wheel and fade); screens use only these (ADR-0017)")
     Component(capture, "Capture Module", "Import screen", "Photos (FR-7), pasted text and links (FR-8, FR-9); writes an imports row, and a photos row per page")
     Component(cook, "Cook Mode", "Screen", "Step-by-step view, wake lock, scaling and units on the phone (FR-21–23)")
     Component(household, "Household", "Screen", "Members, roles, invites; follows membership changes (FR-3–6)")

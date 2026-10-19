@@ -17,5 +17,13 @@ export default defineConfig({
     // E2E_TRACE=1 keeps traces of failures when they are needed.
     trace: process.env.E2E_TRACE ? 'retain-on-failure' : 'off',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    // The owner uses Firefox (bug batch spec §6). CI runs the @firefox-tagged
+    // tests there; locally set E2E_FIREFOX=1 once Firefox and its libraries
+    // are installed (or use the Playwright Docker image).
+    ...(process.env.CI || process.env.E2E_FIREFOX
+      ? [{ name: 'firefox', grep: /@firefox/, use: { ...devices['Desktop Firefox'] } }]
+      : []),
+  ],
 });

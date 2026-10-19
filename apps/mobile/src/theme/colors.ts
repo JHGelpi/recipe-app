@@ -12,6 +12,8 @@ export const colors = {
   onAccent: '#0E121A',
   // Behind sheets; not a text color.
   scrim: 'rgba(14, 18, 26, 0.72)',
+  // The tag bar's edge fade: the background, fully transparent.
+  fade: 'rgba(14, 18, 26, 0)',
   shadow: '#000000',
 } as const;
 

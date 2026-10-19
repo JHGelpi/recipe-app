@@ -60,7 +60,7 @@ jobs:
       - name: Build and start the stack
         run: pnpm dev:backend:test
       - run: pnpm db:seed
-      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright install --with-deps chromium firefox
       - run: pnpm test:e2e
       - name: Stack logs
         if: failure()
