@@ -1,10 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { activeTab, addLabel, importLabel, showTabBar } from './tabs';
+import { activeTab, addLabel, importLabel, listLabel, showTabBar } from './tabs';
 
 describe('the tab bar (UI spec §4)', () => {
+  it('names the list tab with what is left to buy', () => {
+    expect(listLabel(0)).toBe('Shopping list');
+    expect(listLabel(1)).toBe('Shopping list, 1 to buy');
+    expect(listLabel(12)).toBe('Shopping list, 12 to buy');
+    expect(activeTab('/list')).toBe('list');
+  });
+
   it.each([
     '/',
     '/favorites',
+    '/list',
     '/household',
     '/trash',
     '/recipe/abc',

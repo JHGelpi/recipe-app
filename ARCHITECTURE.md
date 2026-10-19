@@ -124,7 +124,7 @@ C4Component
   title Component Diagram — Mobile App
 
   Container_Boundary(mobile, "Mobile App") {
-    Component(nav, "Navigation & Screens", "Expo Router + tab bar", "Recipes, Favorites, + (New recipe / Import), Household; recipe, edit, import review, cook mode, household")
+    Component(nav, "Navigation & Screens", "Expo Router + tab bar", "Recipes, Favorites, + (New recipe / Import), List, Household; recipe, edit, import review, cook mode, shopping list, household")
     Component(ui, "Design system", "src/theme + src/ui", "Dishkept tokens and building blocks; screens use only these (ADR-0017)")
     Component(capture, "Capture Module", "Import screen", "Photos (FR-7), pasted text and links (FR-8, FR-9); writes an imports row, and a photos row per page")
     Component(cook, "Cook Mode", "Screen", "Step-by-step view, wake lock, scaling and units on the phone (FR-21–23)")
@@ -305,6 +305,8 @@ erDiagram
   HOUSEHOLD ||--o{ INVITE : issues
   HOUSEHOLD ||--o{ AI_USAGE : accrues
   HOUSEHOLD ||--o{ FRIEND_LINK : issues
+  HOUSEHOLD ||--o{ SHOPPING_ITEM : lists
+  HOUSEHOLD ||--o{ AISLE_CHOICE : remembers
 ```
 
 Conventions for every tenant table:
@@ -314,6 +316,8 @@ Conventions for every tenant table:
 - Ingredients and steps are JSON arrays on the recipe row (ADR-0010), each element with a stable id; ingredients keep the typed line (`raw`) plus parsed `quantity`, `quantity_max`, `unit`, `item`, `note`, so scaling, search, and the Phase 2 shopping list can use them
 - Favorites are a per-user table (`favorites`), synced only to that user
 - `INVITE` (`invites`): role, sha256 of the link's code, expiry, accepted and cancelled times; read by the household's Admins only and written only by the ADR-0015 functions. Roles are checked live from `memberships`, which syncs to phones (`household_members`, `my_membership`)
+- `SHOPPING_ITEM` (`shopping_items`): one row per added ingredient or typed item: `item`, `item_key` (the merge key), scaled `quantity`, `quantity_max`, `unit`, `note`, `aisle`, `recipe_id` and a copied `recipe_title` (no foreign key), `checked_at`. Merged into lines on screen by `shoppingLines` (ADR-0019); cleared rows are purged after 30 days
+- `AISLE_CHOICE` (`aisle_choices`): the household's aisle for an `item_key`, unique per household and upserted on it; beats the built-in word list
 - `SHARE` (`shares`): `recipe_id`, the validated `snapshot` (with its dish photo's size), sha256 of the link's code, `deleted_at` when stopped; read by the household, written only by the ADR-0016 functions; a stopped share and its photo copy go in the 30-day purge
 - `PHOTO` (`photos`): `kind` (page or dish), `import_id` and `position` for pages, `recipe_id`, `media_type`, `bytes`, `width`, `height`, `uploaded_at`; the bytes are on the `photos` volume. A recipe's dish photo is `recipes.photo_id` (ADR-0013)
 
@@ -337,7 +341,7 @@ Conventions for every tenant table:
 
 ## 8. Future evolution
 
-- **Phase 2 shopping list:** new tables (`shopping_list`, `shopping_item`) synced like recipes; ingredient normalization reuses the structured ingredient model.
+- **Phase 2 shopping list (built, ADR-0019):** `shopping_items` and `aisle_choices`, synced like recipes; added rows are merged on screen by item, reusing the structured ingredient model and the unit converter.
 - **Phase 3 meal planning:** `meal_plan`, `meal_plan_entry` referencing recipes; generates shopping items.
 - **Desktop:** Expo/React Native for web or Tauri reusing the TS domain packages; PowerSync has a web SDK.
 - **Semantic search:** `pgvector` embeddings server-side, with keyword search kept as the offline fallback.

@@ -23,6 +23,39 @@ describe('toUploadOps', () => {
     ]);
   });
 
+  it('keeps a shopping item’s client fields and drops server-owned ones (FR-31)', () => {
+    expect(
+      toUploadOps([
+        {
+          op: 'PUT',
+          table: 'shopping_items',
+          id: 's1',
+          opData: {
+            household_id: 'h1',
+            item: 'onions',
+            item_key: 'onion',
+            aisle: 'produce',
+            checked_at: '2026-10-19T10:00:00.000Z',
+            updated_at: '2026-10-19T10:00:00.000Z',
+          },
+        },
+      ]),
+    ).toEqual([
+      {
+        op: 'put',
+        table: 'shopping_items',
+        id: 's1',
+        data: {
+          household_id: 'h1',
+          item: 'onions',
+          item_key: 'onion',
+          aisle: 'produce',
+          checked_at: '2026-10-19T10:00:00.000Z',
+        },
+      },
+    ]);
+  });
+
   it('maps a PATCH', () => {
     expect(
       toUploadOps([{ op: 'PATCH', table: 'recipes', id: 'r1', opData: { title: 'Stew' } }]),

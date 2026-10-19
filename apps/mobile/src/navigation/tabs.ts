@@ -1,4 +1,4 @@
-export type Tab = 'recipes' | 'favorites' | 'household';
+export type Tab = 'recipes' | 'favorites' | 'list' | 'household';
 
 // Pages that fill the screen or are seen signed out (UI spec §4).
 const HIDDEN = [
@@ -17,8 +17,14 @@ export function showTabBar(path: string, signedIn: boolean): boolean {
 export function activeTab(path: string): Tab | null {
   if (path === '/') return 'recipes';
   if (path === '/favorites') return 'favorites';
+  if (path === '/list') return 'list';
   if (path === '/household' || path === '/trash') return 'household';
   return null;
+}
+
+/** FR-31: the List tab's name says how much is left to buy. */
+export function listLabel(toBuy: number): string {
+  return toBuy > 0 ? `Shopping list, ${toBuy} to buy` : 'Shopping list';
 }
 
 export function addLabel(ready: number): string {

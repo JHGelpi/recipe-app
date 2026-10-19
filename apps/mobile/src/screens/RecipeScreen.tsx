@@ -3,6 +3,7 @@ import { scaleFactor } from '@recipe-app/domain';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
+import { AddToListSheet } from '../components/AddToListSheet';
 import { DishPhoto } from '../components/DishPhoto';
 import { IngredientList } from '../components/IngredientList';
 import { OriginalPhotos } from '../components/OriginalPhotos';
@@ -39,6 +40,8 @@ export function RecipeScreen({ claims, id }: { claims: Claims; id: string }) {
   const pages = useRecipePages(id);
   const [saved] = useState(() => takeSavedFlash());
   const [panel, setPanel] = useState<'share' | 'more' | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [added, setAdded] = useState(0);
   if (recipe === undefined) return null;
   const toggle = (next: 'share' | 'more') =>
     setPanel((current) => (current === next ? null : next));
@@ -104,6 +107,14 @@ export function RecipeScreen({ claims, id }: { claims: Claims; id: string }) {
                   onPress={() => router.push(`/recipe/${recipe.id}/cook`)}
                 />
               </View>
+              {writer ? (
+                <IconButton
+                  icon="cart-outline"
+                  label="Add to list"
+                  filled
+                  onPress={() => setAdding(true)}
+                />
+              ) : null}
               <IconButton
                 icon="share-outline"
                 label="Share"
@@ -129,6 +140,20 @@ export function RecipeScreen({ claims, id }: { claims: Claims; id: string }) {
                 </>
               ) : null}
             </View>
+          ) : null}
+          {added > 0 ? (
+            <Banner>{`Added ${added} ${added === 1 ? 'item' : 'items'} to your list`}</Banner>
+          ) : null}
+          {/* Mounted only while open, so it reads the servings and units the cook
+              just chose (the servings bar saves them as it changes). */}
+          {adding && writer && !recipe.deleted_at ? (
+            <AddToListSheet
+              open={adding}
+              claims={claims}
+              recipe={recipe}
+              onClose={() => setAdding(false)}
+              onAdded={setAdded}
+            />
           ) : null}
           {panel === 'share' && !recipe.deleted_at ? <SharePanel recipe={recipe} /> : null}
           {panel === 'more' && writer && !recipe.deleted_at ? (

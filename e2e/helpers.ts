@@ -172,6 +172,12 @@ export async function expectNotListed(page: Page, title: string): Promise<void> 
   await expect(page.getByText(title, { exact: true })).toHaveCount(0);
 }
 
+/** Opens the List tab (FR-31). Its name carries the count left to buy. */
+export async function openList(page: Page): Promise<void> {
+  await page.getByRole('link', { name: /^Shopping list/ }).click();
+  await expect(page.getByRole('heading', { name: 'Shopping list', level: 1 })).toBeVisible();
+}
+
 /** The sign-up gate is shared state; specs that turn it on turn it off in afterEach. */
 export async function setGate(on: boolean): Promise<void> {
   const sql = postgres(env.adminDbUrl, { max: 1, onnotice: () => {} });

@@ -88,3 +88,22 @@ streams:
       SELECT id, household_id, recipe_id, created_at, deleted_at
       FROM shares
       WHERE household_id = auth.parameter('household_id') AND deleted_at IS NULL
+
+  # Mirrors shopping_items_select: household_id = auth_household_id(),
+  # narrowed to rows not deleted, so cleared items leave the phone.
+  household_shopping_items:
+    auto_subscribe: true
+    query: >-
+      SELECT id, household_id, item, item_key, quantity, quantity_max, unit, note, aisle,
+             recipe_id, recipe_title, checked_at,
+             created_at, updated_at, updated_by, deleted_at
+      FROM shopping_items
+      WHERE household_id = auth.parameter('household_id') AND deleted_at IS NULL
+
+  # Mirrors aisle_choices_select.
+  household_aisle_choices:
+    auto_subscribe: true
+    query: >-
+      SELECT id, household_id, item_key, aisle, created_at, updated_at, updated_by, deleted_at
+      FROM aisle_choices
+      WHERE household_id = auth.parameter('household_id') AND deleted_at IS NULL

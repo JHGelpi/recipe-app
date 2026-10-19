@@ -103,3 +103,12 @@ insert into public.shares (id, household_id, recipe_id, token_hash, snapshot, de
 insert into public.friend_links (id, household_id, token_hash, expires_at) values
   ('00000000-0000-0000-0000-0000000000eb', '00000000-0000-0000-0000-00000000000a', sha256(convert_to('seed friend a', 'UTF8')), now()),
   ('00000000-0000-0000-0000-0000000000ec', '00000000-0000-0000-0000-00000000000b', sha256(convert_to('seed friend b', 'UTF8')), now());
+
+-- One list row and one aisle choice per household, so the isolation suite's
+-- checks of these tables are not vacuous.
+insert into public.shopping_items (id, household_id, item, item_key, aisle) values
+  ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-00000000000a', 'Seed onions', 'seed onion', 'produce'),
+  ('00000000-0000-0000-0000-0000000000f2', '00000000-0000-0000-0000-00000000000b', 'Seed onions', 'seed onion', 'produce');
+insert into public.aisle_choices (id, household_id, item_key, aisle) values
+  ('00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-00000000000a', 'seed onion', 'produce'),
+  ('00000000-0000-0000-0000-0000000000f4', '00000000-0000-0000-0000-00000000000b', 'seed onion', 'produce');

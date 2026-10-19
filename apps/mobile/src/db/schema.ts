@@ -128,6 +128,39 @@ const shares = new Table(
   { indexes: { recipe: ['recipe_id'] } },
 );
 
+// The household's list rows not cleared (household_shopping_items stream).
+const shopping_items = new Table(
+  {
+    household_id: column.text,
+    item: column.text,
+    item_key: column.text,
+    quantity: column.real,
+    quantity_max: column.real,
+    unit: column.text,
+    note: column.text,
+    aisle: column.text,
+    recipe_id: column.text,
+    recipe_title: column.text,
+    checked_at: column.text,
+    created_at: column.text,
+    updated_at: column.text,
+    updated_by: column.text,
+    deleted_at: column.text,
+  },
+  { indexes: { key: ['item_key'] } },
+);
+
+// The household's own aisle for an item (household_aisle_choices stream).
+const aisle_choices = new Table({
+  household_id: column.text,
+  item_key: column.text,
+  aisle: column.text,
+  created_at: column.text,
+  updated_at: column.text,
+  updated_by: column.text,
+  deleted_at: column.text,
+});
+
 // attachments is PowerSync's local-only queue table: never uploaded.
 export const AppSchema = new Schema({
   recipes,
@@ -138,6 +171,8 @@ export const AppSchema = new Schema({
   memberships,
   households,
   shares,
+  shopping_items,
+  aisle_choices,
   attachments: new AttachmentTable(),
 });
 
@@ -146,3 +181,5 @@ export type RecipeRow = Database['recipes'];
 export type FavoriteRow = Database['favorites'];
 export type ImportRow = Database['imports'];
 export type PhotoRow = Database['photos'];
+export type ShoppingItemRow = Database['shopping_items'];
+export type AisleChoiceRow = Database['aisle_choices'];
