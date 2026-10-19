@@ -11,7 +11,7 @@ import { importSourceFrom } from '../imports/form';
 import { useAiUsage, useImports } from '../imports/hooks';
 import { createImport, createPhotoImport, dismissImport } from '../imports/repository';
 import { importPreview } from '../imports/rows';
-import { formatUsd, importView } from '../imports/status';
+import { formatUsd, importView, retryMessage } from '../imports/status';
 import { pickPhotos } from '../photos/pick';
 import { PhotoReadError, preparePhoto } from '../photos/prepare';
 import { photoSaver } from '../photos/queue';
@@ -117,9 +117,8 @@ export function ImportScreen({ claims }: { claims: Claims }) {
 
   async function retry(id: string) {
     const outcome = await withSession((deps) => requestParse(id, deps));
-    if (outcome !== 'started' && outcome !== 'busy') {
-      setNotice("Couldn't start it again. Check your connection and try again.");
-    }
+    const message = retryMessage(outcome ?? 'retry');
+    if (message) setNotice(message);
   }
 
   async function dismiss(id: string) {
@@ -272,9 +271,8 @@ export function ImportScreen({ claims }: { claims: Claims }) {
               {view.canRetry ? (
                 <Button variant="secondary" label="Try again" onPress={() => void retry(item.id)} />
               ) : null}
-              {!view.busy ? (
-                <Button variant="ghost" label="Dismiss" onPress={() => void dismiss(item.id)} />
-              ) : null}
+              {/* Always: a pending import the server keeps failing is never stranded. */}
+              <Button variant="ghost" label="Dismiss" onPress={() => void dismiss(item.id)} />
             </View>
           </Card>
         );

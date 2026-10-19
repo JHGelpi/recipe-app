@@ -1,8 +1,9 @@
 import { useQuery } from '@powersync/react';
 import { useEffect, useMemo, useState } from 'react';
 import { fetchUsage, withSession, type AiUsage } from './api';
-import { IMPORT_SQL, IMPORTS_SQL, PAGES_SQL, READY_COUNT_SQL } from './repository';
+import { IMPORT_SQL, IMPORTS_SQL, PAGES_SQL } from './repository';
 import { importFromRow, type ImportRecord } from './rows';
+import { readyCount } from './status';
 
 export function useImports(): ImportRecord[] {
   const { data } = useQuery<Record<string, unknown>>(IMPORTS_SQL);
@@ -19,9 +20,9 @@ export function useImport(id: string): ImportRecord | null | undefined {
   return data[0] ? importFromRow(data[0]) : null;
 }
 
+/** Ready drafts this app can open (a draft from a newer server may not read). */
 export function useReadyCount(): number {
-  const { data } = useQuery<{ n: number }>(READY_COUNT_SQL);
-  return Number(data[0]?.n ?? 0);
+  return readyCount(useImports());
 }
 
 /** NFR-7: this month's spend, refreshed when `refreshKey` changes; null offline. */

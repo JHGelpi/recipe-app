@@ -23,24 +23,28 @@ const IMPORT_COLUMNS = `i.*,
      where p.import_id = i.id and p.deleted_at is null and a.state = 0) as local_pending,
   (select p.id from photos p
      where p.import_id = i.id and p.kind = 'page' and p.deleted_at is null
-     order by p.position limit 1) as first_page`;
+     order by p.position limit 1) as first_page,
+  (select count(*) from photos p join attachments a on a.id = p.id
+     where p.import_id = i.id and p.deleted_at is null and a.state = 4) as refused`;
 
 export const IMPORTS_SQL = `select ${IMPORT_COLUMNS} from imports i
   where i.deleted_at is null order by i.created_at desc`;
 export const IMPORT_SQL = `select ${IMPORT_COLUMNS} from imports i
   where i.id = ? and i.deleted_at is null`;
-export const READY_COUNT_SQL =
-  "select count(*) as n from imports where deleted_at is null and status = 'ready'";
 export const PAGES_SQL =
   "select id, position from photos where import_id = ? and kind = 'page' and deleted_at is null order by position";
 
 // A photo import is sent for reading only once the server has every page.
 export const KICK_SQL = `select i.id, i.status, i.parse_started_at from imports i
   where i.deleted_at is null and i.status in ('pending', 'parsing')
-    and (i.source_type <> 'photo' or not exists (
-      select 1 from photos p
-      where p.import_id = i.id and p.kind = 'page' and p.deleted_at is null
-        and p.uploaded_at is null))`;
+    and (i.source_type <> 'photo' or (
+      -- A photo import with no pages (a tab closed mid-save) is never sent.
+      exists (select 1 from photos p
+        where p.import_id = i.id and p.kind = 'page' and p.deleted_at is null)
+      and not exists (
+        select 1 from photos p
+        where p.import_id = i.id and p.kind = 'page' and p.deleted_at is null
+          and p.uploaded_at is null)))`;
 
 function requireWriter(claims: Claims): void {
   if (!canWrite(claims.role)) throw new Error('Viewers cannot import recipes');
