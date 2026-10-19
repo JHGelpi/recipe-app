@@ -20,13 +20,31 @@ export type Aisle = (typeof AISLES)[number]['id'];
 const AISLE_IDS = AISLES.map((aisle) => aisle.id) as [Aisle, ...Aisle[]];
 export const aisleSchema = z.enum(AISLE_IDS);
 export const SHOPPING_LIMITS = { item: 200, rows: 500 } as const;
+const MAX_QUANTITY = 100_000;
 
 const KEEP = new Set(['asparagus', 'couscous', 'molasses', 'swiss', 'hummus', 'glass', 'grass']);
 
+// -ves plurals of words ending in -f; other -ves words (olives, cloves) just drop the s.
+const VES = new Map([
+  ['leaves', 'leaf'],
+  ['loaves', 'loaf'],
+  ['halves', 'half'],
+  ['calves', 'calf'],
+  ['shelves', 'shelf'],
+  ['wolves', 'wolf'],
+]);
+// -ies plurals of words ending in -ie, not -y.
+const IE = new Set(['cookies', 'pies', 'brownies', 'smoothies', 'ties', 'calories']);
+
 function singular(word: string): string {
   if (KEEP.has(word) || word.length <= 3) return word;
+  const ves = VES.get(word);
+  if (ves) return ves;
+  if (IE.has(word)) return word.slice(0, -1);
   if (word.endsWith('ies')) return `${word.slice(0, -3)}y`;
   if (word.endsWith('oes')) return word.slice(0, -2);
+  // peaches, radishes, boxes, glasses: the plural adds -es.
+  if (/(ch|sh|x|z|ss)es$/.test(word)) return word.slice(0, -2);
   if (word.endsWith('s') && !/(ss|us|is)$/.test(word)) return word.slice(0, -1);
   return word;
 }
@@ -137,7 +155,14 @@ const time = (value: string | null) => value ?? LATEST;
 
 const ORDER = new Map(AISLES.map((aisle, index) => [aisle.id, index]));
 
-export function shoppingLines(rows: ShoppingRow[]): ShoppingLine[] {
+/**
+ * FR-33, FR-34. A household's aisle choice wins over the rows' own aisle, so a
+ * row added offline before the choice synced cannot move the line back.
+ */
+export function shoppingLines(
+  rows: ShoppingRow[],
+  choices: ReadonlyMap<string, Aisle> = new Map(),
+): ShoppingLine[] {
   const groups = new Map<string, ShoppingRow[]>();
   for (const row of rows) groups.set(row.item_key, [...(groups.get(row.item_key) ?? []), row]);
   const lines = [...groups.entries()].map(([key, group]) => {
@@ -153,7 +178,7 @@ export function shoppingLines(rows: ShoppingRow[]): ShoppingLine[] {
     return {
       key,
       item: byAge[0]!.item,
-      aisle: latest.aisle,
+      aisle: choices.get(key) ?? latest.aisle,
       amount: amountOf(byAge),
       recipes: [...recipes].map(([id, title]) => ({ id, title })),
       handAdded: group.some((row) => row.recipe_id === null),
@@ -173,13 +198,17 @@ function newRow(
 ): NewShoppingRow {
   const item = (ingredient.item.trim() || ingredient.raw.trim()).slice(0, SHOPPING_LIMITS.item);
   const key = itemKey(item);
+  // Within what the server accepts, so a row is never added here and then
+  // rejected and removed at the next sync (review I5).
+  const fits = (value: number | null) => (value !== null && value <= MAX_QUANTITY ? value : null);
+  const quantity = fits(ingredient.quantity);
   return {
     item,
     item_key: key,
-    quantity: ingredient.quantity,
-    quantity_max: ingredient.quantity_max,
-    unit: ingredient.unit,
-    note: ingredient.note,
+    quantity,
+    quantity_max: quantity === null ? null : fits(ingredient.quantity_max),
+    unit: quantity === null ? null : ingredient.unit,
+    note: ingredient.note ? ingredient.note.slice(0, 200) : null,
     aisle: aisleFor(key, choices),
     recipe_id: recipe?.id ?? null,
     recipe_title: recipe?.title ?? null,
@@ -207,7 +236,7 @@ export function typedRow(text: string, choices: ReadonlyMap<string, Aisle>): New
 
 // Same shape as imports.ts's timestamps.
 const timestamp = z.iso.datetime({ offset: true });
-const quantity = z.number().nonnegative().max(100_000);
+const quantity = z.number().nonnegative().max(MAX_QUANTITY);
 
 export const shoppingItemPutSchema = z.strictObject({
   id: z.guid(),

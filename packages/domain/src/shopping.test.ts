@@ -43,6 +43,19 @@ describe('itemKey', () => {
     ['couscous', 'couscous'],
     ['molasses', 'molasses'],
     ['eggs', 'egg'],
+    ['peaches', 'peach'],
+    ['radishes', 'radish'],
+    ['boxes', 'box'],
+    ['glasses', 'glass'],
+    ['leaves', 'leaf'],
+    ['bay leaves', 'bay leaf'],
+    ['loaves', 'loaf'],
+    ['halves', 'half'],
+    ['cookies', 'cookie'],
+    ['pies', 'pie'],
+    ['brownies', 'brownie'],
+    ['olives', 'olive'],
+    ['cloves', 'clove'],
   ])('%s → %s', (input, key) => expect(itemKey(input)).toBe(key));
 });
 
@@ -141,6 +154,22 @@ describe('shoppingLines', () => {
     expect(lines[0]).toMatchObject({ item: 'onion', amount: '3', aisle: 'frozen' });
   });
 
+  it('the household’s aisle choice wins over the rows’ own aisle (review I4)', () => {
+    const lines = shoppingLines(
+      [
+        row({
+          item: 'lemons',
+          item_key: 'lemon',
+          aisle: 'frozen',
+          updated_at: '2026-10-18T09:00:00Z',
+        }),
+        row({ item: 'lemon', item_key: 'lemon', aisle: 'produce', updated_at: null }),
+      ],
+      new Map([['lemon', 'frozen']]),
+    );
+    expect(lines[0]!.aisle).toBe('frozen');
+  });
+
   it('marks typed items as hand added', () => {
     expect(shoppingLines([row({})])[0]!.handAdded).toBe(true);
   });
@@ -184,6 +213,33 @@ describe('addRows', () => {
       }),
       expect.objectContaining({ item: 'stock', quantity: 2, unit: 'cup', aisle: 'pantry' }),
     ]);
+  });
+
+  it('keeps rows within what the server accepts (review I5)', () => {
+    const big = {
+      id: '00000000-0000-4000-8000-000000000003',
+      title: 'Feast',
+      ingredients: [
+        ing({
+          id: 'f',
+          raw: '1000 g flour',
+          quantity: 1000,
+          unit: 'g',
+          item: 'flour',
+          note: 'n'.repeat(300),
+        }),
+      ],
+    };
+    const [only] = addRows(big, 250, new Set(['f']), new Map());
+    expect(only!.note).toHaveLength(200);
+    expect(only!.quantity).toBeNull();
+    expect(
+      shoppingItemPutSchema.safeParse({
+        id: '00000000-0000-4000-8000-000000000001',
+        household_id: '00000000-0000-4000-8000-000000000002',
+        ...only,
+      }).success,
+    ).toBe(true);
   });
 
   it('uses the raw text when the item is empty', () => {

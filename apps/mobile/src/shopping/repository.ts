@@ -1,6 +1,7 @@
 import type { AbstractPowerSyncDatabase } from '@powersync/web';
 import { SHOPPING_LIMITS, type Aisle, type NewShoppingRow } from '@recipe-app/domain';
 import { canWrite, type Claims } from '../session/claims';
+import { aisleChoiceId } from './choiceId';
 
 type Db = Pick<AbstractPowerSyncDatabase, 'execute' | 'getOptional'>;
 
@@ -89,16 +90,17 @@ export async function moveToAisle(
   aisle: Aisle,
 ): Promise<void> {
   requireWriter(claims);
+  const id = await aisleChoiceId(claims.householdId ?? '', itemKey);
   const existing = await db.getOptional<{ id: string }>(
-    'select id from aisle_choices where item_key = ?',
-    [itemKey],
+    'select id from aisle_choices where id = ?',
+    [id],
   );
   if (existing) {
-    await db.execute('update aisle_choices set aisle = ? where id = ?', [aisle, existing.id]);
+    await db.execute('update aisle_choices set aisle = ? where id = ?', [aisle, id]);
   } else {
     await db.execute(
       'insert into aisle_choices (id, household_id, item_key, aisle) values (?, ?, ?, ?)',
-      [crypto.randomUUID(), claims.householdId, itemKey, aisle],
+      [id, claims.householdId, itemKey, aisle],
     );
   }
   await db.execute(

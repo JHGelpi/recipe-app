@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { aisleChoiceId } from './choiceId';
 import {
   addShoppingRows,
   clearList,
@@ -78,6 +79,12 @@ describe('shopping list writes', () => {
     const again = fakeDb({ choice: { id: 'c1' } });
     await moveToAisle(again.db, member, 'onion', 'dairy');
     expect(again.calls[0]!.sql).toMatch(/^update aisle_choices set aisle = \?/);
+  });
+
+  it('a new aisle choice uses the household-and-item id every phone computes (review I3)', async () => {
+    const { db, calls } = fakeDb({ choice: null });
+    await moveToAisle(db, member, 'lemon', 'frozen');
+    expect(calls[0]!.params[0]).toBe(await aisleChoiceId('h1', 'lemon'));
   });
 
   it('viewers cannot change the list', async () => {
