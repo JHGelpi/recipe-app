@@ -68,11 +68,14 @@ export function ChipBar({ label, children }: { label: string; children: ReactNod
         {children}
       </ScrollView>
       {edges.left ? (
-        <View
-          style={{ position: 'absolute', left: 0, flexDirection: 'row', alignItems: 'center' }}
-        >
+        <View style={{ position: 'absolute', left: 0, flexDirection: 'row', alignItems: 'center' }}>
           <View style={{ backgroundColor: colors.bg }}>
-            <IconButton icon="chevron-back" label="Scroll tags left" filled onPress={() => page(-1)} />
+            <IconButton
+              icon="chevron-back"
+              label="Scroll tags left"
+              filled
+              onPress={() => page(-1)}
+            />
           </View>
           <View pointerEvents="none" style={[{ width: space.lg, height: 36 }, fade('left')]} />
         </View>

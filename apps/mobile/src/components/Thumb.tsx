@@ -19,7 +19,7 @@ export function Thumb({
   size?: number;
 }) {
   const box = { width: size, height: size, borderRadius: radius.field };
-  if (photoId) return <PhotoImage id={photoId} label={label} style={box} />;
+  if (photoId) return <PhotoImage id={photoId} label={label} style={box} placeholder="mark" />;
   return (
     <View
       testID="thumb-placeholder"

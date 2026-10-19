@@ -78,7 +78,8 @@ const ownerUser = (owner: string) => owner.split(':')[0];
  * owner recorded as a bare user id (before households could change) matches.
  */
 export function localDataAction(session: SettledSession, owner: string | null): 'wipe' | 'keep' {
-  if (session.status === 'signedOut') return session.byUser ? 'wipe' : 'keep';
+  // Nothing to wipe once a sign-out's wipe has run: online toggles must not repeat it.
+  if (session.status === 'signedOut') return session.byUser && owner !== null ? 'wipe' : 'keep';
   if (owner === null || owner === session.userId) return 'keep';
   if (ownerUser(owner) !== session.userId) return 'wipe';
   return session.householdId === null || owner === ownerKey(session.userId, session.householdId)

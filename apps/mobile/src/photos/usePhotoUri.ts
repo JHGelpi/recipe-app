@@ -8,6 +8,9 @@ import { readLocalPhoto } from './queue';
 
 export type PhotoView = { state: 'loading' | 'ready' | 'offline' | 'missing'; uri: string | null };
 
+const RETRIES = 10;
+const RETRY_MS = 30_000;
+
 // States 0 (waiting to upload) and 3 (synced) have a file on this phone.
 const LOCAL_SQL = 'select local_uri, state from attachments where id = ?';
 
@@ -19,14 +22,19 @@ export function usePhotoUri(id: string | null): PhotoView {
   const row = data[0];
   const local = row?.local_uri && [0, 3].includes(Number(row.state)) ? row.local_uri : null;
   const [view, setView] = useState<PhotoView>({ state: 'loading', uri: null });
+  // Another phone may not have uploaded it yet: look again while it is missing.
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!id) {
       setView({ state: 'missing', uri: null });
       return;
     }
+    // A changed photo never shows the previous one while the new one loads.
+    setView({ state: 'loading', uri: null });
     let live = true;
     let made: string | null = null;
+    let retry: ReturnType<typeof setTimeout> | null = null;
     const deps: LoadDeps = {
       readLocal: (uri) => readLocalPhoto(db, uri),
       fetchRemote: async (photoId) => {
@@ -50,13 +58,17 @@ export function usePhotoUri(id: string | null): PhotoView {
         setView({ state: 'ready', uri: made });
       } else {
         setView({ state: online ? 'missing' : 'offline', uri: null });
+        if (online && attempt < RETRIES) {
+          retry = setTimeout(() => live && setAttempt((n) => n + 1), RETRY_MS);
+        }
       }
     })();
     return () => {
       live = false;
+      if (retry) clearTimeout(retry);
       if (made) URL.revokeObjectURL(made);
     };
-  }, [db, id, local, online]);
+  }, [db, id, local, online, attempt]);
 
   return view;
 }

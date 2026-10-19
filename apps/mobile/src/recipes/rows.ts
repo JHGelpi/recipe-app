@@ -48,7 +48,16 @@ function jsonList(value: unknown): unknown {
   return JSON.parse(value) as unknown;
 }
 
-const INGREDIENT_KEYS = ['id', 'raw', 'quantity', 'quantity_max', 'unit', 'item', 'note', 'heading'];
+const INGREDIENT_KEYS = [
+  'id',
+  'raw',
+  'quantity',
+  'quantity_max',
+  'unit',
+  'item',
+  'note',
+  'heading',
+];
 
 /**
  * A newer app's extra fields are ignored, and a unit this app does not know

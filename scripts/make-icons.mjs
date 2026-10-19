@@ -5,6 +5,7 @@
 /* global Image, document -- used inside page.evaluate, which runs in Chromium */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 
 const SOURCE = 'apps/mobile/assets/ui/app_icon.png';
@@ -25,39 +26,57 @@ const OUTPUTS = [
   { file: 'apps/mobile/assets/brand/mark.png', size: 256, kind: 'rounded' },
 ];
 
-const source = `data:image/png;base64,${readFileSync(SOURCE).toString('base64')}`;
-const browser = await chromium.launch();
-const page = await browser.newPage();
+// Paths are from the repo root, so the script runs from any folder.
+const root = new URL('..', import.meta.url);
+const at = (path) => fileURLToPath(new URL(path, root));
 
-for (const output of OUTPUTS) {
-  const dataUrl = await page.evaluate(
-    async ({ source, crop, radius, navy, size, kind }) => {
-      const image = new Image();
-      image.src = source;
-      await image.decode();
-      const canvas = document.createElement('canvas');
-      canvas.width = size;
-      canvas.height = size;
-      const context = canvas.getContext('2d');
-      const inner = kind === 'maskable' ? size * 0.8 : size;
-      const offset = (size - inner) / 2;
-      // Square and maskable icons are full-bleed: the platform rounds them.
-      if (kind !== 'rounded') {
-        context.fillStyle = navy;
-        context.fillRect(0, 0, size, size);
-      }
-      context.save();
-      context.beginPath();
-      context.roundRect(offset, offset, inner, inner, inner * radius);
-      context.clip();
-      context.drawImage(image, crop.x, crop.y, crop.size, crop.size, offset, offset, inner, inner);
-      context.restore();
-      return canvas.toDataURL('image/png');
-    },
-    { source, crop: CROP, radius: RADIUS, navy: NAVY, size: output.size, kind: output.kind },
-  );
-  mkdirSync(dirname(output.file), { recursive: true });
-  writeFileSync(output.file, Buffer.from(dataUrl.split(',')[1], 'base64'));
-  console.log(`wrote ${output.file} (${output.size})`);
+const source = `data:image/png;base64,${readFileSync(at(SOURCE)).toString('base64')}`;
+const browser = await chromium.launch();
+try {
+  const page = await browser.newPage();
+
+  for (const output of OUTPUTS) {
+    const dataUrl = await page.evaluate(
+      async ({ source, crop, radius, navy, size, kind }) => {
+        const image = new Image();
+        image.src = source;
+        await image.decode();
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const context = canvas.getContext('2d');
+        const inner = kind === 'maskable' ? size * 0.8 : size;
+        const offset = (size - inner) / 2;
+        // Square and maskable icons are full-bleed: the platform rounds them.
+        if (kind !== 'rounded') {
+          context.fillStyle = navy;
+          context.fillRect(0, 0, size, size);
+        }
+        context.save();
+        context.beginPath();
+        context.roundRect(offset, offset, inner, inner, inner * radius);
+        context.clip();
+        context.drawImage(
+          image,
+          crop.x,
+          crop.y,
+          crop.size,
+          crop.size,
+          offset,
+          offset,
+          inner,
+          inner,
+        );
+        context.restore();
+        return canvas.toDataURL('image/png');
+      },
+      { source, crop: CROP, radius: RADIUS, navy: NAVY, size: output.size, kind: output.kind },
+    );
+    mkdirSync(dirname(at(output.file)), { recursive: true });
+    writeFileSync(at(output.file), Buffer.from(dataUrl.split(',')[1], 'base64'));
+    console.log(`wrote ${output.file} (${output.size})`);
+  }
+} finally {
+  // Closed on failure too, so a broken run never leaves Chromium behind.
+  await browser.close();
 }
-await browser.close();

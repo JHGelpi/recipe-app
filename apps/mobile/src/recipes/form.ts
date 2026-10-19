@@ -59,7 +59,11 @@ const NUMBER_MESSAGE: Partial<Record<keyof RecipeForm, string>> = {
 const LINE_NAME: Record<string, string> = { ingredients: 'Ingredient', steps: 'Step', tags: 'Tag' };
 
 /** "Ingredient 3 is over 500 characters" for a line that is too long; null otherwise. */
-function lineMessage(issue: { path: PropertyKey[]; code: string; maximum?: unknown }): string | null {
+function lineMessage(issue: {
+  path: PropertyKey[];
+  code: string;
+  maximum?: unknown;
+}): string | null {
   const [field, index] = issue.path;
   const name = LINE_NAME[String(field)];
   if (!name || typeof index !== 'number' || issue.code !== 'too_big') return null;

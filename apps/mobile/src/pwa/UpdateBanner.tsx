@@ -10,7 +10,7 @@ export function UpdateBanner() {
   if (!ready) return null;
   return (
     <View style={{ padding: space.sm, backgroundColor: colors.bg }}>
-      <Banner action={<Button variant="ghost" label="Reload" onPress={applyUpdate} />}>
+      <Banner action={<Button variant="ghost" label="Reload" onPress={() => applyUpdate()} />}>
         A new version is ready.
       </Banner>
     </View>

@@ -141,3 +141,10 @@ describe('local data keyed by user and household', () => {
     expect(householdChanged({ ...inA, userId: 'user-2' }, 'user-1:h-a')).toBe(false);
   });
 });
+
+describe('signed out with nothing left to wipe (bug batch spec §2)', () => {
+  it('keeps, so online toggles do not wipe again', () => {
+    expect(localDataAction({ status: 'signedOut', byUser: true }, null)).toBe('keep');
+    expect(localDataAction({ status: 'signedOut', byUser: true }, 'user-1:house-1')).toBe('wipe');
+  });
+});

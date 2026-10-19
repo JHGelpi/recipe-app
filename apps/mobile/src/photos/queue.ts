@@ -6,7 +6,7 @@ import {
 import { config } from '../config';
 import { auth } from '../session/auth';
 import { PHOTO_CACHE } from './load';
-import { createRemoteStorage, photoErrorHandler } from './remote';
+import { bumpPhotoGeneration, createRemoteStorage, photoErrorHandler } from './remote';
 import type { PhotoSaver } from './repository';
 import { DISH_PHOTOS_SQL, watchedPhotos } from './watch';
 
@@ -14,7 +14,13 @@ import { DISH_PHOTOS_SQL, watchedPhotos } from './watch';
 // touches its API. The rest of the app sees photoSaver, readLocalPhoto and
 // start / stop / clear.
 const STORE = 'recipe-photos';
-type Entry = { db: AbstractPowerSyncDatabase; queue: AttachmentQueue; started: boolean };
+type Entry = {
+  db: AbstractPowerSyncDatabase;
+  queue: AttachmentQueue;
+  started: boolean;
+  /** The file store, opened once per queue (each initialize() opens IndexedDB again). */
+  opened: Promise<void> | null;
+};
 let entry: Entry | null = null;
 
 async function token(): Promise<string | null> {
@@ -46,9 +52,14 @@ function current(db: AbstractPowerSyncDatabase): Entry {
         );
       },
     });
-    entry = { db, queue, started: false };
+    entry = { db, queue, started: false, opened: null };
   }
   return entry;
+}
+
+function opened(e: Entry): Promise<void> {
+  e.opened ??= e.queue.localStorage.initialize();
+  return e.opened;
 }
 
 /** Uploads waiting files and downloads dish photos while signed in. */
@@ -67,19 +78,22 @@ export async function stopPhotos(db: AbstractPowerSyncDatabase): Promise<void> {
 
 /** On sign-out or a different user: no photo of this household stays in the browser. */
 export async function clearPhotos(db: AbstractPowerSyncDatabase): Promise<void> {
+  bumpPhotoGeneration();
   await stopPhotos(db);
-  const { queue } = current(db);
+  const e = current(db);
   // A fresh page load has not opened the file store yet; clear needs it open.
-  await queue.localStorage.initialize();
-  await queue.clearQueue();
+  await opened(e);
+  await e.queue.clearQueue();
+  e.opened = null;
   await globalThis.caches?.delete(PHOTO_CACHE);
 }
 
 export function photoSaver(db: AbstractPowerSyncDatabase): PhotoSaver {
-  const { queue } = current(db);
+  const e = current(db);
+  const { queue } = e;
   return {
     async save(id, data, write) {
-      await queue.localStorage.initialize();
+      await opened(e);
       await queue.saveFile({
         id,
         data,
@@ -95,7 +109,7 @@ export async function readLocalPhoto(
   db: AbstractPowerSyncDatabase,
   localUri: string,
 ): Promise<Blob> {
-  const { queue } = current(db);
-  await queue.localStorage.initialize();
-  return new Blob([await queue.localStorage.readFile(localUri)], { type: 'image/jpeg' });
+  const e = current(db);
+  await opened(e);
+  return new Blob([await e.queue.localStorage.readFile(localUri)], { type: 'image/jpeg' });
 }

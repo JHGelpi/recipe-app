@@ -37,7 +37,12 @@ export function AddSheet({
   };
   return (
     // onRequestClose: the Android back button, when this runs natively.
-    <Modal visible={open} transparent animationType={instant ? 'none' : 'slide'} onRequestClose={onClose}>
+    <Modal
+      visible={open}
+      transparent
+      animationType={instant ? 'none' : 'slide'}
+      onRequestClose={onClose}
+    >
       <View style={{ flex: 1, justifyContent: 'flex-end' }}>
         <Pressable
           role="button"

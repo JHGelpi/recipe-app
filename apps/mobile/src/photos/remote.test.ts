@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createRemoteStorage, PermanentPhotoError, photoErrorHandler } from './remote';
+import {
+  bumpPhotoGeneration,
+  createRemoteStorage,
+  PermanentPhotoError,
+  photoErrorHandler,
+} from './remote';
 
 const attachment = { id: 'p1', filename: 'p1.jpg', state: 0 } as never;
 
@@ -51,5 +56,26 @@ describe('photo remote storage', () => {
     const storage = createRemoteStorage({ fetch, apiUrl: '/api', token: async () => null });
     await expect(storage.uploadFile(new ArrayBuffer(1), attachment)).rejects.toThrow('signed out');
     expect(fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe('sign-out during a download (bug batch spec §2)', () => {
+  it('a download that finishes after sign-out is dropped, not written', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const fetchFake = (async () => {
+      await gate;
+      return new Response(new Uint8Array([1, 2, 3]), { status: 200 });
+    }) as unknown as typeof fetch;
+    const storage = createRemoteStorage({
+      fetch: fetchFake,
+      apiUrl: '/api',
+      token: async () => 't',
+    });
+    const pending = storage.downloadFile(attachment);
+    await Promise.resolve();
+    bumpPhotoGeneration();
+    release();
+    await expect(pending).rejects.toThrow('signed out');
   });
 });
