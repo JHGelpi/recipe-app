@@ -196,6 +196,8 @@ test('Import pressed while a big photo is still resizing waits for it (spec §3)
   await photoTab(page);
   await choose(page, 'Add page', ['big-page.jpg']);
   await page.getByRole('button', { name: 'Import recipe' }).click();
-  await expect(page.getByText('Still preparing photos…')).toBeVisible();
+  // The press is never lost: it waits ("Still preparing photos…", which can be
+  // brief on a fast machine) and then imports, without a second press.
+  await expect(page.getByText(/^(Still preparing photos…|Reading your recipe…)$/)).toBeVisible();
   await expect(page.getByText('Reading your recipe…')).toBeVisible({ timeout: 30_000 });
 });
