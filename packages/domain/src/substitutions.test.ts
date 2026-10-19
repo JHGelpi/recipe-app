@@ -90,3 +90,16 @@ describe('isStale and the notes line', () => {
     ).toBe(false);
   });
 });
+
+describe('short substitute names (bug batch spec §2)', () => {
+  it('does not repeat a short substitute already in its amount', () => {
+    expect(
+      substitutionNoteLine('1 tbsp mayo', {
+        substitute: 'Egg',
+        amount: '1 egg',
+        how: '',
+        effect: 'Richer',
+      }),
+    ).toBe('Instead of 1 tbsp mayo: 1 egg — Richer');
+  });
+});

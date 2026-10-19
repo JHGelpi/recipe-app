@@ -38,3 +38,12 @@ describe('addSubstitutionToNotes (FR-25)', () => {
     ).rejects.toThrow('Viewers');
   });
 });
+
+describe('adding twice (bug batch spec §2)', () => {
+  it('adding the same line twice adds it once', async () => {
+    const line = 'Instead of 1 egg: 1 tbsp flax — Denser';
+    const { db, calls } = fakeDb(`Old note\n${line}`);
+    expect(await addSubstitutionToNotes(db, member, 'r1', line)).toBe('already');
+    expect(calls.filter((c) => c.sql.startsWith('update'))).toHaveLength(0);
+  });
+});

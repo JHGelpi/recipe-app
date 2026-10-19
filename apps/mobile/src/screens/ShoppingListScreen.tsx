@@ -1,6 +1,6 @@
 import { usePowerSync } from '@powersync/react';
 import { AISLES, typedRow, type ShoppingLine } from '@recipe-app/domain';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { ShoppingLineSheet } from '../components/ShoppingLineSheet';
 import { StatusLine } from '../components/StatusLine';
@@ -8,6 +8,7 @@ import { confirm } from '../components/confirm';
 import { canWrite, type Claims } from '../session/claims';
 import { addShoppingRows, clearList, clearTicked, setTicked } from '../shopping/repository';
 import { useAisleChoices, useShoppingLines } from '../shopping/hooks';
+import { openLine, typedError } from '../shopping/screen';
 import { colors, space } from '../theme';
 import { Banner, Button, Card, IconButton, Screen, Text, TextField } from '../ui';
 
@@ -21,11 +22,21 @@ export function ShoppingListScreen({ claims }: { claims: Claims }) {
   const choices = useAisleChoices();
   const [text, setText] = useState('');
   const [message, setMessage] = useState<string | null>(null);
-  const [open, setOpen] = useState<ShoppingLine | null>(null);
+  // The sheet follows the live line, and closes once another phone removed it.
+  const [openKey, setOpenKey] = useState<string | null>(null);
+  const open = openLine(lines, openKey);
+  useEffect(() => {
+    if (openKey !== null && open === null) setOpenKey(null);
+  }, [openKey, open]);
   const toBuy = lines.filter((line) => !line.checked);
   const got = lines.filter((line) => line.checked);
 
   async function addTyped() {
+    const error = typedError(text);
+    if (error) {
+      setMessage(error);
+      return;
+    }
     const row = typedRow(text, choices);
     if (!row) return;
     if ((await addShoppingRows(db, claims, [row])) === 'full') setMessage(FULL);
@@ -38,6 +49,8 @@ export function ShoppingListScreen({ claims }: { claims: Claims }) {
   const lineView = (line: ShoppingLine) => (
     <View
       key={line.key}
+      role="group"
+      aria-label={`${line.item}${line.amount ? `, ${line.amount}` : ''}`}
       style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: 48 }}
     >
       {writer ? (
@@ -47,12 +60,8 @@ export function ShoppingListScreen({ claims }: { claims: Claims }) {
           onPress={() => void setTicked(db, claims, line.rowIds, !line.checked)}
         />
       ) : null}
-      <Pressable
-        role="button"
-        style={{ flex: 1 }}
-        onPress={() => setOpen(line)}
-        aria-label={`${line.item}${line.amount ? `, ${line.amount}` : ''}`}
-      >
+      {/* A tap target only: More is the line's one keyboard stop besides its tick. */}
+      <Pressable focusable={false} style={{ flex: 1 }} onPress={() => setOpenKey(line.key)}>
         <Text
           style={
             line.checked ? { textDecorationLine: 'line-through', color: colors.muted } : undefined
@@ -69,7 +78,7 @@ export function ShoppingListScreen({ claims }: { claims: Claims }) {
       <IconButton
         icon="ellipsis-horizontal"
         label={`More for ${line.item}`}
-        onPress={() => setOpen(line)}
+        onPress={() => setOpenKey(line.key)}
       />
     </View>
   );
@@ -101,7 +110,9 @@ export function ShoppingListScreen({ claims }: { claims: Claims }) {
       ) : null}
       {lines.length === 0 ? (
         <Text tone="muted">
-          Your list is empty. Add ingredients from a recipe, or type an item above.
+          {writer
+            ? 'Your list is empty. Add ingredients from a recipe, or type an item above.'
+            : 'The list is empty.'}
         </Text>
       ) : null}
       {AISLES.map((aisle) => {
@@ -119,7 +130,7 @@ export function ShoppingListScreen({ claims }: { claims: Claims }) {
             <Button
               variant="secondary"
               label="Clear ticked"
-              onPress={() => void clearTicked(db, claims)}
+              onPress={() => void clearTicked(db, claims, lines)}
             />
           ) : null}
         </Card>
@@ -134,7 +145,7 @@ export function ShoppingListScreen({ claims }: { claims: Claims }) {
           }}
         />
       ) : null}
-      <ShoppingLineSheet claims={claims} line={open} onClose={() => setOpen(null)} />
+      <ShoppingLineSheet claims={claims} line={open} onClose={() => setOpenKey(null)} />
     </Screen>
   );
 }

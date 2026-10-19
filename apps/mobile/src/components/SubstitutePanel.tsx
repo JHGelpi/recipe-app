@@ -43,7 +43,9 @@ export function SubstitutePanel({
   const [fresh, setFresh] = useState<{ answer: SubstitutionAnswer; raw: string } | null>(null);
   const answer = fresh?.answer ?? remembered?.answer ?? null;
   const askedFor = fresh?.raw ?? remembered?.ingredient_raw ?? ingredient.raw;
-  const stale = remembered !== null && fresh === null && isStale(remembered, ingredient);
+  // Checked against the answer's own line, so a fresh answer is labelled too
+  // once the line is edited again.
+  const stale = answer !== null && isStale({ ingredient_raw: askedFor }, ingredient);
 
   async function ask() {
     setAsking(true);
@@ -68,7 +70,13 @@ export function SubstitutePanel({
   async function addToNotes(line: string) {
     const outcome = await addSubstitutionToNotes(db, claims, recipeId, line);
     setNotice(
-      outcome === 'added' ? 'Added to notes' : outcome === 'full' ? 'Notes are full' : null,
+      outcome === 'added'
+        ? 'Added to notes'
+        : outcome === 'already'
+          ? 'Already in notes'
+          : outcome === 'full'
+            ? 'Notes are full'
+            : null,
     );
   }
 

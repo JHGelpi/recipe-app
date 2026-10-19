@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { resetUpdateStateForTests, updateReady, watchRegistration } from './serviceWorker';
+import {
+  applyUpdate,
+  resetUpdateStateForTests,
+  updateReady,
+  watchController,
+  watchRegistration,
+} from './serviceWorker';
 
 class FakeWorker extends EventTarget {
   state = 'installing';
@@ -49,5 +55,32 @@ describe('watchRegistration', () => {
     registration.waiting = worker;
     worker.finishInstalling();
     expect(updateReady()).toBe(true);
+  });
+});
+
+describe('other tabs and redundant workers', () => {
+  it('a tab that did not tap Reload shows the update once another tab activated it', () => {
+    const container = new EventTarget();
+    watchController(container, true);
+    container.dispatchEvent(new Event('controllerchange'));
+    expect(updateReady()).toBe(true);
+  });
+
+  it('the first install taking control is not an update', () => {
+    const container = new EventTarget();
+    watchController(container, false);
+    container.dispatchEvent(new Event('controllerchange'));
+    expect(updateReady()).toBe(false);
+  });
+
+  it('Reload reloads when the waiting worker became redundant', () => {
+    const registration = new FakeRegistration();
+    const worker = new FakeWorker();
+    registration.waiting = worker;
+    watchRegistration(registration, () => true);
+    worker.state = 'redundant';
+    let reloaded = 0;
+    applyUpdate(() => (reloaded += 1));
+    expect(reloaded).toBe(1);
   });
 });

@@ -1,5 +1,5 @@
 import { useDeferredValue } from 'react';
-import { FlatList, ScrollView, View } from 'react-native';
+import { FlatList, View } from 'react-native';
 import { BuildFooter } from '../components/BuildFooter';
 import { HouseholdNoticeBanner } from '../components/HouseholdNoticeBanner';
 import { StarButton } from '../components/StarButton';
@@ -10,7 +10,7 @@ import { clearFilter, setFilter, toggleTag, useListFilter } from '../recipes/lis
 import type { Claims } from '../session/claims';
 import { Thumb } from '../components/Thumb';
 import { colors, space } from '../theme';
-import { Button, Chip, Icon, IconButton, RowCard, Screen, Text, TextField } from '../ui';
+import { Button, Chip, ChipBar, Icon, IconButton, RowCard, Screen, Text, TextField } from '../ui';
 
 /** FR-15, FR-19, FR-20: the household's recipes, or the user's favorites. */
 export function RecipeListScreen({
@@ -24,7 +24,9 @@ export function RecipeListScreen({
   // Typing stays smooth even when the results take a moment to re-render.
   const deferredQuery = useDeferredValue(query);
   const { items, tags } = useRecipeSearch(claims.userId, favoritesOnly, deferredQuery, selected);
-  const filtering = query.trim() !== '' || selected.length > 0;
+  // From the query the results used, so clearing a no-match search never
+  // flashes the empty-list text before the results catch up.
+  const filtering = deferredQuery.trim() !== '' || selected.length > 0;
   const chips = [...selected, ...tags.filter((tag) => !selected.includes(tag))];
 
   return (
@@ -59,12 +61,7 @@ export function RecipeListScreen({
         }
       />
       {chips.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: space.sm }}
-          style={{ flexGrow: 0 }}
-        >
+        <ChipBar label="Tags">
           {chips.map((tag) => (
             <Chip
               key={tag}
@@ -75,13 +72,16 @@ export function RecipeListScreen({
               onPress={() => toggleTag(tag)}
             />
           ))}
-        </ScrollView>
+        </ChipBar>
       ) : null}
-      {filtering && items.length > 0 ? (
-        <Text variant="small" tone="muted" aria-live="polite">
-          {items.length === 1 ? '1 recipe' : `${items.length} recipes`}
-        </Text>
-      ) : null}
+      {/* Always mounted, so screen readers announce each change. */}
+      <Text variant="small" tone="muted" aria-live="polite">
+        {filtering && items.length > 0
+          ? items.length === 1
+            ? '1 recipe'
+            : `${items.length} recipes`
+          : ''}
+      </Text>
       <FlatList
         style={{ flex: 1 }}
         data={items}

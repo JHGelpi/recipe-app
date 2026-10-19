@@ -26,6 +26,16 @@ function fakeDb(answers: { live?: number; choice?: { id: string } | null } = {})
     },
   };
 }
+const lineFor = (rowIds: string[]) => ({
+  key: 'k',
+  item: 'k',
+  aisle: 'produce' as const,
+  amount: '',
+  recipes: [],
+  handAdded: true,
+  checked: true,
+  rowIds,
+});
 const member = { userId: 'u1', householdId: 'h1', role: 'member' as const };
 const viewer = { ...member, role: 'viewer' as const };
 const onion = {
@@ -61,7 +71,7 @@ describe('shopping list writes', () => {
     await setTicked(db, member, ['a', 'b'], true);
     await setTicked(db, member, ['a'], false);
     await removeRows(db, member, ['a']);
-    await clearTicked(db, member);
+    await clearTicked(db, member, [lineFor(['a'])]);
     await clearList(db, member);
     expect(calls.map((c) => c.sql.split(' ').slice(0, 3).join(' '))).toEqual(
       Array(5).fill('update shopping_items set'),
@@ -69,6 +79,15 @@ describe('shopping list writes', () => {
     expect(calls[0]!.params.slice(1)).toEqual(['a', 'b']);
     expect(calls[1]!.params[0]).toBeNull();
     expect(calls.every((c) => !/^delete/.test(c.sql))).toBe(true);
+  });
+
+  it('clears only the rows of fully ticked lines', async () => {
+    const { db, calls } = fakeDb();
+    await clearTicked(db, member, [
+      { ...lineFor(['a', 'b']), checked: true },
+      { ...lineFor(['c']), checked: false },
+    ]);
+    expect(calls.at(-1)!.params.slice(1)).toEqual(['a', 'b']);
   });
 
   it('moving to an aisle writes the choice and moves the item’s rows', async () => {

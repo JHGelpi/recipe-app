@@ -2,6 +2,7 @@ export { Banner } from './Banner';
 export { Button } from './Button';
 export { Card } from './Card';
 export { Chip } from './Chip';
+export { ChipBar } from './ChipBar';
 export { Icon, type IconName } from './Icon';
 export { IconButton } from './IconButton';
 export { PillTabs } from './PillTabs';

@@ -106,3 +106,39 @@ test('viewers see remembered substitutes but cannot ask or add (rule 4)', async 
   await expect(viewer.getByRole('button', { name: 'Add to notes' })).toHaveCount(0);
   await viewer.context().close();
 });
+
+test('a recipe with no steps has Done in cook mode (FR-21)', async ({ page }) => {
+  await signIn(page, freshEmail('cook-nosteps'));
+  const title = unique('No steps');
+  await createRecipe(page, { title, ingredients: '1 egg' });
+  await page.getByRole('button', { name: 'Cook' }).click();
+  await page.getByRole('button', { name: 'Done' }).click();
+  await expect(page.getByRole('heading', { name: title, level: 1 })).toBeVisible();
+});
+
+test('the recipe page says step amounts are for the original servings (FR-22)', async ({
+  page,
+}) => {
+  await signIn(page, freshEmail('cook-note'));
+  await createRecipe(page, {
+    title: unique('Note'),
+    servings: '4',
+    ingredients: '2 eggs',
+    steps: 'Beat 2 eggs',
+  });
+  await page.getByRole('button', { name: 'More servings' }).click();
+  await expect(page.getByText('Amounts in steps are for the original 4 servings')).toBeVisible();
+});
+
+test('a recipe in the Trash shows no servings or Substitute (FR-18)', async ({ page }) => {
+  await signIn(page, freshEmail('cook-trash'));
+  await createRecipe(page, { title: unique('Trashed view'), servings: '2', ingredients: '1 egg' });
+  const url = page.url();
+  await page.getByRole('button', { name: 'More', exact: true }).click();
+  await page.getByRole('button', { name: 'Move to Trash' }).click();
+  await expect(page.getByRole('heading', { name: 'Recipes', level: 1 })).toBeVisible();
+  await page.goto(url);
+  await expect(page.getByText('This recipe is in the Trash')).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Substitute for/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'More servings' })).toHaveCount(0);
+});

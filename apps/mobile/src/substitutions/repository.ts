@@ -13,7 +13,7 @@ export async function addSubstitutionToNotes(
   claims: Claims,
   recipeId: string,
   line: string,
-): Promise<'added' | 'full' | 'missing'> {
+): Promise<'added' | 'already' | 'full' | 'missing'> {
   if (!canWrite(claims.role)) throw new Error('Viewers cannot change recipes');
   const row = await db.getOptional<{ notes: string | null }>(
     'select notes from recipes where id = ?',
@@ -21,6 +21,8 @@ export async function addSubstitutionToNotes(
   );
   if (!row) return 'missing';
   const current = (row.notes ?? '').trimEnd();
+  // A second tap on Add to notes must not add the line again.
+  if (current.split('\n').some((existing) => existing.trim() === line.trim())) return 'already';
   const notes = current ? `${current}\n${line}` : line;
   if (notes.length > RECIPE_LIMITS.notes) return 'full';
   await db.execute('update recipes set notes = ? where id = ?', [notes, recipeId]);

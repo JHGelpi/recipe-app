@@ -4,6 +4,12 @@ import type {
   RemoteStorageAdapter,
 } from '@powersync/web';
 
+let generation = 0;
+/** Sign-out moves this on; a download started before it is dropped, not written. */
+export function bumpPhotoGeneration(): void {
+  generation += 1;
+}
+
 /** The server will never take this file (refused, too big, or dismissed meanwhile). */
 export class PermanentPhotoError extends Error {}
 
@@ -42,7 +48,10 @@ export function createRemoteStorage(deps: RemoteDeps): RemoteStorageAdapter {
       });
     },
     async downloadFile(attachment: AttachmentRecord) {
-      return (await call(attachment.id, { method: 'GET', headers: {} })).arrayBuffer();
+      const started = generation;
+      const data = await (await call(attachment.id, { method: 'GET', headers: {} })).arrayBuffer();
+      if (generation !== started) throw new Error('signed out');
+      return data;
     },
     async deleteFile() {
       // Never from a phone: the server's 30-day purge removes files (spec §4).

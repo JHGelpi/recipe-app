@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { View } from 'react-native';
 import { RecipeEditor } from '../components/RecipeEditor';
 import { emptyForm, formFromRecipe } from '../recipes/form';
+import { clearFilter } from '../recipes/listFilter';
 import { useRecipe } from '../recipes/hooks';
 import { createRecipe, updateRecipe } from '../recipes/repository';
 import { canWrite, type Claims } from '../session/claims';
@@ -37,6 +38,8 @@ export function EditRecipeScreen({ claims, id }: { claims: Claims; id: string | 
         onSave={async (values) => {
           const savedId = id ?? (await createRecipe(db, claims, values));
           if (id) await updateRecipe(db, claims, id, values);
+          // A search typed earlier must not hide the recipe just made.
+          else clearFilter();
           router.replace(`/recipe/${savedId}`);
         }}
       />

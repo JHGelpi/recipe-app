@@ -22,6 +22,7 @@ export function IngredientList({
   ticked = [],
   onToggle,
   large = false,
+  substitutable = true,
 }: {
   claims: Claims;
   recipeId: string;
@@ -33,6 +34,8 @@ export function IngredientList({
   ticked?: string[];
   onToggle?(id: string): void;
   large?: boolean;
+  /** False in the Trash: the recipe is read-only there. */
+  substitutable?: boolean;
 }) {
   const [open, setOpen] = useState<string | null>(null);
   const size = large ? 20 : 16;
@@ -94,17 +97,19 @@ export function IngredientList({
               ) : (
                 <Text style={{ fontSize: size, flex: 1 }}>{shown}</Text>
               )}
-              <Button
-                variant="ghost"
-                label="Substitute"
-                aria-label={`Substitute for ${ingredient.raw}`}
-                aria-expanded={open === ingredient.id}
-                onPress={() =>
-                  setOpen((current) => (current === ingredient.id ? null : ingredient.id))
-                }
-              />
+              {substitutable ? (
+                <Button
+                  variant="ghost"
+                  label="Substitute"
+                  aria-label={`Substitute for ${ingredient.raw}`}
+                  aria-expanded={open === ingredient.id}
+                  onPress={() =>
+                    setOpen((current) => (current === ingredient.id ? null : ingredient.id))
+                  }
+                />
+              ) : null}
             </View>
-            {open === ingredient.id ? (
+            {substitutable && open === ingredient.id ? (
               <SubstitutePanel
                 claims={claims}
                 recipeId={recipeId}

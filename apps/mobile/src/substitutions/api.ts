@@ -13,6 +13,7 @@ const MESSAGES: Record<string, string> = {
   quota: "Over this month's AI limit",
   ai_unavailable: "Couldn't reach the AI service. Try again.",
   invalid_output: "Couldn't read the suggestions. Try again.",
+  not_found: 'This recipe is no longer on the server.',
 };
 const FALLBACK = "Couldn't get substitutes. Try again.";
 

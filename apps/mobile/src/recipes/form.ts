@@ -56,6 +56,20 @@ const NUMBER_MESSAGE: Partial<Record<keyof RecipeForm, string>> = {
   cook: 'Cook must be 0 to 10000 minutes',
 };
 
+const LINE_NAME: Record<string, string> = { ingredients: 'Ingredient', steps: 'Step', tags: 'Tag' };
+
+/** "Ingredient 3 is over 500 characters" for a line that is too long; null otherwise. */
+function lineMessage(issue: {
+  path: PropertyKey[];
+  code: string;
+  maximum?: unknown;
+}): string | null {
+  const [field, index] = issue.path;
+  const name = LINE_NAME[String(field)];
+  if (!name || typeof index !== 'number' || issue.code !== 'too_big') return null;
+  return `${name} ${index + 1} is over ${String(issue.maximum)} characters`;
+}
+
 export function emptyForm(): RecipeForm {
   return {
     title: '',
@@ -114,7 +128,11 @@ export function valuesFromForm(
   const errors: Partial<Record<keyof RecipeForm, string>> = {};
   for (const issue of parsed.error.issues) {
     const field = FIELD_OF[String(issue.path[0])];
-    if (field && !errors[field]) errors[field] = NUMBER_MESSAGE[field] ?? issue.message;
+    if (field && !errors[field]) {
+      // too_big issues carry `maximum`; the issue union does not say so for every code.
+      const line = lineMessage(issue as unknown as Parameters<typeof lineMessage>[0]);
+      errors[field] = NUMBER_MESSAGE[field] ?? line ?? issue.message;
+    }
   }
   return { ok: false, errors };
 }

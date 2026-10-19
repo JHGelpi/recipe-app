@@ -39,7 +39,7 @@ describe('askSubstitutes', () => {
     [402, { error: 'quota' }, "Over this month's AI limit"],
     [503, { error: 'ai_unavailable' }, "Couldn't reach the AI service. Try again."],
     [422, { error: 'invalid_output' }, "Couldn't read the suggestions. Try again."],
-    [404, { error: 'not_found' }, "Couldn't get substitutes. Try again."],
+    [404, { error: 'not_found' }, 'This recipe is no longer on the server.'],
   ])('maps %i to its message', async (status, body, message) => {
     expect(await askSubstitutes(ask, deps(json(status, body)))).toEqual({ kind: 'error', message });
   });
@@ -52,6 +52,15 @@ describe('askSubstitutes', () => {
     expect(await askSubstitutes(ask, deps(json(200, { options: 'x' })))).toEqual({
       kind: 'error',
       message: "Couldn't read the suggestions. Try again.",
+    });
+  });
+});
+
+describe('a recipe the server no longer has', () => {
+  it('says the recipe is gone on a 404', async () => {
+    expect(await askSubstitutes(ask, deps(json(404, { error: 'not_found' })))).toEqual({
+      kind: 'error',
+      message: 'This recipe is no longer on the server.',
     });
   });
 });

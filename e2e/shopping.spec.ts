@@ -36,7 +36,7 @@ test('a second recipe’s onions merge into one line that lists both recipes (FR
   await createRecipe(page, { title: stew, ingredients: '2 onions, diced' });
   await addFromRecipe(page);
   await openList(page);
-  await expect(page.getByRole('button', { name: 'onion, 3' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'onion, 3' })).toBeVisible();
   await page.getByRole('button', { name: 'More for onion' }).click();
   const sheet = page.getByRole('dialog', { name: 'onion' });
   await expect(sheet.getByText(soup, { exact: true })).toBeVisible();
@@ -119,5 +119,21 @@ test('servings changed on the page are the servings added (FR-32, review C1)', a
   await expect(sheet.getByRole('checkbox', { name: /^4 onions/ })).toBeVisible();
   await sheet.getByRole('button', { name: 'Add 1 item' }).click();
   await openList(page);
-  await expect(page.getByRole('button', { name: 'onions, 4' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'onions, 4' })).toBeVisible();
+});
+
+test('Clear ticked leaves a partly ticked line whole (FR-35)', async ({ page }) => {
+  await signIn(page, freshEmail('shop-mixed'));
+  await createRecipe(page, { title: unique('Mixed A'), ingredients: '2 onions' });
+  await addFromRecipe(page);
+  await openList(page);
+  await page.getByRole('button', { name: 'Got onions' }).click();
+  await page.getByLabel('Add an item').fill('1 onion');
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  // One ticked row and one new row: the line is to buy, showing only the new one.
+  await expect(page.getByRole('group', { name: 'onions, 1' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Clear ticked' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Got onions' }).click();
+  await page.getByRole('button', { name: 'Clear ticked' }).click();
+  await expect(page.getByRole('group', { name: /^onions/ })).toHaveCount(0);
 });

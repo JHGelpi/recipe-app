@@ -73,7 +73,12 @@ export function DatabaseSessionBridge({ children }: { children: ReactNode }) {
           await clearPhotos(db).catch((error: unknown) =>
             console.error('Clearing photos failed', error),
           );
-          if (globalThis.localStorage) clearAllPlaces(globalThis.localStorage);
+          try {
+            if (globalThis.localStorage) clearAllPlaces(globalThis.localStorage);
+          } catch (error) {
+            // Storage can throw (private mode, quota); the database wipe must still run.
+            console.error('Clearing cook places failed', error);
+          }
           // A search typed in the old household means nothing in the new one.
           clearFilter();
           await db.disconnectAndClear();

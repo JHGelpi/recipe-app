@@ -76,6 +76,27 @@ it('a full list refuses new rows with list_full', async () => {
   expect(res.results[0]).toMatchObject({ status: 'rejected', reason: 'list_full' });
 });
 
+it('phones uploading at once cannot pass 500 live rows', async () => {
+  const cook = await fresh();
+  await adminSql`
+    insert into public.shopping_items (id, household_id, item, item_key, aisle)
+    select gen_random_uuid(), ${cook.householdId}, 'x', 'x', 'other' from generate_series(1, 498)`;
+  const one = () => [
+    {
+      op: 'put',
+      table: 'shopping_items',
+      id: randomUUID(),
+      data: { household_id: cook.householdId, item: 'more', item_key: 'more', aisle: 'other' },
+    },
+  ];
+  const results = await Promise.all(Array.from({ length: 5 }, () => upload(cook, one())));
+  const [count] = await adminSql<{ live: number }[]>`
+    select count(*)::int as live from public.shopping_items
+    where household_id = ${cook.householdId} and deleted_at is null`;
+  expect(count!.live).toBe(500);
+  expect(results.flatMap((r) => r.results).filter((r) => r.status === 'applied')).toHaveLength(2);
+});
+
 it('the trash purge also removes list rows deleted over 30 days ago', async () => {
   const cook = await fresh();
   const old = randomUUID();

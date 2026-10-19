@@ -133,7 +133,8 @@ export function HouseholdScreen({ claims }: { claims: Claims }) {
               }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
-                <Text style={{ flex: 1 }} numberOfLines={1}>
+                {/* Wraps, so a long email never hides "(you)". */}
+                <Text style={{ flex: 1 }}>
                   {label}
                   {me ? ' (you)' : ''}
                 </Text>

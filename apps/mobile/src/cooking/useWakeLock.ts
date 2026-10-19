@@ -22,8 +22,13 @@ export function useWakeLock(active: boolean): 'on' | 'unsupported' {
       if (document.visibilityState !== 'visible') return;
       wakeLock.request('screen').then(
         (held) => {
-          if (live) sentinel = held;
-          else void held.release();
+          if (!live) {
+            void held.release();
+            return;
+          }
+          // Overlapping requests (visibility flicker): keep one lock only.
+          void sentinel?.release();
+          sentinel = held;
           setState('on');
         },
         () => setState('unsupported'),

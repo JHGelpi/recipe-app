@@ -1,4 +1,10 @@
-import { recipeSchema, type Ingredient, type SearchSource, type Step } from '@recipe-app/domain';
+import {
+  recipeSchema,
+  UNITS,
+  type Ingredient,
+  type SearchSource,
+  type Step,
+} from '@recipe-app/domain';
 
 export const TRASH_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -42,6 +48,44 @@ function jsonList(value: unknown): unknown {
   return JSON.parse(value) as unknown;
 }
 
+const INGREDIENT_KEYS = [
+  'id',
+  'raw',
+  'quantity',
+  'quantity_max',
+  'unit',
+  'item',
+  'note',
+  'heading',
+];
+
+/**
+ * A newer app's extra fields are ignored, and a unit this app does not know
+ * reads as raw text (bug batch spec §2). The server's upload schema stays strict.
+ */
+function tidyIngredients(value: unknown): unknown {
+  if (!Array.isArray(value)) return value;
+  return value.map((item: unknown) => {
+    if (typeof item !== 'object' || item === null) return item;
+    const known = Object.fromEntries(
+      Object.entries(item).filter(([key]) => INGREDIENT_KEYS.includes(key)),
+    );
+    if (known.unit !== null && !(UNITS as readonly unknown[]).includes(known.unit)) {
+      return { ...known, unit: null, quantity: null, quantity_max: null };
+    }
+    return known;
+  });
+}
+
+function tidySteps(value: unknown): unknown {
+  if (!Array.isArray(value)) return value;
+  return value.map((step: unknown) =>
+    typeof step === 'object' && step !== null
+      ? { id: (step as { id?: unknown }).id, text: (step as { text?: unknown }).text }
+      : step,
+  );
+}
+
 /**
  * A local row as a recipe, or null when it cannot be read. Columns added
  * after a row was written arrive as null and read as empty.
@@ -55,8 +99,8 @@ export function rowToRecipe(row: Record<string, unknown>): RecipeRecord | null {
       servings: row.servings ?? null,
       prep_minutes: row.prep_minutes ?? null,
       cook_minutes: row.cook_minutes ?? null,
-      ingredients: jsonList(row.ingredients),
-      steps: jsonList(row.steps),
+      ingredients: tidyIngredients(jsonList(row.ingredients)),
+      steps: tidySteps(jsonList(row.steps)),
       tags: jsonList(row.tags),
       notes: row.notes ?? '',
       source_url: row.source_url ?? null,
@@ -146,7 +190,11 @@ export function listRowFrom(row: Record<string, unknown>): ListRow {
   return {
     id: String(row.id),
     title: typeof row.title === 'string' ? row.title : '',
-    tags: listOf(row.tags).filter((tag): tag is string => typeof tag === 'string'),
+    // Tidied as the editor saves them, so an odd server tag never shows an empty chip.
+    tags: listOf(row.tags).flatMap((tag) => {
+      const clean = typeof tag === 'string' ? tag.trim().toLowerCase() : '';
+      return clean ? [clean] : [];
+    }),
     ingredients: listOf(row.ingredients).flatMap((item) => {
       const raw = (item as { raw?: unknown } | null)?.raw;
       return typeof raw === 'string' ? [raw] : [];

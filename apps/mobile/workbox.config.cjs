@@ -20,6 +20,7 @@ module.exports = {
     /^\/sync\//,
     /^\/email-templates\//,
     /^\/local-ca\.crt$/,
+    /^\/healthz$/,
   ],
   // Take control on first install, so the app works offline straight away.
   clientsClaim: true,

@@ -222,10 +222,11 @@ describe('addRows', () => {
       ingredients: [
         ing({
           id: 'f',
-          raw: '1000 g flour',
+          // Cans: a unit that never steps up, so the scaled amount stays too big.
+          raw: '1000 cans tomatoes',
           quantity: 1000,
-          unit: 'g',
-          item: 'flour',
+          unit: 'can',
+          item: 'tomatoes',
           note: 'n'.repeat(300),
         }),
       ],
@@ -272,4 +273,93 @@ it('the put schema refuses a bad aisle and a 201-character item', () => {
   expect(shoppingItemPutSchema.safeParse(base).success).toBe(true);
   expect(shoppingItemPutSchema.safeParse({ ...base, aisle: 'garden' }).success).toBe(false);
   expect(shoppingItemPutSchema.safeParse({ ...base, item: 'x'.repeat(201) }).success).toBe(false);
+});
+
+describe('bug batch (spec §2)', () => {
+  it('a partly ticked line counts only what is still to buy', () => {
+    const [line] = shoppingLines([
+      row({ quantity: 2, checked_at: '2026-10-18T11:00:00Z' }),
+      row({ quantity: 1 }),
+    ]);
+    expect(line!.checked).toBe(false);
+    expect(line!.amount).toBe('1');
+  });
+
+  it('a fully ticked line shows its whole amount', () => {
+    const [line] = shoppingLines([
+      row({ quantity: 2, checked_at: '2026-10-18T11:00:00Z' }),
+      row({ quantity: 1, checked_at: '2026-10-18T11:00:00Z' }),
+    ]);
+    expect(line!.amount).toBe('3');
+  });
+
+  it('a quantity of 0 shows no amount', () => {
+    expect(shoppingLines([row({ quantity: 0 })])[0]!.amount).toBe('');
+  });
+
+  it('rows made at the same moment take the name of the lowest id', () => {
+    const at = '2026-10-18T10:00:00Z';
+    const lines = shoppingLines([
+      row({ id: 'b', item: 'Onions', created_at: at }),
+      row({ id: 'a', item: 'onion', created_at: at }),
+    ]);
+    expect(lines[0]!.item).toBe('onion');
+  });
+
+  it('a typed amount with no item keeps its text as the item, with no amount', () => {
+    const typed = typedRow('2 cups', new Map())!;
+    expect(typed).toMatchObject({ item: '2 cups', quantity: null, unit: null });
+  });
+
+  it('matches the last two words before the last word', () => {
+    expect(aisleFor(itemKey('red bell peppers'), new Map())).toBe('produce');
+    expect(aisleFor(itemKey('fresh lemon juice'), new Map())).toBe('produce');
+    expect(aisleFor(itemKey('garlic cloves'), new Map())).toBe('produce');
+    expect(aisleFor(itemKey('olives'), new Map())).toBe('pantry');
+    expect(aisleFor(itemKey('egg yolks'), new Map())).toBe('dairy');
+  });
+
+  it('adds what the sheet shows: converted units', () => {
+    const milk: Ingredient = {
+      id: '11111111-1111-4111-8111-111111111111',
+      raw: '1 cup milk',
+      quantity: 1,
+      quantity_max: null,
+      unit: 'cup',
+      item: 'milk',
+      note: null,
+      heading: false,
+    };
+    const [added] = addRows(
+      { id: 'r', title: 'T', ingredients: [milk] },
+      1,
+      new Set([milk.id]),
+      new Map(),
+      'metric',
+    );
+    expect(added).toMatchObject({ unit: 'ml' });
+    expect(added!.quantity).toBeCloseTo(236.588, 2);
+  });
+
+  it('adds a pinch where the sheet shows one', () => {
+    const salt: Ingredient = {
+      id: '22222222-2222-4222-8222-222222222222',
+      raw: '⅛ tsp salt',
+      quantity: 0.125,
+      quantity_max: null,
+      unit: 'tsp',
+      item: 'salt',
+      note: null,
+      heading: false,
+    };
+    // Halved, ⅛ tsp is 1/16 tsp: the sheet shows "a pinch of salt".
+    const [added] = addRows(
+      { id: 'r', title: 'T', ingredients: [salt] },
+      0.5,
+      new Set([salt.id]),
+      new Map(),
+      'as_written',
+    );
+    expect(added).toMatchObject({ quantity: 1, unit: 'pinch' });
+  });
 });

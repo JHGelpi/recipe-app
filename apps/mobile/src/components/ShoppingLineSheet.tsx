@@ -23,7 +23,9 @@ export function ShoppingLineSheet({
     <BottomSheet open={line !== null} label={line?.item ?? ''} onClose={onClose}>
       {line ? (
         <>
-          <Text variant="h2">{line.item}</Text>
+          <Text variant="h2" role="heading" aria-level={2}>
+            {line.item}
+          </Text>
           <Text variant="small" tone="muted">
             For
           </Text>

@@ -1,5 +1,10 @@
 import type { AbstractPowerSyncDatabase } from '@powersync/web';
-import { SHOPPING_LIMITS, type Aisle, type NewShoppingRow } from '@recipe-app/domain';
+import {
+  SHOPPING_LIMITS,
+  type Aisle,
+  type NewShoppingRow,
+  type ShoppingLine,
+} from '@recipe-app/domain';
 import { canWrite, type Claims } from '../session/claims';
 import { aisleChoiceId } from './choiceId';
 
@@ -69,12 +74,12 @@ export async function removeRows(db: Db, claims: Claims, rowIds: string[]): Prom
   ]);
 }
 
-export async function clearTicked(db: Db, claims: Claims): Promise<void> {
+/** Removes fully ticked lines only; a partly ticked line stays whole (spec §2). */
+export async function clearTicked(db: Db, claims: Claims, lines: ShoppingLine[]): Promise<void> {
   requireWriter(claims);
-  await db.execute(
-    'update shopping_items set deleted_at = ? where deleted_at is null and checked_at is not null',
-    [now()],
-  );
+  const ids = lines.filter((line) => line.checked).flatMap((line) => line.rowIds);
+  if (ids.length === 0) return;
+  await removeRows(db, claims, ids);
 }
 
 export async function clearList(db: Db, claims: Claims): Promise<void> {

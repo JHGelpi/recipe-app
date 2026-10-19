@@ -2,7 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Bundled fonts have one weight each: never fake bold over them. -->
+    <style>
+      body {
+        font-synthesis: none;
+      }
+    </style>
     <!-- viewport-fit=cover lets the app fill the screen around the iPhone notch. -->
     <meta
       name="viewport"

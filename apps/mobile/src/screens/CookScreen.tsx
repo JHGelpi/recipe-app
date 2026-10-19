@@ -4,6 +4,7 @@ import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IngredientList } from '../components/IngredientList';
 import { ServingsBar } from '../components/ServingsBar';
+import { shownStep, stepsNote } from '../cooking/steps';
 import { useCookPlace } from '../cooking/useCookPlace';
 import { useWakeLock } from '../cooking/useWakeLock';
 import { useRecipe } from '../recipes/hooks';
@@ -35,6 +36,8 @@ function Cooking({ claims, recipe }: { claims: Claims; recipe: RecipeRecord }) {
   const factor = scaleFactor(recipe.servings, place.servings, place.scale);
   const steps = recipe.steps;
   const last = steps.length - 1;
+  // A live edit from another phone can remove steps while cook mode is open.
+  const at = shownStep(place.step, steps.length);
   const toggle = (ingredientId: string) =>
     update({
       ticked: place.ticked.includes(ingredientId)
@@ -91,7 +94,7 @@ function Cooking({ claims, recipe }: { claims: Claims; recipe: RecipeRecord }) {
         ) : (
           <View style={{ gap: space.md }}>
             <Text variant="label" tone="muted">
-              Step {place.step + 1} of {steps.length}
+              Step {at + 1} of {steps.length}
             </Text>
             <View
               aria-hidden
@@ -105,19 +108,13 @@ function Cooking({ claims, recipe }: { claims: Claims; recipe: RecipeRecord }) {
               <View
                 style={{
                   height: 6,
-                  width: `${((place.step + 1) / steps.length) * 100}%`,
+                  width: `${((at + 1) / steps.length) * 100}%`,
                   backgroundColor: colors.accent,
                 }}
               />
             </View>
-            <Text style={{ fontSize: 26, lineHeight: 38 }}>{steps[place.step]?.text}</Text>
-            {factor !== 1 ? (
-              <Text tone="muted">
-                {recipe.servings !== null
-                  ? `Amounts in steps are for the original ${recipe.servings} servings`
-                  : 'Amounts in steps are for the original recipe'}
-              </Text>
-            ) : null}
+            <Text style={{ fontSize: 26, lineHeight: 38 }}>{steps[at]?.text}</Text>
+            {factor !== 1 ? <Text tone="muted">{stepsNote(recipe.servings)}</Text> : null}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.xs }}>
               {steps.map((step, index) => (
                 <Pressable
@@ -132,7 +129,7 @@ function Cooking({ claims, recipe }: { claims: Claims; recipe: RecipeRecord }) {
                       width: 12,
                       height: 12,
                       borderRadius: 6,
-                      backgroundColor: index === place.step ? colors.accent : colors.line,
+                      backgroundColor: index === at ? colors.accent : colors.line,
                     }}
                   />
                 </Pressable>
@@ -141,8 +138,8 @@ function Cooking({ claims, recipe }: { claims: Claims; recipe: RecipeRecord }) {
           </View>
         )}
       </ScrollView>
-      {steps.length > 0 ? (
-        // Within thumb reach at the bottom (UI spec §5).
+      {
+        // Within thumb reach at the bottom (UI spec §5); Done even with no steps.
         <View
           style={{
             flexDirection: 'row',
@@ -154,26 +151,26 @@ function Cooking({ claims, recipe }: { claims: Claims; recipe: RecipeRecord }) {
             backgroundColor: colors.raised,
           }}
         >
-          {place.step > 0 ? (
+          {at > 0 ? (
             <View style={{ flex: 1 }}>
               <Button
                 full
                 large
                 variant="secondary"
                 label="Previous"
-                onPress={() => update({ step: place.step - 1 })}
+                onPress={() => update({ step: at - 1 })}
               />
             </View>
           ) : null}
           <View style={{ flex: 1 }}>
-            {place.step < last ? (
-              <Button full large label="Next" onPress={() => update({ step: place.step + 1 })} />
+            {at < last ? (
+              <Button full large label="Next" onPress={() => update({ step: at + 1 })} />
             ) : (
               <Button full large label="Done" onPress={done} />
             )}
           </View>
         </View>
-      ) : null}
+      }
     </View>
   );
 }
