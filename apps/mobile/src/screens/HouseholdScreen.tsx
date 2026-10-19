@@ -8,7 +8,9 @@ import { useNetworkOnline } from '../db/useNetworkOnline';
 import { withSession } from '../imports/api';
 import {
   cancelInvite,
+  createFriendLink,
   createInvite,
+  friendUrl,
   inviteUrl,
   leaveHousehold,
   listInvites,
@@ -277,16 +279,25 @@ export function HouseholdScreen({ claims }: { claims: Claims }) {
           }}
         />
       ) : null}
-      <Button
-        variant="ghost"
-        label="Invite a friend to Dishkept"
-        onPress={() => {
-          const url = globalThis.location?.origin ?? '';
-          void shareLink(`Make your own recipe collection: ${url}`, url).then((how) => {
-            if (how === 'copied') setMessage('Link copied');
-          });
-        }}
-      />
+      {online ? (
+        <Button
+          variant="ghost"
+          label="Invite a friend to Dishkept"
+          onPress={() =>
+            void act(
+              () => withSession(createFriendLink),
+              async ({ code }) => {
+                const url = friendUrl(code);
+                const how = await shareLink(
+                  `Make your own recipe collection on Dishkept: ${url}`,
+                  url,
+                );
+                if (how === 'copied') setMessage('Link copied');
+              },
+            )
+          }
+        />
+      ) : null}
       {canWrite(claims.role) ? (
         <RowCard
           title="Trash"

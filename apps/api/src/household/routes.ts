@@ -47,6 +47,10 @@ export function registerHouseholdRoutes(app: Hono, deps: { household: HouseholdS
       return c.json(await household.createInvite(token, parsed.role), 201);
     }),
   );
+  // FR-6: a link for a friend to start their own household (production spec §4).
+  app.post('/api/friend-links', (c) =>
+    handle(c, async (token) => c.json(await household.createFriendLink(token), 201)),
+  );
   app.get('/api/invites', (c) =>
     handle(c, async (token) => c.json(await household.listInvites(token))),
   );

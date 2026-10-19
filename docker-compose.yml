@@ -64,7 +64,7 @@ services:
       GOTRUE_SMTP_USER: ${SMTP_USER}
       GOTRUE_SMTP_PASS: ${SMTP_PASS}
       GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_FROM}
-      GOTRUE_SMTP_SENDER_NAME: Dishkept
+      GOTRUE_SMTP_SENDER_NAME: ${SMTP_SENDER_NAME:-Dishkept}
       GOTRUE_SMTP_MAX_FREQUENCY: ${AUTH_EMAIL_MAX_FREQUENCY:-60s}
       GOTRUE_RATE_LIMIT_EMAIL_SENT: ${AUTH_RATE_LIMIT:-30}
       GOTRUE_RATE_LIMIT_OTP: ${AUTH_RATE_LIMIT:-30}
@@ -72,6 +72,9 @@ services:
       GOTRUE_RATE_LIMIT_TOKEN_REFRESH: ${AUTH_RATE_LIMIT:-30}
       GOTRUE_HOOK_CUSTOM_ACCESS_TOKEN_ENABLED: 'true'
       GOTRUE_HOOK_CUSTOM_ACCESS_TOKEN_URI: pg-functions://postgres/public/custom_access_token_hook
+      # Production spec §4: the sign-up gate; off until signup_settings.gate_on.
+      GOTRUE_HOOK_BEFORE_USER_CREATED_ENABLED: 'true'
+      GOTRUE_HOOK_BEFORE_USER_CREATED_URI: pg-functions://postgres/public/before_user_created_hook
     healthcheck:
       test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://127.0.0.1:9999/health']
       interval: 2s
@@ -165,6 +168,8 @@ services:
       SITE_ADDRESS: ${SITE_ADDRESS:-:8080}
       LAN_HTTPS_HOST: ${LAN_HTTPS_HOST:-localhost}
       CORS_DEV_ORIGIN: ${CORS_DEV_ORIGIN:-http://cors-disabled.invalid}
+      # Who may set X-Forwarded-*: only this host in dev; the tunnel's network in production.
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-127.0.0.1/32}
     ports:
       - '${PROXY_PORT:-8080}:8080'
       - '${LAN_HTTPS_PORT:-8443}:8443'
@@ -179,6 +184,40 @@ services:
       timeout: 5s
       retries: 30
 
+  backup:
+    build:
+      context: .
+      dockerfile: deploy/backup.Dockerfile
+    profiles: [backup]
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: ${TZ:-America/New_York}
+      BACKUP_TIME: ${BACKUP_TIME:-03:30}
+      BACKUP_BUCKET: ${BACKUP_BUCKET:-}
+      BACKUP_REMOTE: ${BACKUP_REMOTE:-}
+      BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:-}
+      BACKUP_ALERT_TO: ${BACKUP_ALERT_TO:-}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      SMTP_FROM: ${SMTP_FROM}
+      SMTP_SENDER_NAME: ${SMTP_SENDER_NAME:-Dishkept}
+      # rclone's GCS remote, named "offsite", from the environment.
+      RCLONE_CONFIG_OFFSITE_TYPE: 'google cloud storage'
+      RCLONE_CONFIG_OFFSITE_SERVICE_ACCOUNT_FILE: /run/secrets/gcs.json
+      RCLONE_CONFIG_OFFSITE_BUCKET_POLICY_ONLY: 'true'
+      # The service account may only create and read objects, not inspect or create buckets.
+      RCLONE_CONFIG_OFFSITE_NO_CHECK_BUCKET: 'true'
+    volumes:
+      # Read-write: a restore replaces the files. Back up with the database (ADR-0013).
+      - photos:/data/photos
+      - backups:/backups
+
   mail:
     image: axllent/mailpit:v1.31.5
     profiles: [dev]
@@ -189,3 +228,4 @@ services:
 volumes:
   db_data:
   photos:
+  backups:

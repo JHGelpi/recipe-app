@@ -97,3 +97,9 @@ insert into public.invites (id, household_id, role, token_hash, expires_at, acce
 insert into public.shares (id, household_id, recipe_id, token_hash, snapshot, deleted_at) values
   ('00000000-0000-0000-0000-0000000000e9', '00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-0000000000c1', sha256(convert_to('seed share a', 'UTF8')), '{}', now()),
   ('00000000-0000-0000-0000-0000000000ea', '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000c2', sha256(convert_to('seed share b', 'UTF8')), '{}', now());
+
+-- One expired friend link per household, so the isolation suite's friend_links
+-- checks are not vacuous. Both are expired, so no code grants a pass.
+insert into public.friend_links (id, household_id, token_hash, expires_at) values
+  ('00000000-0000-0000-0000-0000000000eb', '00000000-0000-0000-0000-00000000000a', sha256(convert_to('seed friend a', 'UTF8')), now()),
+  ('00000000-0000-0000-0000-0000000000ec', '00000000-0000-0000-0000-00000000000b', sha256(convert_to('seed friend b', 'UTF8')), now());

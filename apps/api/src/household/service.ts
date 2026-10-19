@@ -39,6 +39,8 @@ export type HouseholdService = {
   removeMember(token: string, userId: string): Promise<void>;
   leave(token: string): Promise<void>;
   rename(token: string, name: string): Promise<void>;
+  /** FR-6: a link for a friend to start their own household (production spec §4). */
+  createFriendLink(token: string): Promise<{ code: string; expires_at: string }>;
 };
 
 const iso = (value: Date | string) => new Date(value).toISOString();
@@ -63,6 +65,15 @@ export function createHouseholdService(deps: {
   }
 
   return {
+    async createFriendLink(token) {
+      const [row] = await run(
+        token,
+        (tx) => tx<{ token: string; expires_at: Date }[]>`
+        select token, expires_at from public.create_friend_link()`,
+      );
+      return { code: row!.token, expires_at: iso(row!.expires_at) };
+    },
+
     async createInvite(token, role) {
       const [row] = await run(
         token,

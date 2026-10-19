@@ -16,7 +16,7 @@ describe('the tab bar (UI spec §4)', () => {
     expect(showTabBar(path, true)).toBe(true);
   });
 
-  it.each(['/sign-in', '/invite/xyz', '/s/xyz', '/photo/abc', '/recipe/abc/cook'])(
+  it.each(['/sign-in', '/invite/xyz', '/s/xyz', '/photo/abc', '/recipe/abc/cook', '/welcome/abc'])(
     'hides on %s',
     (path) => {
       expect(showTabBar(path, true)).toBe(false);
