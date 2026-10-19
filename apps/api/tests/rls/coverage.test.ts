@@ -13,3 +13,13 @@ it('every public table has RLS enabled and is in the test registry', async () =>
   expect(tables.filter((table) => !table.rls).map((table) => table.name)).toEqual([]);
   expect(tables.map((table) => table.name)).toEqual([...TENANT_TABLES].sort());
 });
+
+it('the sync service can read every table it replicates (rule 6)', async () => {
+  const unreadable = await adminSql<{ name: string }[]>`
+    select p.tablename as name
+    from pg_publication_tables p
+    where p.pubname = 'powersync'
+      and not has_table_privilege('powersync_repl', format('%I.%I', p.schemaname, p.tablename), 'select')
+    order by 1`;
+  expect(unreadable.map((table) => table.name)).toEqual([]);
+});
