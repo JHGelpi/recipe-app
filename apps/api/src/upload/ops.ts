@@ -184,6 +184,8 @@ async function applyShoppingItem(
     const [existing] = await tx`select 1 from public.shopping_items where id = ${id}`;
     if (!existing) {
       // FR-31 limit (spec §6): counted under RLS, so only the caller's household.
+      // Concurrent uploads count one at a time per household, so the cap holds.
+      await tx`select pg_advisory_xact_lock(hashtext(${`shopping_items:${String(fields.household_id)}`}))`;
       const [count] = await tx<{ live: number }[]>`
         select count(*)::int as live from public.shopping_items where deleted_at is null`;
       if ((count?.live ?? 0) >= SHOPPING_LIMITS.rows) return rejected(op, 'list_full');

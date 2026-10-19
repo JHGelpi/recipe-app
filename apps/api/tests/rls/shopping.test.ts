@@ -37,6 +37,30 @@ describe('shopping list tables', () => {
     expect(updated).toHaveLength(0);
   });
 
+  it('viewers cannot insert or update aisle choices', async () => {
+    const member = await signInAs(SEED.memberA);
+    const viewer = await signInAs(SEED.viewerA);
+    const choice = {
+      id: randomUUID(),
+      household_id: member.householdId,
+      item_key: `viewer-test-${randomUUID()}`,
+      aisle: 'pantry',
+    };
+    await as(member, (tx) => tx`insert into public.aisle_choices ${tx(choice)}`);
+    expect(
+      await refusalCode(
+        as(viewer, (tx) =>
+          tx`insert into public.aisle_choices ${tx({ ...choice, id: randomUUID(), item_key: `v-${randomUUID()}` })}`,
+        ),
+      ),
+    ).toBe('42501');
+    const updated = await as(
+      viewer,
+      (tx) => tx`update public.aisle_choices set aisle = 'other' where id = ${choice.id} returning id`,
+    );
+    expect(updated).toHaveLength(0);
+  });
+
   it('another household cannot read or write the rows', async () => {
     const member = await signInAs(SEED.memberA);
     const other = await signInAs(SEED.adminB);
