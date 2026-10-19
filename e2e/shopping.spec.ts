@@ -104,3 +104,20 @@ test('a Viewer sees the list with no controls (rule 4)', async ({ page }) => {
   await expect(sheet.getByText('For')).toBeVisible();
   await expect(sheet.getByRole('button', { name: 'Remove', exact: true })).toHaveCount(0);
 });
+
+test('servings changed on the page are the servings added (FR-32, review C1)', async ({ page }) => {
+  await signIn(page, freshEmail('shop-servings'));
+  await createRecipe(page, {
+    title: unique('Servings soup'),
+    servings: '2',
+    ingredients: '2 onions',
+  });
+  await page.getByRole('button', { name: 'More servings' }).click();
+  await page.getByRole('button', { name: 'More servings' }).click();
+  await page.getByRole('button', { name: 'Add to list' }).click();
+  const sheet = page.getByRole('dialog', { name: 'Add to shopping list' });
+  await expect(sheet.getByRole('checkbox', { name: /^4 onions/ })).toBeVisible();
+  await sheet.getByRole('button', { name: 'Add 1 item' }).click();
+  await openList(page);
+  await expect(page.getByRole('button', { name: 'onions, 4' })).toBeVisible();
+});

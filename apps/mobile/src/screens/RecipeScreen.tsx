@@ -144,7 +144,9 @@ export function RecipeScreen({ claims, id }: { claims: Claims; id: string }) {
           {added > 0 ? (
             <Banner>{`Added ${added} ${added === 1 ? 'item' : 'items'} to your list`}</Banner>
           ) : null}
-          {writer && !recipe.deleted_at ? (
+          {/* Mounted only while open, so it reads the servings and units the cook
+              just chose (the servings bar saves them as it changes). */}
+          {adding && writer && !recipe.deleted_at ? (
             <AddToListSheet
               open={adding}
               claims={claims}
