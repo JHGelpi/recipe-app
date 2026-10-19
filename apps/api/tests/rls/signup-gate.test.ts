@@ -43,6 +43,28 @@ async function friendCode(actor: Actor): Promise<string> {
   return row!.token;
 }
 
+async function outcome(run: Promise<unknown>): Promise<string> {
+  try {
+    await run;
+    return 'ok';
+  } catch (error) {
+    return (error as { message?: string }).message ?? 'error';
+  }
+}
+
+async function linkStatus(code: string): Promise<string> {
+  const [row] = await asAnonymous(
+    (tx) => tx<{ status: string }[]>`select public.friend_link_status(${code}) as status`,
+  );
+  return row!.status;
+}
+
+async function linkId(code: string): Promise<string> {
+  const [row] = await adminSql<{ id: string }[]>`
+    select id from public.friend_links where token_hash = sha256(convert_to(${code}, 'UTF8'))`;
+  return row!.id;
+}
+
 describe('the sign-up gate hook', () => {
   it('lets everyone through while the gate is off', async () => {
     expect(await hook(address('open'))).toEqual({});
@@ -150,17 +172,38 @@ describe('who can reach the gate tables', () => {
 });
 
 describe('friend links', () => {
-  it('any member, viewers included, can make one; only admins and members can list them', async () => {
+  it('any member, viewers included, can make, list and revoke one; another household cannot revoke it', async () => {
     const viewer = await signInAs(SEED.viewerA);
-    const member = await signInAs(SEED.memberA);
-    expect(await friendCode(viewer)).toMatch(/^[A-Za-z0-9_-]{43}$/);
-    expect(await as(viewer, (tx) => tx`select id from public.friend_links`)).toHaveLength(0);
-    const rows = await as(
-      member,
-      (tx) => tx<{ household_id: string }[]>`
-      select household_id from public.friend_links`,
+    const adminB = await signInAs(SEED.adminB);
+    const code = await friendCode(viewer);
+    const id = await linkId(code);
+    const listed = await as(
+      viewer,
+      (tx) => tx<{ id: string; household_id: string }[]>`
+      select id, household_id from public.friend_links`,
     );
-    expect(rows.length).toBeGreaterThan(0);
-    expect(rows.every((row) => row.household_id === member.householdId)).toBe(true);
+    expect(listed.some((row) => row.id === id)).toBe(true);
+    expect(listed.every((row) => row.household_id === viewer.householdId)).toBe(true);
+    const revoke = (actor: Actor) =>
+      outcome(as(actor, (tx) => tx`select public.revoke_friend_link(${id}::uuid)`));
+
+    expect(await revoke(adminB)).toBe('link_unknown');
+    expect(await linkStatus(code)).toBe('live');
+    expect(await revoke(viewer)).toBe('ok');
+    expect(await linkStatus(code)).toBe('ended');
+    const late = address('late-friend');
+    used.push(late);
+    expect(await grant('friend', code, late)).toBe(false);
+    expect(await revoke(viewer)).toBe('link_unknown');
+  });
+
+  it('signed out, a link reads as live, ended once expired, or unknown', async () => {
+    const admin = await signInFresh(address('status-admin'));
+    const code = await friendCode(admin);
+    expect(await linkStatus(code)).toBe('live');
+    await adminSql`update public.friend_links set expires_at = now() - interval '1 second'
+      where token_hash = sha256(convert_to(${code}, 'UTF8'))`;
+    expect(await linkStatus(code)).toBe('ended');
+    expect(await linkStatus('z'.repeat(43))).toBe('unknown');
   });
 });

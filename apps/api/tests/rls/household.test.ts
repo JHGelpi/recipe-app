@@ -286,3 +286,46 @@ describe('review fixes', () => {
     expect(live).toHaveLength(0);
   });
 });
+
+describe('removed memberships do not count (bug batch §4)', () => {
+  // A person who joined and whose membership was then soft-deleted.
+  async function ghost(admin: Actor, role = 'admin'): Promise<Actor> {
+    const person = await fresh();
+    await accept(person, await invite(admin, role));
+    await adminSql`update public.memberships set deleted_at = now() where user_id = ${person.userId}`;
+    return person;
+  }
+
+  it('the last live Admin cannot step down', async () => {
+    const admin = await fresh();
+    await ghost(admin);
+    expect(
+      await outcome(
+        as(admin, (tx) => tx`select public.set_member_role(${admin.userId}::uuid, 'member')`),
+      ),
+    ).toBe('last_admin');
+  });
+
+  it('alone with a removed member: leaving is refused, and joining brings the recipes', async () => {
+    const admin = await fresh();
+    await ghost(admin, 'member');
+    expect(await outcome(as(admin, (tx) => tx`select public.leave_household()`))).toBe('alone');
+    const id = randomUUID();
+    await as(
+      admin,
+      (tx) =>
+        tx`insert into public.recipes (id, household_id, title) values (${id}, ${admin.householdId}, 'Ghost soup')`,
+    );
+    const other = await fresh();
+    const token = await invite(other);
+    expect(await preview(admin, token)).toMatchObject({
+      status: 'ok',
+      moving_recipes: 1,
+      blocker: null,
+    });
+    expect(await outcome(accept(admin, token))).toBe('ok');
+    const [row] = await adminSql<{ household_id: string }[]>`
+      select household_id from public.recipes where id = ${id}`;
+    expect(row?.household_id).toBe(other.householdId);
+  });
+});

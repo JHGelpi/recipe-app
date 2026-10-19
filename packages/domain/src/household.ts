@@ -33,6 +33,7 @@ export const HOUSEHOLD_ERRORS = [
   'invite_unknown',
   'already_member',
   'too_many_invites',
+  'link_unknown',
 ] as const;
 export type HouseholdError = (typeof HOUSEHOLD_ERRORS)[number];
 
