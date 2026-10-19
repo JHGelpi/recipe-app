@@ -105,3 +105,29 @@ describe('draftFromJsonLd', () => {
     expect(draftFromJsonLd([])).toBeNull();
   });
 });
+
+describe('instructions written as paragraphs (spec §3)', () => {
+  it('one instruction string of several <p>s becomes several steps', () => {
+    const draft = draftFromJsonLd([
+      {
+        '@type': 'Recipe',
+        name: 'Soup',
+        recipeIngredient: ['1 onion'],
+        recipeInstructions: '<p>Chop.</p><p>Simmer &amp;amp; serve.</p>',
+      },
+    ]);
+    expect(draft?.steps).toEqual(['Chop.', 'Simmer & serve.']);
+  });
+
+  it('escaped paragraphs split too', () => {
+    const draft = draftFromJsonLd([
+      {
+        '@type': 'Recipe',
+        name: 'Soup',
+        recipeIngredient: ['1 onion'],
+        recipeInstructions: '&lt;p&gt;Chop.&lt;/p&gt;&lt;p&gt;Simmer.&lt;/p&gt;',
+      },
+    ]);
+    expect(draft?.steps).toEqual(['Chop.', 'Simmer.']);
+  });
+});
