@@ -99,8 +99,25 @@ export async function restoreRecipe(db: Db, claims: Claims, id: string): Promise
   await db.execute('update recipes set deleted_at = ? where id = ?', [null, id]);
 }
 
+// One star change at a time per recipe: a double tap must not insert two rows.
+const starChains = new Map<string, Promise<void>>();
+
 /** Any role may star: a favorite changes only the user's own list. */
-export async function setFavorite(
+export function setFavorite(
+  db: Db,
+  claims: Claims,
+  recipeId: string,
+  starred: boolean,
+): Promise<void> {
+  const key = `${claims.userId}:${recipeId}`;
+  const next = (starChains.get(key) ?? Promise.resolve())
+    .catch(() => undefined)
+    .then(() => writeFavorite(db, claims, recipeId, starred));
+  starChains.set(key, next);
+  return next;
+}
+
+async function writeFavorite(
   db: Db,
   claims: Claims,
   recipeId: string,

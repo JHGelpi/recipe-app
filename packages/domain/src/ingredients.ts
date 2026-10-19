@@ -163,8 +163,11 @@ export function parseIngredientLine(input: string): ParsedIngredient {
   const raw = input.trim().replace(/\s+/g, ' ');
   const plain = { raw, quantity: null, quantity_max: null, unit: null, note: null };
 
-  // "250g butter": read a metric unit glued to its number as if spaced.
-  const text = raw.replace(/^(\d+(?:\.\d+)?)(kg|g|ml|l)(?=\s|$)/i, '$1 $2');
+  // "250g butter": read a metric unit glued to its number as if spaced, and
+  // the fraction slash ("1⁄2") as a slash. raw keeps what was written.
+  const text = raw
+    .replace(/\u2044/g, '/')
+    .replace(/^(\d+(?:\.\d+)?)(kg|g|ml|l)(?=\s|$)/i, '$1 $2');
   const match = QUANTITY.exec(text);
   const quantity = match ? toNumber(match[1] ?? '') : null;
   const quantityMax = match?.[2] ? toNumber(match[2]) : null;

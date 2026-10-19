@@ -110,3 +110,27 @@ describe('formFromRecipe', () => {
     });
   });
 });
+
+describe('over-long lines (bug batch spec §2)', () => {
+  it('names the line that is too long', () => {
+    const result = valuesFromForm(
+      {
+        ...emptyForm(),
+        title: 'T',
+        ingredients: `1 egg\n2 eggs\n${'x'.repeat(501)}`,
+        steps: `a\n${'y'.repeat(2001)}`,
+        tags: 'ok, ' + 'z'.repeat(41),
+      },
+      null,
+      newId,
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      errors: {
+        ingredients: 'Ingredient 3 is over 500 characters',
+        steps: 'Step 2 is over 2000 characters',
+        tags: 'Tag 2 is over 40 characters',
+      },
+    });
+  });
+});

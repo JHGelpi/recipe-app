@@ -181,3 +181,21 @@ describe('listRowFrom tags', () => {
     ]);
   });
 });
+
+describe('rows from a newer app (bug batch spec §2)', () => {
+  it('reads an ingredient with an extra field, and an unknown unit as its raw text', () => {
+    const recipe = rowToRecipe({
+      id: '11111111-1111-4111-8111-111111111111',
+      household_id: '22222222-2222-4222-8222-222222222222',
+      title: 'Future',
+      ingredients: JSON.stringify([
+        { id: '33333333-3333-4333-8333-333333333333', raw: '2 cups flour', quantity: 2, quantity_max: null, unit: 'cup', item: 'flour', note: null, heading: false, brand: 'Acme' },
+        { id: '44444444-4444-4444-8444-444444444444', raw: '3 sprigs thyme', quantity: 3, quantity_max: null, unit: 'sprig', item: 'thyme', note: null, heading: false },
+      ]),
+      steps: JSON.stringify([{ id: '55555555-5555-4555-8555-555555555555', text: 'Mix', timer: 60 }]),
+    });
+    expect(recipe).not.toBeNull();
+    expect(recipe!.ingredients[1]).toMatchObject({ raw: '3 sprigs thyme', quantity: null, unit: null });
+    expect(recipe!.steps[0]).toEqual({ id: '55555555-5555-4555-8555-555555555555', text: 'Mix' });
+  });
+});

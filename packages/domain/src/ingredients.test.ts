@@ -167,3 +167,10 @@ describe('review fixes: an edited line keeps its id (Important 3)', () => {
     expect(added[2]?.id).toMatch(/^new-/);
   });
 });
+
+describe('the fraction slash (bug batch spec §2)', () => {
+  it('reads it like a slash', () => {
+    expect(parseIngredientLine('1⁄2 cup milk')).toMatchObject({ quantity: 0.5, unit: 'cup', item: 'milk', raw: '1⁄2 cup milk' });
+    expect(parseIngredientLine('1 1⁄2 cups milk')).toMatchObject({ quantity: 1.5, unit: 'cup' });
+  });
+});

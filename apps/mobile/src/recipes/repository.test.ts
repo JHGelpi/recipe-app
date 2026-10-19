@@ -102,3 +102,29 @@ describe('setFavorite', () => {
     expect(calls).toHaveLength(0);
   });
 });
+
+describe('setFavorite double taps', () => {
+  it('a fast double tap on the star makes one favorite row', async () => {
+    // A fake that sees its own inserts, as the local database does.
+    const calls: Call[] = [];
+    let inserted = false;
+    const db = {
+      execute: async (sql: string, params: unknown[] = []) => {
+        calls.push({ sql, params });
+        if (sql.startsWith('insert into favorites')) inserted = true;
+        return { rowsAffected: 1 } as never;
+      },
+      // The read sees the table as it was when asked, then takes a moment.
+      getOptional: async () => {
+        const seen = inserted;
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        return (seen ? { id: 'f1' } : null) as never;
+      },
+    };
+    await Promise.all([
+      setFavorite(db, member, 'recipe-1', true),
+      setFavorite(db, member, 'recipe-1', true),
+    ]);
+    expect(calls.filter((c) => c.sql.startsWith('insert into favorites'))).toHaveLength(1);
+  });
+});

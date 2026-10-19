@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { View } from 'react-native';
 import { useHouseholdTags } from '../recipes/hooks';
 import { valuesFromForm, type RecipeForm, type RecipeValues } from '../recipes/form';
@@ -35,6 +35,8 @@ export function RecipeEditor({
   const [form, setForm] = useState(initial);
   const [errors, setErrors] = useState<Partial<Record<keyof RecipeForm, string>>>({});
   const [busy, setBusy] = useState(false);
+  // A ref, not state: two taps in one frame both see the state as not busy.
+  const saving = useRef(false);
   const householdTags = useHouseholdTags();
   const current = normalizeTags(form.tags);
   const suggestions = householdTags.filter((tag) => !current.includes(tag));
@@ -46,18 +48,20 @@ export function RecipeEditor({
     setForm((f) => ({ ...f, [key]: value }));
 
   async function save() {
-    if (busy) return; // a double tap must not save twice
+    if (saving.current) return; // a double tap must not save twice
     const result = valuesFromForm(form, previous, () => crypto.randomUUID());
     if (!result.ok) {
       setErrors(result.errors);
       return;
     }
+    saving.current = true;
     setBusy(true);
     setErrors({});
     try {
       await onSave(result.values);
     } catch {
       setErrors({ title: 'Could not save the recipe. Try again.' });
+      saving.current = false;
       setBusy(false);
     }
   }
