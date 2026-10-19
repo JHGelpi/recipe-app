@@ -1,5 +1,6 @@
 // Built-in aisle guesses (shopping spec §5). Keys are itemKey() forms:
-// lowercase, last word singular. Matched on the whole key, then on its last word.
+// lowercase, last word singular. Matched on the whole key, then its last two
+// words, then its last word.
 const WORDS: Record<string, readonly string[]> = {
   produce: [
     'apple',
@@ -73,6 +74,9 @@ const WORDS: Record<string, readonly string[]> = {
     'sage',
     'chive',
     'salad',
+    'lemon juice',
+    'lime juice',
+    'garlic clove',
   ],
   meat: [
     'chicken',
@@ -126,6 +130,9 @@ const WORDS: Record<string, readonly string[]> = {
     'egg',
     'buttermilk',
     'ghee',
+    'yolk',
+    'egg yolk',
+    'egg white',
   ],
   bakery: [
     'bread',
@@ -203,6 +210,7 @@ const WORDS: Record<string, readonly string[]> = {
     'cracker',
     'chip',
     'tahini',
+    'olive',
   ],
   spices: [
     'salt',

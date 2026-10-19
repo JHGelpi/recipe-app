@@ -54,7 +54,7 @@ export function AddToListSheet({
 
   async function add() {
     if (chosen.size === 0) return;
-    const rows = addRows(recipe, factor, chosen, choices);
+    const rows = addRows(recipe, factor, chosen, choices, place.units);
     if ((await addShoppingRows(db, claims, rows)) === 'full') {
       setMessage(FULL);
       return;

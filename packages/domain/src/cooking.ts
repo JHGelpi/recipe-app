@@ -203,6 +203,27 @@ export function displayIngredient(
   return `${amount}${unit} ${item}${note}`;
 }
 
+/** The amount displayIngredient shows, as numbers: what Add to list adds (FR-32). */
+export function shownAmount(
+  ingredient: Ingredient,
+  options: { factor: number; units: UnitSystem },
+): Pick<Ingredient, 'quantity' | 'quantity_max' | 'unit'> {
+  const scaled = scaleIngredient(ingredient, options.factor);
+  if (scaled.heading || scaled.quantity === null) return scaled;
+  const fluid = ingredient.unit === 'oz' && /\bfl\.?\s*oz\b|fluid\s+ounce/i.test(ingredient.raw);
+  if (!ingredient.item || fluid) return scaled;
+  const converted = convertAmount(
+    { value: scaled.quantity, max: scaled.quantity_max, unit: scaled.unit },
+    options.units,
+  );
+  const stepped =
+    converted.unit !== null && (US_UNITS.has(converted.unit) || METRIC_UNITS.has(converted.unit))
+      ? stepUnits(converted)
+      : converted;
+  if (stepped === 'pinch') return { quantity: 1, quantity_max: null, unit: 'pinch' };
+  return { quantity: stepped.value, quantity_max: stepped.max, unit: stepped.unit };
+}
+
 /** A merged amount on the shopping list (FR-33): stepped, formatted, with its unit. */
 export function formatTotal(amount: Amount): string {
   const stepped =

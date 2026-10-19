@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { AISLE_WORDS } from './aisles';
-import { baseOf, formatTotal, scaleIngredient } from './cooking';
+import { baseOf, formatTotal, shownAmount, type UnitSystem } from './cooking';
 import { parseIngredientLine, UNITS, type Ingredient, type Unit } from './ingredients';
 import { TITLE_MAX } from './limits';
 
@@ -60,8 +60,10 @@ export function itemKey(item: string): string {
 export function aisleFor(key: string, choices: ReadonlyMap<string, Aisle>): Aisle {
   const chosen = choices.get(key);
   if (chosen) return chosen;
-  const last = key.split(' ').at(-1) ?? key;
-  return (AISLE_WORDS[key] ?? AISLE_WORDS[last] ?? 'other') as Aisle;
+  const words = key.split(' ');
+  const lastTwo = words.slice(-2).join(' ');
+  const last = words.at(-1) ?? key;
+  return (AISLE_WORDS[key] ?? AISLE_WORDS[lastTwo] ?? AISLE_WORDS[last] ?? 'other') as Aisle;
 }
 
 export type ShoppingRow = {
@@ -113,8 +115,8 @@ function amountOf(rows: ShoppingRow[]): string {
   const others = new Map<Unit, Sum>();
   let toTaste = false;
   for (const row of rows) {
-    if (row.quantity === null) {
-      toTaste = true;
+    if (row.quantity === null || row.quantity === 0) {
+      if (row.quantity === null) toTaste = true;
       continue;
     }
     if (row.unit === null) {
@@ -166,10 +168,17 @@ export function shoppingLines(
   const groups = new Map<string, ShoppingRow[]>();
   for (const row of rows) groups.set(row.item_key, [...(groups.get(row.item_key) ?? []), row]);
   const lines = [...groups.entries()].map(([key, group]) => {
-    const byAge = [...group].sort((a, b) => time(a.created_at).localeCompare(time(b.created_at)));
+    const byAge = [...group].sort(
+      (a, b) =>
+        time(a.created_at).localeCompare(time(b.created_at)) ||
+        (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+    );
     const latest = [...group].sort((a, b) =>
       time(b.updated_at).localeCompare(time(a.updated_at)),
     )[0]!;
+    const checked = group.every((row) => row.checked_at !== null);
+    // A partly ticked line shows only what is left to buy (owner's choice, spec §2).
+    const counted = checked ? byAge : byAge.filter((row) => row.checked_at === null);
     const recipes = new Map<string, string>();
     for (const row of byAge) {
       if (row.recipe_id && !recipes.has(row.recipe_id))
@@ -179,10 +188,10 @@ export function shoppingLines(
       key,
       item: byAge[0]!.item,
       aisle: choices.get(key) ?? latest.aisle,
-      amount: amountOf(byAge),
+      amount: amountOf(counted),
       recipes: [...recipes].map(([id, title]) => ({ id, title })),
       handAdded: group.some((row) => row.recipe_id === null),
-      checked: group.every((row) => row.checked_at !== null),
+      checked,
       rowIds: byAge.map((row) => row.id),
     };
   });
@@ -196,12 +205,18 @@ function newRow(
   recipe: { id: string; title: string } | null,
   choices: ReadonlyMap<string, Aisle>,
 ): NewShoppingRow {
-  const item = (ingredient.item.trim() || ingredient.raw.trim()).slice(0, SHOPPING_LIMITS.item);
+  // A line with no item ("2 cups") keeps its text as the item and no amount,
+  // so it never merges with real cups of something (spec §2).
+  const named = ingredient.item.trim() !== '';
+  const item = (named ? ingredient.item.trim() : ingredient.raw.trim()).slice(
+    0,
+    SHOPPING_LIMITS.item,
+  );
   const key = itemKey(item);
   // Within what the server accepts, so a row is never added here and then
   // rejected and removed at the next sync (review I5).
   const fits = (value: number | null) => (value !== null && value <= MAX_QUANTITY ? value : null);
-  const quantity = fits(ingredient.quantity);
+  const quantity = named ? fits(ingredient.quantity) : null;
   return {
     item,
     item_key: key,
@@ -221,10 +236,12 @@ export function addRows(
   factor: number,
   chosen: ReadonlySet<string>,
   choices: ReadonlyMap<string, Aisle>,
+  units: UnitSystem = 'as_written',
 ): NewShoppingRow[] {
+  // What the sheet shows is what is added: scaled, converted and stepped (spec §2).
   return recipe.ingredients
     .filter((line) => !line.heading && chosen.has(line.id) && (line.item.trim() || line.raw.trim()))
-    .map((line) => newRow(scaleIngredient(line, factor), recipe, choices));
+    .map((line) => newRow({ ...line, ...shownAmount(line, { factor, units }) }, recipe, choices));
 }
 
 /** FR-35: a typed item, read like a recipe line ("2 lemons"). */
