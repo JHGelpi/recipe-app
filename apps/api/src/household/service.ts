@@ -23,6 +23,7 @@ export type InvitePreview = {
   moving_recipes: number;
   blocker: 'only_admin' | null;
 };
+export type FriendLink = { id: string; created_at: string; expires_at: string };
 export type HouseholdService = {
   createInvite(
     token: string,
@@ -41,6 +42,9 @@ export type HouseholdService = {
   rename(token: string, name: string): Promise<void>;
   /** FR-6: a link for a friend to start their own household (production spec §4). */
   createFriendLink(token: string): Promise<{ code: string; expires_at: string }>;
+  /** FR-6: the household's live friend links; every role may see them. */
+  listFriendLinks(token: string): Promise<FriendLink[]>;
+  revokeFriendLink(token: string, id: string): Promise<void>;
 };
 
 const iso = (value: Date | string) => new Date(value).toISOString();
@@ -72,6 +76,24 @@ export function createHouseholdService(deps: {
         select token, expires_at from public.create_friend_link()`,
       );
       return { code: row!.token, expires_at: iso(row!.expires_at) };
+    },
+
+    listFriendLinks: (token) =>
+      run(token, async (tx) => {
+        // friend_links_select limits this to the caller's household.
+        const rows = await tx<{ id: string; created_at: Date; expires_at: Date }[]>`
+      select id, created_at, expires_at from public.friend_links
+      where deleted_at is null and expires_at > now()
+      order by created_at desc`;
+        return rows.map((row) => ({
+          id: row.id,
+          created_at: iso(row.created_at),
+          expires_at: iso(row.expires_at),
+        }));
+      }),
+
+    async revokeFriendLink(token, id) {
+      await run(token, (tx) => tx`select public.revoke_friend_link(${id}::uuid)`);
     },
 
     async createInvite(token, role) {

@@ -18,6 +18,8 @@ function app(over: Partial<HouseholdService> = {}) {
     leave: vi.fn().mockResolvedValue(undefined),
     rename: vi.fn().mockResolvedValue(undefined),
     createFriendLink: vi.fn().mockResolvedValue({ code: CODE, expires_at: 'x' }),
+    listFriendLinks: vi.fn().mockResolvedValue([{ id: 'f1', created_at: 'a', expires_at: 'b' }]),
+    revokeFriendLink: vi.fn().mockResolvedValue(undefined),
     ...over,
   } as HouseholdService;
   const hono = new Hono();
@@ -112,4 +114,21 @@ describe('household routes', () => {
     expect((await send(hono, 'DELETE', '/api/members/nope')).status).toBe(404);
     expect(household.removeMember).not.toHaveBeenCalled();
   });
+});
+
+it('lists friend links and revokes one; an unknown link is 404', async () => {
+  const { hono, household } = app({
+    revokeFriendLink: vi
+      .fn()
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new HouseholdRefusal('link_unknown')),
+  });
+  const listed = await send(hono, 'GET', '/api/friend-links');
+  expect(await listed.json()).toEqual([{ id: 'f1', created_at: 'a', expires_at: 'b' }]);
+  expect((await send(hono, 'DELETE', `/api/friend-links/${USER}`)).status).toBe(204);
+  expect(household.revokeFriendLink).toHaveBeenCalledWith('jwt', USER);
+  const gone = await send(hono, 'DELETE', `/api/friend-links/${USER}`);
+  expect(gone.status).toBe(404);
+  expect(await gone.json()).toEqual({ error: 'link_unknown' });
+  expect((await send(hono, 'DELETE', '/api/friend-links/not-a-guid')).status).toBe(404);
 });

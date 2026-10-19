@@ -29,6 +29,7 @@ export const HOUSEHOLD_MESSAGES: Record<string, string> = {
   invite_unknown: "This invite isn't valid",
   already_member: "You're already in this household",
   too_many_invites: 'Too many pending invites. Cancel some first.',
+  link_unknown: 'This link has already ended',
 };
 
 async function request<T>(
@@ -78,6 +79,12 @@ export const renameHousehold = (name: string, deps: ApiDeps) =>
 
 export const createFriendLink = (deps: ApiDeps) =>
   request<{ code: string; expires_at: string }>(deps, 'POST', '/friend-links', {});
+
+export type FriendLink = { id: string; created_at: string; expires_at: string };
+export const listFriendLinks = (deps: ApiDeps) =>
+  request<FriendLink[]>(deps, 'GET', '/friend-links');
+export const revokeFriendLink = (id: string, deps: ApiDeps) =>
+  request<void>(deps, 'DELETE', `/friend-links/${id}`);
 
 /** The friend link a person opens (production spec §4). */
 export function friendUrl(code: string): string {

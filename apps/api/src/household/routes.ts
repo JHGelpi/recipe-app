@@ -51,6 +51,20 @@ export function registerHouseholdRoutes(app: Hono, deps: { household: HouseholdS
   app.post('/api/friend-links', (c) =>
     handle(c, async (token) => c.json(await household.createFriendLink(token), 201)),
   );
+  app.get('/api/friend-links', (c) =>
+    handle(c, async (token) => c.json(await household.listFriendLinks(token))),
+  );
+  app.delete('/api/friend-links/:id', (c) =>
+    handle(
+      c,
+      async (token) => {
+        if (!isGuid(c.req.param('id'))) return c.json({ error: 'not_found' }, 404);
+        await household.revokeFriendLink(token, c.req.param('id'));
+        return c.body(null, 204);
+      },
+      ['link_unknown'],
+    ),
+  );
   app.get('/api/invites', (c) =>
     handle(c, async (token) => c.json(await household.listInvites(token))),
   );

@@ -2,7 +2,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { setPendingInvite } from '../household/pendingInvite';
 import { setPendingShare } from '../sharing/pending';
 import { setPendingFriend, takePendingFriend } from './pendingFriend';
-import { askForPass, isInviteOnly, passSource } from './signupPass';
+import { askForPass, friendLinkStatus, isInviteOnly, passSource } from './signupPass';
 
 const memory = new Map<string, string>();
 beforeEach(() => {
@@ -62,4 +62,20 @@ it('recognizes the gate refusal and nothing else', () => {
   expect(isInviteOnly({ status: 403, message: 'Email rate limit exceeded' })).toBe(false);
   expect(isInviteOnly({ status: 500, message: 'invite_only' })).toBe(false);
   expect(isInviteOnly(null)).toBe(false);
+});
+
+it('reads a friend link status; offline or an error reads as live', async () => {
+  const reply = (status: number, body: unknown) =>
+    vi.fn(async () => new Response(JSON.stringify(body), { status }));
+  const deps = (fetch: typeof globalThis.fetch) => ({ fetch, apiUrl: 'https://x/api' });
+  const ended = reply(200, { status: 'ended' });
+  expect(await friendLinkStatus(B, deps(ended))).toBe('ended');
+  expect(ended).toHaveBeenCalledWith(
+    'https://x/api/friend-links/status',
+    expect.objectContaining({ method: 'POST', body: JSON.stringify({ code: B }) }),
+  );
+  expect(await friendLinkStatus(B, deps(reply(200, { status: 'unknown' })))).toBe('ended');
+  expect(await friendLinkStatus(B, deps(reply(500, {})))).toBe('live');
+  const down = vi.fn(async () => Promise.reject(new TypeError('offline')));
+  expect(await friendLinkStatus(B, deps(down))).toBe('live');
 });

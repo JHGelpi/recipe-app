@@ -36,6 +36,30 @@ export async function askForPass(
   }
 }
 
+export const FRIEND_LINK_ENDED = 'This link has ended. Ask for a new one.';
+
+/**
+ * Whether a friend link still works, asked signed out. Only a definite "no"
+ * reads as ended; offline or a server error leaves it to the pass check.
+ */
+export async function friendLinkStatus(
+  code: string,
+  deps: { fetch: typeof fetch; apiUrl: string },
+): Promise<'live' | 'ended'> {
+  try {
+    const response = await deps.fetch(`${deps.apiUrl}/friend-links/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+    });
+    if (!response.ok) return 'live';
+    const json = (await response.json().catch(() => null)) as { status?: string } | null;
+    return json?.status === 'ended' || json?.status === 'unknown' ? 'ended' : 'live';
+  } catch {
+    return 'live';
+  }
+}
+
 /** GoTrue's answer when the before_user_created hook refuses (Task 1, stack test). */
 export function isInviteOnly(error: { status?: number; message?: string } | null): boolean {
   return error?.status === 403 && (error.message ?? '').includes('invite_only');

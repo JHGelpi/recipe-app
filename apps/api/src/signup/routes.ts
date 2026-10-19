@@ -33,4 +33,13 @@ export function registerSignupRoutes(
     const granted = await deps.signup.grant(kind as PassKind, code, email);
     return granted ? c.body(null, 204) : c.json({ error: 'link_expired' }, 404);
   });
+
+  // FR-6: lets /welcome/<code> say a link has ended before anyone types an email.
+  app.post('/api/friend-links/status', async (c) => {
+    const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null;
+    const code = body?.code;
+    if (typeof code !== 'string' || !CODE.test(code)) return c.json({ error: 'invalid_body' }, 400);
+    if (!deps.limitCode(code)) return c.json({ error: 'too_many' }, 429);
+    return c.json({ status: await deps.signup.friendLinkStatus(code) });
+  });
 }
