@@ -1,8 +1,10 @@
 import {
+  AISLE_CHOICE_CLIENT_FIELDS,
   FAVORITE_CLIENT_FIELDS,
   IMPORT_CLIENT_FIELDS,
   PHOTO_CLIENT_FIELDS,
   RECIPE_CLIENT_FIELDS,
+  SHOPPING_ITEM_CLIENT_FIELDS,
 } from '@recipe-app/domain';
 
 export type UploadOp = {
@@ -33,6 +35,8 @@ const CLIENT_FIELDS: Record<string, readonly string[]> = {
   favorites: FAVORITE_CLIENT_FIELDS,
   imports: IMPORT_CLIENT_FIELDS,
   photos: PHOTO_CLIENT_FIELDS,
+  shopping_items: SHOPPING_ITEM_CLIENT_FIELDS,
+  aisle_choices: AISLE_CHOICE_CLIENT_FIELDS,
 };
 
 // The local database stores these as JSON text; the API expects arrays.
