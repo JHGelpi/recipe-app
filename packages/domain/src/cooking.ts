@@ -202,3 +202,25 @@ export function displayIngredient(
     : '';
   return `${amount}${unit} ${item}${note}`;
 }
+
+/** A merged amount on the shopping list (FR-33): stepped, formatted, with its unit. */
+export function formatTotal(amount: Amount): string {
+  const stepped =
+    amount.unit !== null && (US_UNITS.has(amount.unit) || METRIC_UNITS.has(amount.unit))
+      ? stepUnits(amount)
+      : amount;
+  if (stepped === 'pinch') return 'a pinch';
+  const value = formatAmount(stepped.value, stepped.unit);
+  const shown =
+    stepped.max === null ? value : `${value}–${formatAmount(stepped.max, stepped.unit)}`;
+  return stepped.unit
+    ? `${shown} ${unitLabel(stepped.unit, stepped.max === null ? value : 'range')}`
+    : shown;
+}
+
+/** Millilitres or grams per unit, for adding amounts of the same kind. */
+export function baseOf(unit: Unit): { kind: 'volume' | 'weight'; per: number } | null {
+  if (ML[unit] !== undefined) return { kind: 'volume', per: ML[unit] };
+  if (GRAMS[unit] !== undefined) return { kind: 'weight', per: GRAMS[unit] };
+  return null;
+}
