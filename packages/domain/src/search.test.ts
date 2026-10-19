@@ -160,7 +160,12 @@ describe('speed (NFR-6: under 300 ms over 2,000 recipes on a phone)', () => {
 });
 
 describe('bug batch (spec §2)', () => {
-  const src = (id: string, title: string): SearchSource => ({ id, title, ingredients: [], tags: [] });
+  const src = (id: string, title: string): SearchSource => ({
+    id,
+    title,
+    ingredients: [],
+    tags: [],
+  });
 
   it('folds ligatures, full-width letters and ß', () => {
     expect(normalizeSearchText('ﬁsh')).toBe('fish');

@@ -49,14 +49,17 @@ describe('shopping list tables', () => {
     await as(member, (tx) => tx`insert into public.aisle_choices ${tx(choice)}`);
     expect(
       await refusalCode(
-        as(viewer, (tx) =>
-          tx`insert into public.aisle_choices ${tx({ ...choice, id: randomUUID(), item_key: `v-${randomUUID()}` })}`,
+        as(
+          viewer,
+          (tx) =>
+            tx`insert into public.aisle_choices ${tx({ ...choice, id: randomUUID(), item_key: `v-${randomUUID()}` })}`,
         ),
       ),
     ).toBe('42501');
     const updated = await as(
       viewer,
-      (tx) => tx`update public.aisle_choices set aisle = 'other' where id = ${choice.id} returning id`,
+      (tx) =>
+        tx`update public.aisle_choices set aisle = 'other' where id = ${choice.id} returning id`,
     );
     expect(updated).toHaveLength(0);
   });

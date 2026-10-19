@@ -37,9 +37,7 @@ test('a mouse wheel over the tag bar scrolls it sideways @firefox', async ({ pag
   const box = (await first.boundingBox())!;
   await page.mouse.move(box.x + 10, box.y + 10);
   await page.mouse.wheel(0, 400);
-  await expect
-    .poll(() => scroller(page).evaluate((node) => node.scrollLeft))
-    .toBeGreaterThan(100);
+  await expect.poll(() => scroller(page).evaluate((node) => node.scrollLeft)).toBeGreaterThan(100);
 });
 
 test('few tags: no scroll buttons', async ({ page }) => {
