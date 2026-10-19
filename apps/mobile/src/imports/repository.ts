@@ -25,7 +25,8 @@ const IMPORT_COLUMNS = `i.*,
      where p.import_id = i.id and p.kind = 'page' and p.deleted_at is null
      order by p.position limit 1) as first_page,
   (select count(*) from photos p join attachments a on a.id = p.id
-     where p.import_id = i.id and p.deleted_at is null and a.state = 4) as refused`;
+     where p.import_id = i.id and p.deleted_at is null
+       and a.state = 4 and p.uploaded_at is null) as refused`;
 
 export const IMPORTS_SQL = `select ${IMPORT_COLUMNS} from imports i
   where i.deleted_at is null order by i.created_at desc`;
@@ -95,34 +96,39 @@ export async function createPhotoImport(
   }
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
-  // The import goes first: the server checks each page's import exists.
-  await db.execute(
-    `insert into imports (id, household_id, source_type, status, created_at)
-       values (?, ?, 'photo', 'pending', ?)`,
-    [id, claims.householdId, now],
-  );
+  let written = false;
   try {
     for (const [index, page] of pages.entries()) {
       const photoId = crypto.randomUUID();
-      await saver.save(photoId, await page.blob.arrayBuffer(), (tx) =>
-        tx
-          .execute(INSERT_PHOTO_SQL, [
-            photoId,
-            claims.householdId,
-            'page',
-            id,
-            index + 1,
-            null,
-            page.blob.size,
-            page.width,
-            page.height,
-            now,
-          ])
-          .then(() => undefined),
-      );
+      await saver.save(photoId, await page.blob.arrayBuffer(), async (tx) => {
+        // The import is written with its first page, in one transaction: no
+        // device ever sees a photo import with no pages (final review). It
+        // goes first: the server checks each page's import exists.
+        if (index === 0) {
+          await tx.execute(
+            `insert into imports (id, household_id, source_type, status, created_at)
+               values (?, ?, 'photo', 'pending', ?)`,
+            [id, claims.householdId, now],
+          );
+          written = true;
+        }
+        await tx.execute(INSERT_PHOTO_SQL, [
+          photoId,
+          claims.householdId,
+          'page',
+          id,
+          index + 1,
+          null,
+          page.blob.size,
+          page.width,
+          page.height,
+          now,
+        ]);
+      });
     }
   } catch (error) {
-    await dismissImport(db, claims, id);
+    // Nothing to dismiss when the first page never saved: the import was not written.
+    if (written) await dismissImport(db, claims, id);
     throw error;
   }
   return id;

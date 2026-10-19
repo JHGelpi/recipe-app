@@ -70,7 +70,7 @@ describe('createDiskPhotoStore', () => {
     const store = createDiskPhotoStore(root);
     const OTHER = '00000000-0000-0000-0000-00000000000b';
     await store.put(OTHER, ID, Uint8Array.from([1, 2, 3]));
-    expect([...((await store.read(H, ID)) ?? [])]).toEqual([1, 2, 3]);
+    expect([...((await store.repair(H, ID)) ?? [])]).toEqual([1, 2, 3]);
     expect(await readdir(join(root, OTHER))).toEqual([]);
   });
 
@@ -86,5 +86,15 @@ describe('createDiskPhotoStore', () => {
     await writeFile(recent, 'x');
     expect(await store.sweep(86_400_000)).toBe(1);
     await expect(stat(recent)).resolves.toBeTruthy();
+  });
+
+  it('a plain read never moves a file from another folder (final review)', async () => {
+    root = await mkdtemp(join(tmpdir(), 'photos-'));
+    const store = createDiskPhotoStore(root);
+    const OTHER = '00000000-0000-0000-0000-00000000000b';
+    await store.put(OTHER, ID, Uint8Array.from([4]));
+    expect(await store.read(H, ID)).toBeNull();
+    expect(await readdir(join(root, OTHER))).toEqual([`${ID}.jpg`]);
+    expect([...((await store.repair(H, ID)) ?? [])]).toEqual([4]);
   });
 });

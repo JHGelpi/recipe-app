@@ -25,7 +25,8 @@ export function decodeFully(text: string): string {
 }
 
 // A tag: "<", an optional "/", then a letter. "1 < 2" is not one.
-const TAG = /<\/?[a-z][^>]*>/gi;
+// [^<>]: a long run of "<a" with no ">" is still read in one pass.
+const TAG = /<\/?[a-z][^<>]*>/gi;
 
 /** An HTML fragment as one line of plain text: decoded first, so escaped markup is stripped too. */
 export function plainText(fragment: string): string {

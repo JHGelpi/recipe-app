@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { RecipeValues } from '../recipes/form';
-import { createImport, dismissImport, saveImportedRecipe, sourceOf } from './repository';
+import {
+  createImport,
+  createPhotoImport,
+  dismissImport,
+  IMPORTS_SQL,
+  saveImportedRecipe,
+  sourceOf,
+} from './repository';
 import { importFromRow } from './rows';
 
 type Call = { sql: string; params: unknown[] };
@@ -85,5 +92,38 @@ describe('import writes', () => {
       source_author: null,
       source_text: 'Soup\n- 1 onion',
     });
+  });
+});
+
+describe('photo imports (final review)', () => {
+  it("the import row is written in the first page's transaction, never alone", async () => {
+    const { db, calls } = fakeDb();
+    const tx: { sql: string; page: number }[] = [];
+    let page = 0;
+    const saver = {
+      async save(_id: string, _data: ArrayBuffer, write: (t: never) => Promise<void>) {
+        page += 1;
+        const current = page;
+        await write({
+          execute: async (sql: string) => {
+            tx.push({ sql, page: current });
+            return { rowsAffected: 1 };
+          },
+        } as never);
+      },
+    };
+    const file = { blob: new Blob([new Uint8Array([1])]), width: 1, height: 1 };
+    await createPhotoImport(db as never, saver, member, [file as never, file as never]);
+    expect(calls.filter((c) => c.sql.includes('insert into imports'))).toHaveLength(0);
+    expect(tx.map((c) => `${c.page}:${c.sql.trim().split(/\s+/).slice(0, 3).join(' ')}`)).toEqual([
+      '1:insert into imports',
+      '1:insert into photos',
+      '2:insert into photos',
+    ]);
+  });
+
+  it('a refused page is one that never reached the server', () => {
+    // Pages that uploaded are archived too (they are not dish photos the queue watches).
+    expect(IMPORTS_SQL).toMatch(/a\.state = 4 and p\.uploaded_at is null/);
   });
 });

@@ -10,7 +10,13 @@ export type PhotoService = {
   remove(householdId: string, id: string): Promise<void>;
 };
 
-type Row = { household_id: string; width: number; height: number; deleted: boolean };
+type Row = {
+  household_id: string;
+  width: number;
+  height: number;
+  deleted: boolean;
+  uploaded?: boolean;
+};
 const WRITERS = ['admin', 'member'];
 
 /**
@@ -51,10 +57,15 @@ export function createPhotoService(deps: {
     get: (token, id) =>
       deps.asUser(token, async (tx) => {
         const [row] = await tx<Row[]>`
-          select household_id, width, height, deleted_at is not null as deleted
+          select household_id, width, height, deleted_at is not null as deleted,
+                 uploaded_at is not null as uploaded
           from public.photos where id = ${id}`;
         if (!row || row.deleted) return null;
-        return deps.store.read(row.household_id, id);
+        // Only an uploaded photo's file may be looked for elsewhere: its own
+        // upload is what an unfinished move left behind (final review).
+        return row.uploaded
+          ? deps.store.repair(row.household_id, id)
+          : deps.store.read(row.household_id, id);
       }),
 
     remove: (householdId, id) => deps.store.remove(householdId, id),

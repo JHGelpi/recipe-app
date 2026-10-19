@@ -55,11 +55,27 @@ describe('createPhotoImport', () => {
     ).rejects.toThrow('1 to 8');
   });
 
-  it('dismisses the import when a page cannot be saved', async () => {
+  it('dismisses the import when a later page cannot be saved', async () => {
+    const { db, calls, saver } = fakeDb();
+    let pages = 0;
+    const failing: PhotoSaver = {
+      async save(id, data, write) {
+        pages += 1;
+        if (pages === 2) throw new Error('disk full');
+        await saver.save(id, data, write);
+      },
+    };
+    await expect(createPhotoImport(db, failing, member, [file(1), file(1)])).rejects.toThrow(
+      'disk full',
+    );
+    expect(calls.some((call) => call.sql.startsWith('update imports set deleted_at'))).toBe(true);
+  });
+
+  it('writes nothing when the first page cannot be saved (final review)', async () => {
     const { db, calls } = fakeDb();
     const failing: PhotoSaver = { save: vi.fn().mockRejectedValue(new Error('disk full')) };
     await expect(createPhotoImport(db, failing, member, [file(1)])).rejects.toThrow('disk full');
-    expect(calls.some((call) => call.sql.startsWith('update imports set deleted_at'))).toBe(true);
+    expect(calls).toEqual([]);
   });
 });
 

@@ -7,6 +7,12 @@ import { isGuid } from '../ids';
 export type PhotoStore = {
   put(householdId: string, id: string, bytes: Uint8Array): Promise<void>;
   read(householdId: string, id: string): Promise<Uint8Array | null>;
+  /**
+   * read, and when the file is not in its household's folder, a file of that
+   * id left in another folder by an unfinished move is moved home first. Only
+   * for photos the database says were uploaded (final review).
+   */
+  repair(householdId: string, id: string): Promise<Uint8Array | null>;
   remove(householdId: string, id: string): Promise<void>;
   move(fromHousehold: string, toHousehold: string, id: string): Promise<void>;
   /** False when the source file is missing. */
@@ -33,6 +39,14 @@ export function createDiskPhotoStore(root: string): PhotoStore {
       await rename(temporary, target);
     },
     async read(householdId, id) {
+      try {
+        return new Uint8Array(await readFile(pathOf(root, householdId, id)));
+      } catch (error) {
+        if ((error as { code?: string }).code === 'ENOENT') return null;
+        throw error;
+      }
+    },
+    async repair(householdId, id) {
       const path = pathOf(root, householdId, id);
       try {
         return new Uint8Array(await readFile(path));
@@ -41,7 +55,6 @@ export function createDiskPhotoStore(root: string): PhotoStore {
       }
       // A move that never finished (a crash, or an upload during the move)
       // leaves the file in the old household's folder: move it home (spec §3).
-      // The row, read under RLS, already said which household it belongs to.
       const name = `${id.toLowerCase()}.jpg`;
       for (const folder of await readdir(root).catch(() => [] as string[])) {
         if (folder === householdId.toLowerCase() || !isGuid(folder)) continue;

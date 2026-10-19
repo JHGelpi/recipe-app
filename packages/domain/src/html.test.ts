@@ -47,3 +47,13 @@ describe('decodeFully', () => {
     expect(decodeFully('&amp;lt;')).toBe('<');
   });
 });
+
+describe('final review', () => {
+  it('a long run of "<a" with no ">" is stripped in linear time', () => {
+    const size = 1024 * 1024;
+    const text = '<a'.repeat(Math.floor(size / 2));
+    const start = performance.now();
+    plainText(text);
+    expect(performance.now() - start).toBeLessThan(200);
+  });
+});

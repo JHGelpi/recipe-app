@@ -1,11 +1,20 @@
 import { decodeEntities } from '@recipe-app/domain';
 
+/**
+ * Lowercase for ASCII only, so every index found in it is the same index in
+ * the page: toLowerCase() turns "İ" into two code units (final review).
+ */
+const asciiLower = (text: string) => text.replace(/[A-Z]+/g, (run) => run.toLowerCase());
+
+// a-z or 0-9, by code: cheaper than a regex for every "<" of a long page.
+const isNameChar = (code: number) => (code >= 97 && code <= 122) || (code >= 48 && code <= 57);
+
 // Index-based scanners (spec §3): each search starts where the last ended, so
 // a hostile page of unclosed tags is read in one pass, never quadratically.
 
 /** Every JSON-LD block in the page, parsed. A block that is not valid JSON is skipped. */
 export function extractJsonLd(html: string): unknown[] {
-  const lower = html.toLowerCase();
+  const lower = asciiLower(html);
   const blocks: unknown[] = [];
   let at = 0;
   for (;;) {
@@ -52,7 +61,7 @@ const LINE_END = /<\/(p|div|li|h[1-6]|tr|section|article|header|ul|ol|table|bloc
 
 /** The page without comments and dropped elements, scanned once from left to right. */
 function withoutFurniture(html: string): string {
-  const lower = html.toLowerCase();
+  const lower = asciiLower(html);
   const kept: string[] = [];
   // A closing tag searched for once and not found is never found later:
   // the search ran to the end of the page. This keeps the scan linear.
@@ -69,7 +78,10 @@ function withoutFurniture(html: string): string {
       at = from = end < 0 ? html.length : end + 3;
       continue;
     }
-    const name = /^<([a-z0-9]+)/.exec(lower.slice(lt, lt + 12))?.[1];
+    // The tag name, read without a regex or a slice per "<" (a page can be all "<").
+    let stop = lt + 1;
+    while (stop < lt + 12 && isNameChar(lower.charCodeAt(stop))) stop += 1;
+    const name = stop > lt + 1 ? lower.slice(lt + 1, stop) : undefined;
     if (name && DROPPED.includes(name)) {
       const close = unclosed.has(name) ? -1 : lower.indexOf(`</${name}`, lt + 1);
       if (close < 0) unclosed.add(name);
@@ -89,9 +101,9 @@ function withoutFurniture(html: string): string {
 export function pageText(html: string, max = PAGE_TEXT_MAX): string {
   const marked = withoutFurniture(html)
     .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<li\b[^>]*>/gi, '\n- ')
+    .replace(/<li\b[^<>]*>/gi, '\n- ')
     .replace(LINE_END, '\n')
-    .replace(/<[^>]*>/g, ' ');
+    .replace(/<[^<>]*>/g, ' '); // [^<>]: a run of '<' stays linear
   const text = decodeEntities(marked)
     .split('\n')
     .map((line) => line.replace(/[^\S\n]+/g, ' ').trim())
