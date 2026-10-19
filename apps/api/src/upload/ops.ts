@@ -184,9 +184,9 @@ async function applyShoppingItem(
     const [existing] = await tx`select 1 from public.shopping_items where id = ${id}`;
     if (!existing) {
       // FR-31 limit (spec §6): counted under RLS, so only the caller's household.
-      const [{ live }] = await tx<{ live: number }[]>`
+      const [count] = await tx<{ live: number }[]>`
         select count(*)::int as live from public.shopping_items where deleted_at is null`;
-      if (live >= SHOPPING_LIMITS.rows) return rejected(op, 'list_full');
+      if ((count?.live ?? 0) >= SHOPPING_LIMITS.rows) return rejected(op, 'list_full');
     }
     const row = { ...fields, deleted_at: fields.deleted_at ?? null };
     await tx`
