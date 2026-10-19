@@ -24,7 +24,7 @@ Like everything else, the list must work offline, sync across the household's de
 3. **Aisles:**
    - a fixed list of ten;
    - a built-in word list (`aisles.ts`), matched on the whole key and then on its last word;
-   - `aisle_choices` rows that beat the guess. They are upserted on `(household_id, item_key)`, so two phones choosing offline leave one row and the last save wins.
+   - `aisle_choices` rows that beat the guess. A choice's id is a UUID v5 of household plus item (`choiceId.ts`, using `crypto.subtle`), so phones choosing offline write the same row and later changes always find it. The API also upserts on `(household_id, item_key)` as a backstop. On screen, a choice wins over a row's own aisle.
 4. **No new API routes:**
    - writes go through the upload path under RLS: Admins and Members write, everyone in the household reads;
    - sync streams mirror the select policies, and the sync service's role reads both tables;
@@ -36,7 +36,7 @@ Like everything else, the list must work offline, sync across the household's de
 - **Merged rows in the database:** a simpler screen, but two phones adding the same item offline would overwrite each other (last save wins on the row), and which recipes a line came from would have to be kept by hand.
 - **AI sorting into aisles:** handles odd items, but needs a connection and spends AI credit for every item.
 - **Several lists, or per-store tags:** more flexible, but a choice on every add; not wanted now.
-- **A derived UUID v5 for `aisle_choices`:** would make the two phones' rows identical without a unique key, but needs hashing code in the browser.
+- **A random id per choice, merged by the server on `(household_id, item_key)`:** simpler, but a later change from the phone whose id lost would update a row the server never had, and be dropped.
 
 ## Consequences
 
