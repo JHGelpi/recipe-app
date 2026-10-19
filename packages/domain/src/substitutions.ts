@@ -57,11 +57,16 @@ export function isStale(
 
 /** FR-25: the line added to the recipe's notes. */
 export function substitutionNoteLine(ingredientRaw: string, option: SubstitutionOption): string {
-  const amount = option.amount.toLowerCase();
+  // Named already when a word of the substitute (3+ letters) starts a word of
+  // the amount: "Egg" in "1 egg", "Yogurt" in "1 cup yogurts".
+  const amountWords = option.amount
+    .toLowerCase()
+    .split(/[^\p{L}]+/u)
+    .filter(Boolean);
   const named = option.substitute
     .toLowerCase()
     .split(/[^\p{L}]+/u)
-    .some((word) => word.length > 3 && amount.includes(word));
+    .some((word) => word.length >= 3 && amountWords.some((other) => other.startsWith(word)));
   const what = named ? option.amount : `${option.amount} (${option.substitute})`;
   return `Instead of ${ingredientRaw.trim()}: ${what} — ${option.effect}`;
 }
