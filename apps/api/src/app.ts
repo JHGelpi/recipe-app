@@ -93,6 +93,8 @@ export function createApp(deps: AppDeps): Hono {
         returning id, household_id, jsonb_typeof(snapshot -> 'photo') = 'object' as photo`;
       const rows = await tx`
         delete from public.recipes where deleted_at < now() - interval '30 days' returning id`;
+      // Cleared list rows past 30 days (rule 5; shopping spec §4).
+      await tx`delete from public.shopping_items where deleted_at < now() - interval '30 days'`;
       return { purged: rows.length, photos: [...photos, ...shares.filter((share) => share.photo)] };
     });
     for (const photo of photos) {

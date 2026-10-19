@@ -1,4 +1,6 @@
 import {
+  aisleChoicePatchSchema,
+  aisleChoicePutSchema,
   favoritePatchSchema,
   favoriteSchema,
   importPatchSchema,
@@ -7,12 +9,22 @@ import {
   photoPutSchema,
   recipePatchSchema,
   recipeSchema,
+  SHOPPING_LIMITS,
+  shoppingItemPatchSchema,
+  shoppingItemPutSchema,
 } from '@recipe-app/domain';
 import { z } from 'zod';
 import type { UserTx } from '../db/asUser';
 
 export const MAX_OPS = 500;
-const ALLOWED_TABLES = new Set(['recipes', 'favorites', 'imports', 'photos']);
+const ALLOWED_TABLES = new Set([
+  'recipes',
+  'favorites',
+  'imports',
+  'photos',
+  'shopping_items',
+  'aisle_choices',
+]);
 // jsonb columns: sent with tx.json so postgres.js does not build an array literal.
 const JSON_COLUMNS = new Set(['ingredients', 'steps']);
 
@@ -160,12 +172,68 @@ async function applyPhoto(tx: UserTx, op: Op, candidate: Record<string, unknown>
   return rows.length === 0 ? rejected(op, 'not_found_or_forbidden') : applied(op);
 }
 
+async function applyShoppingItem(
+  tx: UserTx,
+  op: Op,
+  candidate: Record<string, unknown>,
+): Promise<Result> {
+  if (op.op === 'put') {
+    const parsed = shoppingItemPutSchema.safeParse(candidate);
+    if (!parsed.success) return rejected(op, 'invalid');
+    const { id, ...fields } = parsed.data;
+    const [existing] = await tx`select 1 from public.shopping_items where id = ${id}`;
+    if (!existing) {
+      // FR-31 limit (spec §6): counted under RLS, so only the caller's household.
+      const [{ live }] = await tx<{ live: number }[]>`
+        select count(*)::int as live from public.shopping_items where deleted_at is null`;
+      if (live >= SHOPPING_LIMITS.rows) return rejected(op, 'list_full');
+    }
+    const row = { ...fields, deleted_at: fields.deleted_at ?? null };
+    await tx`
+      insert into public.shopping_items ${tx({ id, ...row })}
+      on conflict (id) do update set ${tx(row)}`;
+    return applied(op);
+  }
+  const parsed = shoppingItemPatchSchema.safeParse(candidate);
+  if (!parsed.success) return rejected(op, 'invalid');
+  const { id, ...fields } = parsed.data;
+  if (Object.keys(fields).length === 0) return applied(op);
+  const rows =
+    await tx`update public.shopping_items set ${tx(fields)} where id = ${id} returning id`;
+  return rows.length === 0 ? rejected(op, 'not_found_or_forbidden') : applied(op);
+}
+
+async function applyAisleChoice(
+  tx: UserTx,
+  op: Op,
+  candidate: Record<string, unknown>,
+): Promise<Result> {
+  if (op.op === 'put') {
+    const parsed = aisleChoicePutSchema.safeParse(candidate);
+    if (!parsed.success) return rejected(op, 'invalid');
+    const { id, ...fields } = parsed.data;
+    // Two phones choosing offline make two ids for one item: the key decides,
+    // and the last save wins (plan ruling; spec §4 "derived id").
+    await tx`
+      insert into public.aisle_choices ${tx({ id, ...fields, deleted_at: fields.deleted_at ?? null })}
+      on conflict (household_id, item_key) do update set aisle = excluded.aisle, deleted_at = excluded.deleted_at`;
+    return applied(op);
+  }
+  const parsed = aisleChoicePatchSchema.safeParse(candidate);
+  if (!parsed.success) return rejected(op, 'invalid');
+  const rows =
+    await tx`update public.aisle_choices set aisle = ${parsed.data.aisle} where id = ${parsed.data.id} returning id`;
+  return rows.length === 0 ? rejected(op, 'not_found_or_forbidden') : applied(op);
+}
+
 type Apply = (tx: UserTx, op: Op, candidate: Record<string, unknown>) => Promise<Result>;
 const APPLY: Record<string, Apply> = {
   recipes: applyRecipe,
   favorites: applyFavorite,
   imports: applyImport,
   photos: applyPhoto,
+  shopping_items: applyShoppingItem,
+  aisle_choices: applyAisleChoice,
 };
 
 async function applyOne(tx: UserTx, op: Op): Promise<Result> {

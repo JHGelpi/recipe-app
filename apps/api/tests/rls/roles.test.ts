@@ -61,6 +61,8 @@ describe('database roles (spec §4)', () => {
       substitutions: ['INSERT', 'SELECT', 'UPDATE'],
       invites: ['SELECT'],
       shares: ['DELETE', 'SELECT'],
+      shopping_items: ['DELETE', 'INSERT', 'SELECT', 'UPDATE'],
+      aisle_choices: ['INSERT', 'SELECT', 'UPDATE'],
     });
   });
 
