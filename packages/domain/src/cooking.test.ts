@@ -256,3 +256,23 @@ describe('review fixes', () => {
     expect(show(cans, 2)).toBe('2 (14 oz) can tomatoes');
   });
 });
+
+describe('bug batch display (spec §2)', () => {
+  it('tiny weights and volumes show as a pinch', () => {
+    expect(show(line({ raw: '1 oz salt', quantity: 1, unit: 'oz', item: 'salt' }), 0.1, 'us')).toBe('a pinch of salt');
+    expect(show(line({ raw: '1 tsp salt', quantity: 1, unit: 'tsp', item: 'salt' }), 0.1, 'metric')).toBe('a pinch of salt');
+    expect(show(line({ raw: '5 g yeast', quantity: 5, unit: 'g', item: 'yeast' }), 0.1, 'metric')).toBe('a pinch of yeast');
+  });
+
+  it('count ranges read cleanly and take the singular at one', () => {
+    const garlic = line({ raw: '1-2 cloves garlic', quantity: 1, quantity_max: 2, unit: 'clove', item: 'garlic' });
+    expect(show(garlic, 0.45, 'us')).toBe('½–1 clove garlic');
+    const eggs = line({ raw: '2 eggs', quantity: 2, item: 'eggs' });
+    expect(show(eggs, 0.5)).toBe('1 egg');
+  });
+
+  it('steps up when the rounded value reaches the next unit', () => {
+    expect(show(line({ raw: '15.98 oz beans', quantity: 15.98, unit: 'oz', item: 'beans' }), 1, 'us')).toBe('1 lb beans');
+    expect(show(line({ raw: '998 g flour', quantity: 998, unit: 'g', item: 'flour' }), 1, 'metric')).toBe('1 kg flour');
+  });
+});

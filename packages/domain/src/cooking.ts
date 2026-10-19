@@ -1,4 +1,5 @@
 import type { Ingredient, Unit } from './ingredients';
+import { singular } from './plural';
 
 /** FR-23: how amounts are shown. Display only; the saved recipe never changes. */
 export type UnitSystem = 'as_written' | 'us' | 'metric';
@@ -108,6 +109,17 @@ export function convertAmount(amount: Amount, system: UnitSystem): Amount {
   return amount;
 }
 
+// The value as formatAmount will show it, so "15.98 oz" steps up like "16 oz".
+function shownValue(value: number, unit: Unit): number {
+  if (US_UNITS.has(unit)) return Math.round(value * 8) / 8;
+  if (unit === 'g' || unit === 'ml') {
+    return value < 100 ? Math.round(value) : Math.round(value / 5) * 5;
+  }
+  return value;
+}
+const atLeast = (amount: Amount, limit: number) =>
+  amount.unit !== null && shownValue(amount.value, amount.unit) >= limit;
+
 /** Spec §4: tiny amounts step down a unit, large ones step up. */
 export function stepUnits(amount: Amount): Amount | 'pinch' {
   let current = amount;
@@ -124,11 +136,14 @@ export function stepUnits(amount: Amount): Amount | 'pinch' {
   if (current.unit === 'cup' && current.value < 0.25) down(16, 'tbsp');
   if (current.unit === 'tbsp' && current.value < 1) down(3, 'tsp');
   if (current.unit === 'tsp' && current.value < 0.125) return 'pinch';
-  if (current.unit === 'tsp' && current.value >= 3) up(3, 'tbsp');
-  if (current.unit === 'tbsp' && current.value >= 16) up(16, 'cup');
-  if (current.unit === 'g' && current.value >= 1000) up(1000, 'kg');
-  if (current.unit === 'ml' && current.value >= 1000) up(1000, 'l');
-  if (current.unit === 'oz' && current.value >= 16) up(16, 'lb');
+  // Below what the shown units can say: a pinch, not "⅛ oz" or "1 ml" (spec §2).
+  if (current.unit === 'oz' && current.value < 0.125) return 'pinch';
+  if ((current.unit === 'ml' || current.unit === 'g') && current.value < 1) return 'pinch';
+  if (current.unit === 'tsp' && atLeast(current, 3)) up(3, 'tbsp');
+  if (current.unit === 'tbsp' && atLeast(current, 16)) up(16, 'cup');
+  if (current.unit === 'g' && atLeast(current, 1000)) up(1000, 'kg');
+  if (current.unit === 'ml' && atLeast(current, 1000)) up(1000, 'l');
+  if (current.unit === 'oz' && atLeast(current, 16)) up(16, 'lb');
   return current;
 }
 
@@ -158,9 +173,20 @@ export function formatAmount(value: number, unit: Unit | null): string {
   return Math.abs(rounded - value) > 1e-6 ? `≈${text}` : text;
 }
 
+const ONE_OR_LESS = /^≈?(1|⅛|¼|⅓|½|⅔|¾|⅞)$/;
+
 // Plural unless the shown amount is one or less: "⅔ cup", "1 cup", "1½ cups".
+// A range is labelled by its top: "½–1 clove", "1–2 cloves".
 function unitLabel(unit: Unit, shown: string): string {
-  return /^≈?(1|⅛|¼|⅓|½|⅔|¾|⅞)$/.test(shown) ? unit : (PLURAL[unit] ?? unit);
+  return ONE_OR_LESS.test(shown) ? unit : (PLURAL[unit] ?? unit);
+}
+
+/** An amount, or a range without "≈" on its ends (a range is already approximate). */
+function shownRange(amount: Amount): { text: string; top: string } {
+  const value = formatAmount(amount.value, amount.unit);
+  if (amount.max === null) return { text: value, top: value };
+  const top = formatAmount(amount.max, amount.unit).replace('≈', '');
+  return { text: `${value.replace('≈', '')}–${top}`, top };
 }
 
 /** FR-21–23: the line to show for a scale and unit system. */
@@ -194,13 +220,16 @@ export function displayIngredient(
       ? ingredient.item.replace(/^\([^)]*\d[^)]*\)\s*/, '')
       : ingredient.item;
   if (stepped === 'pinch') return `a pinch of ${item}${note}`;
-  const value = formatAmount(stepped.value, stepped.unit);
-  const amount =
-    stepped.max === null ? value : `${value}–${formatAmount(stepped.max, stepped.unit)}`;
-  const unit = stepped.unit
-    ? ` ${unitLabel(stepped.unit, stepped.max === null ? value : 'range')}`
-    : '';
-  return `${amount}${unit} ${item}${note}`;
+  const { text: amount, top } = shownRange(stepped);
+  const unit = stepped.unit ? ` ${unitLabel(stepped.unit, top)}` : '';
+  // A plain count of one names one: "1 egg", not "1 eggs".
+  const named =
+    stepped.unit === null && stepped.max === null && ONE_OR_LESS.test(amount)
+      ? item.replace(/^(\S+)/, (word) =>
+          singular(word.toLowerCase()) === word.toLowerCase() ? word : singular(word),
+        )
+      : item;
+  return `${amount}${unit} ${named}${note}`;
 }
 
 /** The amount displayIngredient shows, as numbers: what Add to list adds (FR-32). */
@@ -231,12 +260,8 @@ export function formatTotal(amount: Amount): string {
       ? stepUnits(amount)
       : amount;
   if (stepped === 'pinch') return 'a pinch';
-  const value = formatAmount(stepped.value, stepped.unit);
-  const shown =
-    stepped.max === null ? value : `${value}–${formatAmount(stepped.max, stepped.unit)}`;
-  return stepped.unit
-    ? `${shown} ${unitLabel(stepped.unit, stepped.max === null ? value : 'range')}`
-    : shown;
+  const { text, top } = shownRange(stepped);
+  return stepped.unit ? `${text} ${unitLabel(stepped.unit, top)}` : text;
 }
 
 /** Millilitres or grams per unit, for adding amounts of the same kind. */

@@ -3,6 +3,7 @@ import { AISLE_WORDS } from './aisles';
 import { baseOf, formatTotal, shownAmount, type UnitSystem } from './cooking';
 import { parseIngredientLine, UNITS, type Ingredient, type Unit } from './ingredients';
 import { TITLE_MAX } from './limits';
+import { singular } from './plural';
 
 export const AISLES = [
   { id: 'produce', label: 'Produce' },
@@ -21,33 +22,6 @@ const AISLE_IDS = AISLES.map((aisle) => aisle.id) as [Aisle, ...Aisle[]];
 export const aisleSchema = z.enum(AISLE_IDS);
 export const SHOPPING_LIMITS = { item: 200, rows: 500 } as const;
 const MAX_QUANTITY = 100_000;
-
-const KEEP = new Set(['asparagus', 'couscous', 'molasses', 'swiss', 'hummus', 'glass', 'grass']);
-
-// -ves plurals of words ending in -f; other -ves words (olives, cloves) just drop the s.
-const VES = new Map([
-  ['leaves', 'leaf'],
-  ['loaves', 'loaf'],
-  ['halves', 'half'],
-  ['calves', 'calf'],
-  ['shelves', 'shelf'],
-  ['wolves', 'wolf'],
-]);
-// -ies plurals of words ending in -ie, not -y.
-const IE = new Set(['cookies', 'pies', 'brownies', 'smoothies', 'ties', 'calories']);
-
-function singular(word: string): string {
-  if (KEEP.has(word) || word.length <= 3) return word;
-  const ves = VES.get(word);
-  if (ves) return ves;
-  if (IE.has(word)) return word.slice(0, -1);
-  if (word.endsWith('ies')) return `${word.slice(0, -3)}y`;
-  if (word.endsWith('oes')) return word.slice(0, -2);
-  // peaches, radishes, boxes, glasses: the plural adds -es.
-  if (/(ch|sh|x|z|ss)es$/.test(word)) return word.slice(0, -2);
-  if (word.endsWith('s') && !/(ss|us|is)$/.test(word)) return word.slice(0, -1);
-  return word;
-}
 
 /** The merge key (spec §5): lowercase, trimmed, spaces collapsed, last word singular. */
 export function itemKey(item: string): string {
