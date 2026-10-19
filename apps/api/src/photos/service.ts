@@ -36,8 +36,14 @@ export function createPhotoService(deps: {
         // Dismissed while uploading: the phone stops retrying on 410.
         if (row.deleted) return 'gone';
         if (row.width !== info.width || row.height !== info.height) return 'wrong_size';
+        // RLS checks the member's live role here (rule 4): a demoted member
+        // updates nothing, and no file is written. A second upload keeps the
+        // first stamp (coalesce), which the uploaded_at guard allows.
+        const stamped = await tx`
+          update public.photos set uploaded_at = coalesce(uploaded_at, now())
+          where id = ${id} returning id`;
+        if (stamped.length === 0) return 'forbidden';
         await deps.store.put(row.household_id, id, bytes);
-        await tx`update public.photos set uploaded_at = now() where id = ${id}`;
         return 'stored';
       });
     },

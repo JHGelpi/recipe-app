@@ -165,4 +165,31 @@ describe('photos RLS', () => {
       select photo_id from public.recipes where id = ${recipeId}`;
     expect(recipe?.photo_id).toBeNull();
   });
+
+  it('uploaded_at can only be stamped once, by the server at upload (spec §3)', async () => {
+    const member = await signInAs(SEED.memberA);
+    const id = randomUUID();
+    await as(
+      member,
+      (tx) => tx`
+        insert into public.photos (id, household_id, kind, media_type, bytes, width, height)
+        values (${id}, ${member.householdId}, 'dish', 'image/jpeg', 1, 1, 1)`,
+    );
+    // Back-dating, or stamping it a second time, is refused.
+    expect(
+      await refusalCode(
+        as(
+          member,
+          (tx) =>
+            tx`update public.photos set uploaded_at = now() - interval '1 day' where id = ${id}`,
+        ),
+      ),
+    ).toBe('P0001');
+    await as(member, (tx) => tx`update public.photos set uploaded_at = now() where id = ${id}`);
+    expect(
+      await refusalCode(
+        as(member, (tx) => tx`update public.photos set uploaded_at = now() where id = ${id}`),
+      ),
+    ).toBe('P0001');
+  });
 });

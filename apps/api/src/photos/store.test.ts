@@ -1,4 +1,4 @@
-import { mkdtemp, readdir, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -46,7 +46,9 @@ describe('createDiskPhotoStore', () => {
     const OTHER = '00000000-0000-0000-0000-00000000000b';
     await store.put(H, ID, Uint8Array.from([7]));
     await store.move(H, OTHER, ID);
-    expect(await store.read(H, ID)).toBeNull();
+    // Checked on disk: a read for the old household would move the file back,
+    // since reads take the household from the photo's row.
+    expect(await readdir(join(root, H))).toEqual([]);
     expect([...((await store.read(OTHER, ID)) ?? [])]).toEqual([7]);
     await store.move(H, OTHER, ID);
   });
@@ -61,5 +63,28 @@ describe('createDiskPhotoStore', () => {
     expect([...((await store.read(OTHER, NEW)) ?? [])]).toEqual([5]);
     expect([...((await store.read(H, ID)) ?? [])]).toEqual([5]);
     expect(await store.copy(H, NEW, OTHER, ID)).toBe(false);
+  });
+
+  it('a file left in the old household after a move is found and moved home on read', async () => {
+    root = await mkdtemp(join(tmpdir(), 'photos-'));
+    const store = createDiskPhotoStore(root);
+    const OTHER = '00000000-0000-0000-0000-00000000000b';
+    await store.put(OTHER, ID, Uint8Array.from([1, 2, 3]));
+    expect([...((await store.read(H, ID)) ?? [])]).toEqual([1, 2, 3]);
+    expect(await readdir(join(root, OTHER))).toEqual([]);
+  });
+
+  it('the sweep removes .tmp files older than a day', async () => {
+    root = await mkdtemp(join(tmpdir(), 'photos-'));
+    const store = createDiskPhotoStore(root);
+    await mkdir(join(root, H), { recursive: true });
+    const old = join(root, H, `${ID}.jpg.abc.tmp`);
+    await writeFile(old, 'x');
+    const twoDaysAgo = new Date(Date.now() - 2 * 86_400_000);
+    await utimes(old, twoDaysAgo, twoDaysAgo);
+    const recent = join(root, H, `${ID}.jpg.def.tmp`);
+    await writeFile(recent, 'x');
+    expect(await store.sweep(86_400_000)).toBe(1);
+    await expect(stat(recent)).resolves.toBeTruthy();
   });
 });
