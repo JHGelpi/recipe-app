@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { loadPhoto, type LoadDeps } from './load';
+import { loadPhoto, trimCache, type LoadDeps } from './load';
 
 function deps(over: Partial<LoadDeps> = {}): LoadDeps {
   const store = new Map<string, Response>();
@@ -43,5 +43,26 @@ describe('loadPhoto', () => {
   it('falls back to the network when the local file is gone', async () => {
     const d = deps({ readLocal: vi.fn().mockRejectedValue(new Error('evicted')) });
     expect(await text(await loadPhoto('p1', 'idb://p1.jpg', true, d))).toBe('remote');
+  });
+});
+
+describe('the photo cache (spec §3)', () => {
+  it('keeps the newest 50 entries', async () => {
+    const keys = Array.from(
+      { length: 53 },
+      (_, i) => new Request(`https://app.test/api/photos/${i}`),
+    );
+    const deleted: string[] = [];
+    await trimCache(
+      {
+        keys: async () => keys,
+        delete: async (request) => {
+          deleted.push((request as Request).url);
+          return true;
+        },
+      },
+      50,
+    );
+    expect(deleted).toEqual([0, 1, 2].map((i) => `https://app.test/api/photos/${i}`));
   });
 });
