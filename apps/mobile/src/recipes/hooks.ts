@@ -1,6 +1,6 @@
 import { useQuery } from '@powersync/react';
 import { buildSearchIndex, searchRecipes } from '@recipe-app/domain';
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { tagsForTab, toListItems, type ListItem } from './listItems';
 import {
   LIST_RECIPES_SQL,
@@ -11,7 +11,15 @@ import {
   TAGS_SQL,
   TRASH_SQL,
 } from './repository';
-import { listRowFrom, parseTimestamp, rowToRecipe, TRASH_DAYS, type RecipeRecord } from './rows';
+import { listRowsFrom } from './listRows';
+import {
+  listRowFrom,
+  parseTimestamp,
+  rowToRecipe,
+  TRASH_DAYS,
+  type ListRow,
+  type RecipeRecord,
+} from './rows';
 
 export type TrashItem = { id: string; title: string; deleted_at: string };
 
@@ -34,10 +42,9 @@ export function useRecipeSearch(
 ): { items: ListItem[]; tags: string[] } {
   const { data: recipeRows } = useQuery<Record<string, unknown>>(LIST_RECIPES_SQL);
   const { data: starredRows } = useQuery<{ recipe_id: string }>(STARRED_IDS_SQL, [userId]);
-  const rows = useMemo(
-    () => new Map(recipeRows.map((row) => [String(row.id), listRowFrom(row)])),
-    [recipeRows],
-  );
+  // Rows whose columns did not change are reused, not parsed again (NFR-6).
+  const cache = useRef(new Map<string, { stamp: string; row: ListRow }>());
+  const rows = useMemo(() => listRowsFrom(recipeRows, cache.current), [recipeRows]);
   const index = useMemo(() => buildSearchIndex([...rows.values()]), [rows]);
   const starred = useMemo(() => new Set(starredRows.map((row) => row.recipe_id)), [starredRows]);
   const ids = useMemo(

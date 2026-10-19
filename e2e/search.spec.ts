@@ -1,5 +1,5 @@
 import { expect, test, type Page } from './fixtures';
-import { createRecipe, freshEmail, signIn, type RecipeInput } from './helpers';
+import { createRecipe, freshEmail, signIn, unique, type RecipeInput } from './helpers';
 
 async function add(page: Page, input: RecipeInput): Promise<void> {
   await createRecipe(page, input);
@@ -94,4 +94,14 @@ test('search works offline', async ({ page }) => {
   await page.context().setOffline(true);
   await page.getByLabel('Search recipes').fill('tikka');
   await expect.poll(() => shown(page, TITLES)).toEqual(['Chicken Tikka']);
+});
+
+test('a new recipe shows even after an unrelated search (FR-19)', async ({ page }) => {
+  await signIn(page, freshEmail('search-new'));
+  await page.getByLabel('Search recipes').fill('zzzz-nothing');
+  const title = unique('Fresh after search');
+  await createRecipe(page, { title });
+  await page.getByRole('link', { name: 'Recipes', exact: true }).click();
+  await expect(page.getByLabel('Search recipes')).toHaveValue('');
+  await expect(page.getByText(title, { exact: true })).toBeVisible();
 });

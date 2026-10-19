@@ -12,12 +12,22 @@ type Field = keyof SearchEntry['text'];
 const WEIGHT: Record<Field, number> = { title: 3, tags: 2, ingredients: 1 };
 const FIELDS: Field[] = ['title', 'tags', 'ingredients'];
 
-/** Lowercase, accents removed, whitespace collapsed: applied to recipes and queries alike. */
+// Marks are stripped only from these scripts' letters; elsewhere (Japanese,
+// Indic scripts) a mark changes the letter (bug batch spec §2).
+const FOLDED = /([\p{Script=Latin}\p{Script=Greek}\p{Script=Cyrillic}])\p{M}+/gu;
+
+/**
+ * Lowercase, compatibility forms folded (ligatures, full-width letters, ß),
+ * Latin/Greek/Cyrillic accents removed, whitespace collapsed: applied to
+ * recipes and queries alike.
+ */
 export function normalizeSearchText(text: string): string {
   return text
-    .normalize('NFD')
-    .replace(/\p{M}+/gu, '')
+    .normalize('NFKD')
+    .replace(FOLDED, '$1')
+    .normalize('NFC')
     .toLowerCase()
+    .replace(/ß/g, 'ss')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -29,7 +39,7 @@ export function normalizeSearchText(text: string): string {
 export function buildSearchIndex(recipes: SearchSource[]): SearchEntry[] {
   return recipes.map((recipe) => ({
     id: recipe.id,
-    sortKey: recipe.title.toLowerCase(),
+    sortKey: normalizeSearchText(recipe.title),
     text: {
       title: normalizeSearchText(recipe.title),
       ingredients: recipe.ingredients.map(normalizeSearchText).join('\n'),
@@ -49,7 +59,8 @@ function wordsOf(query: string): string[] {
   ];
 }
 
-const BOUNDARY = /[\s\p{P}]/u;
+// A word starts after a space, punctuation, a digit or a symbol ("2cups", "½cup").
+const BOUNDARY = /[\s\p{P}\p{N}\p{S}]/u;
 
 function startsWord(text: string, at: number): boolean {
   return at === 0 || BOUNDARY.test(text[at - 1] ?? '');

@@ -8,6 +8,7 @@ import { SourceView } from '../components/SourceView';
 import { useImport, usePages } from '../imports/hooks';
 import { dismissImport, saveImportedRecipe, sourceOf } from '../imports/repository';
 import { draftRecord, flaggedFields } from '../imports/review';
+import { clearFilter } from '../recipes/listFilter';
 import { formFromRecipe } from '../recipes/form';
 import { canWrite, type Claims } from '../session/claims';
 import { colors, radius, space } from '../theme';
@@ -111,6 +112,7 @@ export function ReviewImportScreen({ claims, id }: { claims: Claims; id: string 
           setLeaving(true);
           try {
             const recipeId = await saveImportedRecipe(db, claims, record, values, dishPage);
+            clearFilter();
             router.replace(`/recipe/${recipeId}`);
           } catch (error) {
             setLeaving(false);

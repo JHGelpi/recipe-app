@@ -172,3 +172,12 @@ it('reads a recipe source, and an old row without one', () => {
     source_text: null,
   });
 });
+
+describe('listRowFrom tags', () => {
+  it('trims, lowercases and drops empty tags', () => {
+    expect(listRowFrom({ id: '1', title: 't', tags: '[" Quick ", "", "dinner"]' }).tags).toEqual([
+      'quick',
+      'dinner',
+    ]);
+  });
+});

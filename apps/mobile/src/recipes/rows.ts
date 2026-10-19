@@ -146,7 +146,11 @@ export function listRowFrom(row: Record<string, unknown>): ListRow {
   return {
     id: String(row.id),
     title: typeof row.title === 'string' ? row.title : '',
-    tags: listOf(row.tags).filter((tag): tag is string => typeof tag === 'string'),
+    // Tidied as the editor saves them, so an odd server tag never shows an empty chip.
+    tags: listOf(row.tags).flatMap((tag) => {
+      const clean = typeof tag === 'string' ? tag.trim().toLowerCase() : '';
+      return clean ? [clean] : [];
+    }),
     ingredients: listOf(row.ingredients).flatMap((item) => {
       const raw = (item as { raw?: unknown } | null)?.raw;
       return typeof raw === 'string' ? [raw] : [];

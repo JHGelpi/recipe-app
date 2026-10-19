@@ -158,3 +158,33 @@ describe('speed (NFR-6: under 300 ms over 2,000 recipes on a phone)', () => {
     expect(performance.now() - started).toBeLessThan(100);
   });
 });
+
+describe('bug batch (spec §2)', () => {
+  const src = (id: string, title: string): SearchSource => ({ id, title, ingredients: [], tags: [] });
+
+  it('folds ligatures, full-width letters and ß', () => {
+    expect(normalizeSearchText('ﬁsh')).toBe('fish');
+    expect(normalizeSearchText('ＡＢＣ')).toBe('abc');
+    expect(normalizeSearchText('Straße')).toBe('strasse');
+  });
+
+  it('keeps marks outside Latin, Greek and Cyrillic', () => {
+    expect(normalizeSearchText('ガ')).toBe('ガ');
+    expect(normalizeSearchText('क़')).toBe('क़'.normalize('NFC'));
+    expect(normalizeSearchText('Éclair')).toBe('eclair');
+  });
+
+  it('sorts accented titles with their letter', () => {
+    const index = buildSearchIndex([src('1', 'Zucchini'), src('2', 'Éclair'), src('3', 'Apple')]);
+    expect(searchRecipes(index, '', [])).toEqual(['3', '2', '1']);
+  });
+
+  it('a word starting after a digit or symbol counts as a word start', () => {
+    const index = buildSearchIndex([
+      // Ids reversed, so only the word-start bonus can put '2cups' first.
+      { id: 'b', title: 'x', ingredients: ['2cups milk'], tags: [] },
+      { id: 'a', title: 'x', ingredients: ['teacups milk'], tags: [] },
+    ]);
+    expect(searchRecipes(index, 'cups', [])).toEqual(['b', 'a']);
+  });
+});
