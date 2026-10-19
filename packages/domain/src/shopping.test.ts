@@ -132,6 +132,15 @@ describe('shoppingLines', () => {
     ]);
   });
 
+  it('merges rows not yet synced, which have no server timestamps, as the newest', () => {
+    const lines = shoppingLines([
+      row({ item: 'onion', quantity: 1, created_at: '2026-10-18T09:00:00Z' }),
+      row({ item: 'onions', quantity: 2, aisle: 'frozen', created_at: null, updated_at: null }),
+    ]);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatchObject({ item: 'onion', amount: '3', aisle: 'frozen' });
+  });
+
   it('marks typed items as hand added', () => {
     expect(shoppingLines([row({})])[0]!.handAdded).toBe(true);
   });

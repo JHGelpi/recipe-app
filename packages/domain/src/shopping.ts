@@ -58,8 +58,9 @@ export type ShoppingRow = {
   recipe_id: string | null;
   recipe_title: string | null;
   checked_at: string | null;
-  created_at: string;
-  updated_at: string;
+  /** Null until the server stamps the row: added on this phone, not yet synced. */
+  created_at: string | null;
+  updated_at: string | null;
 };
 export type NewShoppingRow = Omit<ShoppingRow, 'id' | 'checked_at' | 'created_at' | 'updated_at'>;
 export type ShoppingLine = {
@@ -130,14 +131,20 @@ function amountOf(rows: ShoppingRow[]): string {
   return parts.join(' + ');
 }
 
+// An unsynced row (no server time yet) is the newest one.
+const LATEST = '\uffff';
+const time = (value: string | null) => value ?? LATEST;
+
 const ORDER = new Map(AISLES.map((aisle, index) => [aisle.id, index]));
 
 export function shoppingLines(rows: ShoppingRow[]): ShoppingLine[] {
   const groups = new Map<string, ShoppingRow[]>();
   for (const row of rows) groups.set(row.item_key, [...(groups.get(row.item_key) ?? []), row]);
   const lines = [...groups.entries()].map(([key, group]) => {
-    const byAge = [...group].sort((a, b) => a.created_at.localeCompare(b.created_at));
-    const latest = [...group].sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0]!;
+    const byAge = [...group].sort((a, b) => time(a.created_at).localeCompare(time(b.created_at)));
+    const latest = [...group].sort((a, b) =>
+      time(b.updated_at).localeCompare(time(a.updated_at)),
+    )[0]!;
     const recipes = new Map<string, string>();
     for (const row of byAge) {
       if (row.recipe_id && !recipes.has(row.recipe_id))
