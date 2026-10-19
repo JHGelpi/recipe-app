@@ -7,6 +7,7 @@ import type { RecipeRecord } from '../recipes/rows';
 import type { Claims } from '../session/claims';
 import { useAisleChoices } from '../shopping/hooks';
 import { addShoppingRows } from '../shopping/repository';
+import { addButton } from '../shopping/screen';
 import { colors, space } from '../theme';
 import { Banner, Button, Icon, Text } from '../ui';
 import { BottomSheet } from './BottomSheet';
@@ -44,6 +45,7 @@ export function AddToListSheet({
     // Reset only when the sheet opens; the lines are the recipe's.
   }, [open]);
 
+  const button = addButton(chosen.size);
   const toggle = (id: string) =>
     setChosen((current) => {
       const next = new Set(current);
@@ -65,7 +67,9 @@ export function AddToListSheet({
 
   return (
     <BottomSheet open={open} label="Add to shopping list" onClose={onClose}>
-      <Text variant="h2">Add to shopping list</Text>
+      <Text variant="h2" role="heading" aria-level={2}>
+        Add to shopping list
+      </Text>
       {lines.map((line) => {
         const text = displayIngredient(line, { factor, units: place.units });
         const on = chosen.has(line.id);
@@ -95,8 +99,8 @@ export function AddToListSheet({
         <Button
           full
           icon="cart-outline"
-          label={`Add ${chosen.size} ${chosen.size === 1 ? 'item' : 'items'}`}
-          aria-disabled={chosen.size === 0}
+          label={button.label}
+          disabled={button.disabled}
           onPress={() => void add()}
         />
         <Button variant="ghost" label="Cancel" onPress={onClose} />

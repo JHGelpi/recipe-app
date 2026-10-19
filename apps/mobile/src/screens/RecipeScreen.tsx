@@ -1,7 +1,7 @@
 import { usePowerSync } from '@powersync/react';
 import { scaleFactor } from '@recipe-app/domain';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { AddToListSheet } from '../components/AddToListSheet';
 import { DishPhoto } from '../components/DishPhoto';
@@ -42,6 +42,12 @@ export function RecipeScreen({ claims, id }: { claims: Claims; id: string }) {
   const [panel, setPanel] = useState<'share' | 'more' | null>(null);
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(0);
+  // "Added N items" clears after a moment, or on the next Add to list.
+  useEffect(() => {
+    if (added === 0) return;
+    const timer = setTimeout(() => setAdded(0), 4000);
+    return () => clearTimeout(timer);
+  }, [added]);
   if (recipe === undefined) return null;
   const toggle = (next: 'share' | 'more') =>
     setPanel((current) => (current === next ? null : next));
@@ -112,7 +118,10 @@ export function RecipeScreen({ claims, id }: { claims: Claims; id: string }) {
                   icon="cart-outline"
                   label="Add to list"
                   filled
-                  onPress={() => setAdding(true)}
+                  onPress={() => {
+                    setAdded(0);
+                    setAdding(true);
+                  }}
                 />
               ) : null}
               <IconButton
