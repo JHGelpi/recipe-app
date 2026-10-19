@@ -3,6 +3,7 @@ import http from 'node:http';
 import https from 'node:https';
 import { isIP, type LookupFunction } from 'node:net';
 import { isBlockedAddress } from './addresses';
+import { decodePage } from './charset';
 
 export type FetchOptions = {
   /** Host names exempt from the address check. Test-only (IMPORT_FETCH_ALLOW_HOSTS). */
@@ -103,7 +104,10 @@ function requestOnce(
           }
           chunks.push(chunk);
         });
-        response.on('end', () => resolve({ status, body: Buffer.concat(chunks).toString('utf8') }));
+        // In the page's own charset (spec §3), not always UTF-8.
+        response.on('end', () =>
+          resolve({ status, body: decodePage(Buffer.concat(chunks), type) }),
+        );
         response.on('error', reject);
       },
     );

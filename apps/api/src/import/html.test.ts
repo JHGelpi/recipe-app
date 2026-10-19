@@ -30,3 +30,29 @@ describe('pageText', () => {
     expect(pageText(`<p>${'x'.repeat(50)}</p>`, 10)).toHaveLength(10);
   });
 });
+
+describe('hostile pages (spec §3)', () => {
+  // HOSTILE_BYTES lets the RED run use a smaller page: the old regexes are quadratic.
+  const size = Number(process.env.HOSTILE_BYTES ?? 3 * 1024 * 1024);
+  const timed = (fn: () => unknown) => {
+    const start = performance.now();
+    fn();
+    return performance.now() - start;
+  };
+
+  it('a page of unclosed tags parses in under 200 ms', () => {
+    const page = '<style>'.repeat(Math.floor(size / 7));
+    expect(timed(() => pageText(page))).toBeLessThan(200);
+  });
+
+  it('a page of unclosed JSON-LD scripts parses in under 200 ms', () => {
+    const open = '<script type="application/ld+json">';
+    const page = open.repeat(Math.floor(size / open.length));
+    expect(timed(() => extractJsonLd(page))).toBeLessThan(200);
+  });
+
+  it('a page of unclosed comments parses in under 200 ms', () => {
+    const page = '<!--'.repeat(Math.floor(size / 4));
+    expect(timed(() => pageText(page))).toBeLessThan(200);
+  });
+});
