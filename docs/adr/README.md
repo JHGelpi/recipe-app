@@ -21,5 +21,6 @@ Lightweight ADRs ([Michael Nygard format](https://cognitect.com/blog/2011/11/15/
 | [0015](0015-household-moves-and-live-roles.md) | Household moves through narrow definer functions; live role checks | Accepted |
 | [0016](0016-shared-recipe-snapshots.md) | Shared recipe snapshots, read anonymously through a definer function | Accepted |
 | [0017](0017-dishkept-design-system.md) | Dishkept: a small design system of our own, dark only | Accepted |
+| [0019](0019-shopping-list.md) | Shopping list: added rows merged on screen, aisles by word list and household choices | Accepted |
 
 Template: [`template.md`](template.md)

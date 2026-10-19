@@ -33,7 +33,7 @@ Outside the household:
 | Phase | Theme | Contents |
 |---|---|---|
 | **1 (v1)** | Recipe repository | Import, AI parsing, edit, tags, search, cook mode, substitutions, sharing, offline |
-| 2 | Shopping list | Add ingredients from recipes, merge duplicates, group by aisle |
+| 2 | Shopping list *(built)* | Add ingredients from recipes, merge duplicates, group by aisle |
 | 3 | Meal planning | Weekly dinner menu feeding the shopping list |
 | Future | Desktop app; natural-language / semantic search | |
 
@@ -112,6 +112,16 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 | FR-28 | View, search, create, edit offline | M |
 | FR-29 | Imports captured offline are queued and parsed when online | M |
 | FR-30 | Sync across household devices; last save wins | M |
+
+### Shopping list (Phase 2)
+
+| ID | Requirement | Pri |
+|---|---|---|
+| FR-31 | One shopping list per household, shared and synced; works offline | M |
+| FR-32 | Add a recipe's ingredients at the viewed servings, choosing which ones | M |
+| FR-33 | Same items merge into one line, adding amounts where units allow; the line shows its recipes | M |
+| FR-34 | Items are grouped by aisle: a built-in guess, overridden by the household's own choices | M |
+| FR-35 | Tick items off while shopping, clear ticked items, remove items, add typed items | M |
 
 ## 6. Non-functional requirements
 
