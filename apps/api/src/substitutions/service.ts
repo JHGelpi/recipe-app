@@ -8,7 +8,7 @@ import type { TokenClaims, VerifyToken } from '../auth/verify';
 import type { AsClaims } from '../db/asUser';
 import { AiUnavailableError, costMicroUsd, type AiConfig, type Gateway } from '../llm/gateway';
 import { buildSubstituteRequest, RECORD_SUBSTITUTES_TOOL } from '../llm/suggestSubstitutes';
-import { monthSpentMicroUsd, recordSpend } from '../llm/usage';
+import { AI_RESERVE_MICROUSD, reserveSpend, settleSpend } from '../llm/usage';
 
 export type SubstitutionOutcome =
   | { kind: 'answer'; answer: SubstitutionAnswer; ingredient_raw: string }
@@ -42,16 +42,22 @@ export function createSubstitutionService(deps: {
       const claims: TokenClaims = await deps.verify(token);
       if (!WRITERS.includes(String(claims.household_role))) return { kind: 'forbidden' };
 
+      const cap = Math.round(deps.ai.capUsd * 1_000_000);
       const found = await deps.asClaims(claims, async (tx) => {
         const [recipe] = await tx<RecipeRow[]>`
           select title, servings, ingredients, steps from public.recipes
           where id = ${ask.recipe_id} and deleted_at is null`;
-        return { recipe, spent: await monthSpentMicroUsd(tx) };
+        const line = (recipe?.ingredients ?? []).find(
+          (item) => item.id === ask.ingredient_id && !item.heading,
+        );
+        // Reserved only for a line that exists, under the household's lock (spec §3).
+        const reserved = recipe && line ? await reserveSpend(tx, cap, AI_RESERVE_MICROUSD) : false;
+        return { recipe, line, reserved };
       });
-      const ingredients = found.recipe?.ingredients ?? [];
-      const line = ingredients.find((item) => item.id === ask.ingredient_id && !item.heading);
+      const { line } = found;
       if (!found.recipe || !line) return { kind: 'missing' };
-      if (found.spent >= Math.round(deps.ai.capUsd * 1_000_000)) return { kind: 'quota' };
+      if (!found.reserved) return { kind: 'quota' };
+      const ingredients = found.recipe.ingredients ?? [];
 
       let call;
       try {
@@ -65,14 +71,20 @@ export function createSubstitutionService(deps: {
       } catch (error) {
         if (!(error instanceof AiUnavailableError)) throw error;
         deps.log?.({ event: 'ai_unavailable', recipe: ask.recipe_id, message: error.message });
+        // Nothing was spent: the reservation goes back.
+        await deps.asClaims(claims, (tx) => settleSpend(tx, -AI_RESERVE_MICROUSD));
         return { kind: 'ai_unavailable' };
       }
       const answer = toSubstitutionAnswer(call.input);
-      await deps.asClaims(claims, async (tx) => {
-        await recordSpend(tx, costMicroUsd(call.usage, deps.ai));
-        if (!answer) return;
-        // Asking again replaces the remembered answer for this line.
-        await tx`
+      // Spend first, in its own transaction: an upsert that fails (a demotion
+      // or a purge mid-ask) never loses what the call cost.
+      await deps.asClaims(claims, (tx) =>
+        settleSpend(tx, costMicroUsd(call.usage, deps.ai) - AI_RESERVE_MICROUSD),
+      );
+      if (answer)
+        await deps.asClaims(claims, async (tx) => {
+          // Asking again replaces the remembered answer for this line.
+          await tx`
           insert into public.substitutions
             (id, household_id, recipe_id, ingredient_id, ingredient_raw, options, note)
           values (${ask.id}, (select public.auth_household_id()), ${ask.recipe_id},
@@ -80,7 +92,7 @@ export function createSubstitutionService(deps: {
           on conflict (recipe_id, ingredient_id) where deleted_at is null
           do update set ingredient_raw = excluded.ingredient_raw,
                         options = excluded.options, note = excluded.note`;
-      });
+        });
       return answer
         ? { kind: 'answer', answer, ingredient_raw: line.raw }
         : { kind: 'invalid_output' };

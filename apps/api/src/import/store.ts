@@ -6,7 +6,7 @@ import {
 } from '@recipe-app/domain';
 import type { TokenClaims } from '../auth/verify';
 import type { AsClaims } from '../db/asUser';
-import { monthSpentMicroUsd, recordSpend } from '../llm/usage';
+import { AI_RESERVE_MICROUSD, monthSpentMicroUsd, reserveSpend, settleSpend } from '../llm/usage';
 
 export type ClaimedImport = {
   id: string;
@@ -31,11 +31,15 @@ export type ParseResult =
 export type ImportStore = {
   claim(claims: TokenClaims, id: string): Promise<ClaimOutcome>;
   context(claims: TokenClaims): Promise<{ spentMicroUsd: number; tags: string[] }>;
+  /** A reservation against the monthly cap, under the household's lock (spec §3). */
+  reserve(claims: TokenClaims, capMicroUsd: number): Promise<boolean>;
+  /** Settles the spend (in its own transaction) against what was reserved, then writes the row. */
   finish(
     claims: TokenClaims,
     row: ClaimedImport,
     result: ParseResult,
     spentMicroUsd: number,
+    reservedMicroUsd: number,
   ): Promise<void>;
   spent(claims: TokenClaims): Promise<number>;
 };
@@ -97,9 +101,13 @@ export function createImportStore(asClaims: AsClaims): ImportStore {
         return { spentMicroUsd, tags: tags.map((row) => row.tag) };
       }),
 
-    finish: (claims, row, result, spentMicroUsd) =>
-      asClaims(claims, async (tx) => {
-        await recordSpend(tx, spentMicroUsd);
+    reserve: (claims, capMicroUsd) =>
+      asClaims(claims, (tx) => reserveSpend(tx, capMicroUsd, AI_RESERVE_MICROUSD)),
+
+    finish: async (claims, row, result, spentMicroUsd, reservedMicroUsd) => {
+      // Spend first, in its own transaction: a failed row write never loses it.
+      await asClaims(claims, (tx) => settleSpend(tx, spentMicroUsd - reservedMicroUsd));
+      await asClaims(claims, async (tx) => {
         // Lands only on this claim: a reclaimed row belongs to the newer parse.
         // A dismissed row keeps its deleted_at.
         await tx`
@@ -108,7 +116,8 @@ export function createImportStore(asClaims: AsClaims): ImportStore {
               draft = ${result.status === 'ready' ? tx.json(result.draft as never) : null},
               error = ${result.status === 'failed' ? result.error : null}
           where id = ${row.id} and status = 'parsing' and parse_started_at::text = ${row.claim}`;
-      }),
+      });
+    },
 
     spent: (claims) => asClaims(claims, (tx) => monthSpentMicroUsd(tx)),
   };

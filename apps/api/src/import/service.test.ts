@@ -10,6 +10,7 @@ function store(): ImportStore {
     claim: vi.fn().mockResolvedValue({ kind: 'missing' }),
     spent: vi.fn().mockResolvedValue(420_000),
     context: vi.fn().mockResolvedValue({ spentMicroUsd: 0, tags: [] }),
+    reserve: vi.fn().mockResolvedValue(true),
     finish: vi.fn().mockResolvedValue(undefined),
   };
 }
@@ -57,6 +58,7 @@ describe('createImportService', () => {
       row,
       expect.objectContaining({ status: 'ready' }),
       0,
+      50_000,
     );
     expect(verify).toHaveBeenCalledTimes(1);
   });
