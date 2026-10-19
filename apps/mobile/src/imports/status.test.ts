@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { importFromRow, importPreview, type ImportRecord } from './rows';
-import { formatUsd, importView } from './status';
+import { formatUsd, importView, readyCount, retryMessage } from './status';
 
 const base = { id: 'i1', source_type: 'text', source_text: 'Soup', status: 'pending' };
 const record = (extra: object) => importFromRow({ ...base, ...extra })!;
@@ -70,6 +70,7 @@ describe('photo imports', () => {
     uploaded: 2,
     localPending: 1,
     firstPage: 'p1',
+    refused: 0,
     ...over,
   });
 
@@ -99,5 +100,85 @@ describe('photo imports', () => {
   it('previews as the number of pages', () => {
     expect(importPreview(photo({}))).toBe('Photo · 3 pages');
     expect(importPreview(photo({ pages: 1 }))).toBe('Photo · 1 page');
+  });
+});
+
+describe('bug batch (spec §3)', () => {
+  const now = Date.parse('2026-10-19T12:00:00Z');
+
+  it('a quota failure this month offers no Try again; last month it does', () => {
+    const thisMonth = record({
+      status: 'failed',
+      error: 'quota',
+      parse_started_at: '2026-10-03T08:00:00Z',
+    });
+    expect(importView(thisMonth, true, now)).toMatchObject({
+      label: "Over this month's AI limit. Try again next month.",
+      canRetry: false,
+    });
+    const lastMonth = record({
+      status: 'failed',
+      error: 'quota',
+      parse_started_at: '2026-09-29T08:00:00Z',
+    });
+    expect(importView(lastMonth, true, now).canRetry).toBe(true);
+  });
+
+  it('unreadable photos cannot be tried again', () => {
+    expect(
+      importView(record({ status: 'failed', error: 'photo_unreadable' }), true, now),
+    ).toMatchObject({
+      label: "Couldn't read the photos. Dismiss this import and add the photos again.",
+      canRetry: false,
+    });
+  });
+
+  it('an unknown status from a newer server does not spin', () => {
+    expect(importView(record({ status: 'reviewing' }), true, now)).toEqual({
+      label: 'Update the app to see this import',
+      canReview: false,
+      canRetry: false,
+      busy: false,
+    });
+  });
+
+  it('a page refused for good says so', () => {
+    const view = importView(
+      record({ source_type: 'photo', pages: 2, uploaded: 1, local_pending: 0, refused: 1 }),
+      true,
+      now,
+    );
+    expect(view.label).toBe("Couldn't upload a photo");
+  });
+
+  it('no pages and nothing to come: No photos were saved; pages coming: waiting', () => {
+    expect(importView(record({ source_type: 'photo', pages: 0 }), true, now).label).toBe(
+      'No photos were saved',
+    );
+    expect(
+      importView(
+        record({ source_type: 'photo', pages: 2, uploaded: 0, local_pending: 0 }),
+        true,
+        now,
+      ).label,
+    ).toBe('Waiting for photos from another device');
+  });
+
+  it('counts only ready drafts that can be read', () => {
+    expect(
+      readyCount([
+        record({ status: 'ready', draft: '{"title":"Soup"}' }),
+        record({ status: 'ready', draft: '{' }),
+        record({ status: 'pending' }),
+      ]),
+    ).toBe(1);
+  });
+
+  it('a Try again the server no longer knows says so', () => {
+    expect(retryMessage('not_found')).toBe('This import is no longer on the server');
+    expect(retryMessage('started')).toBeNull();
+    expect(retryMessage('retry')).toBe(
+      "Couldn't start it again. Check your connection and try again.",
+    );
   });
 });

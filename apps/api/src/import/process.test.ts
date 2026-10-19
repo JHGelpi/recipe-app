@@ -37,13 +37,14 @@ function setup(
     files?: Record<string, Uint8Array | null>;
   } = {},
 ) {
-  const finished: { result: ParseResult; spent: number }[] = [];
+  const finished: { result: ParseResult; spent: number; reserved: number }[] = [];
   const store: ImportStore = {
     claim: vi.fn(),
     spent: vi.fn(),
     context: vi.fn().mockResolvedValue({ spentMicroUsd: over.spent ?? 0, tags: ['dinner'] }),
-    finish: vi.fn(async (_c, _r, result: ParseResult, spent: number) => {
-      finished.push({ result, spent });
+    reserve: vi.fn(async (_c: unknown, cap: number) => (over.spent ?? 0) < cap),
+    finish: vi.fn(async (_c, _r, result: ParseResult, spent: number, reserved: number) => {
+      finished.push({ result, spent, reserved });
     }),
   };
   const callTool = vi.fn(
@@ -121,6 +122,7 @@ describe('processImport', () => {
       {
         result: { status: 'ready', draft: expect.objectContaining({ title: 'Soup' }) },
         spent: 10_500,
+        reserved: 50_000,
       },
     ]);
     expect(callTool.mock.calls[0]?.[0].user).toContain('dinner');
@@ -129,7 +131,9 @@ describe('processImport', () => {
   it('refuses at the cap without calling the AI', async () => {
     const { deps, finished, callTool } = setup({ spent: 2_000_000 });
     await processImport(deps, claims, textRow);
-    expect(finished).toEqual([{ result: { status: 'failed', error: 'quota' }, spent: 0 }]);
+    expect(finished).toEqual([
+      { result: { status: 'failed', error: 'quota' }, spent: 0, reserved: 0 },
+    ]);
     expect(callTool).not.toHaveBeenCalled();
   });
 
@@ -140,7 +144,9 @@ describe('processImport', () => {
       },
     });
     await processImport(deps, claims, textRow);
-    expect(finished).toEqual([{ result: { status: 'failed', error: 'ai_unavailable' }, spent: 0 }]);
+    expect(finished).toEqual([
+      { result: { status: 'failed', error: 'ai_unavailable' }, spent: 0, reserved: 50_000 },
+    ]);
   });
 
   it('records the spend of an answer it could not use', async () => {
@@ -152,7 +158,7 @@ describe('processImport', () => {
     });
     await processImport(deps, claims, textRow);
     expect(finished).toEqual([
-      { result: { status: 'failed', error: 'invalid_output' }, spent: 10_500 },
+      { result: { status: 'failed', error: 'invalid_output' }, spent: 10_500, reserved: 50_000 },
     ]);
   });
 
@@ -210,4 +216,34 @@ describe('processImport', () => {
 it('a parse always ends before it can be reclaimed as stuck, so no import is parsed and billed twice', () => {
   const worstCaseMs = FETCH_DEFAULTS.timeoutMs + AI_TIMEOUT_MS * AI_ATTEMPTS + 30_000; // retry backoff and the writes
   expect(worstCaseMs).toBeLessThan(STALE_PARSE_SECONDS * 1000);
+});
+
+describe('the reservation (spec §3)', () => {
+  it('a failure before the AI call reserves nothing', async () => {
+    const { deps, finished, store } = setup({ page: { ok: false, error: 'fetch_failed' } });
+    await processImport(deps, claims, urlRow);
+    expect(store.reserve).not.toHaveBeenCalled();
+    expect(finished[0]).toMatchObject({ spent: 0, reserved: 0 });
+  });
+
+  it('an AI outage returns the reservation', async () => {
+    const { deps, finished } = setup({
+      gateway: async () => {
+        throw new AiUnavailableError('down');
+      },
+    });
+    await processImport(deps, claims, textRow);
+    expect(finished[0]).toMatchObject({
+      result: { status: 'failed', error: 'ai_unavailable' },
+      spent: 0,
+      reserved: 50_000,
+    });
+  });
+
+  it('refuses when the reservation is refused', async () => {
+    const { deps, finished, callTool } = setup({ spent: 2_000_000 });
+    await processImport(deps, claims, textRow);
+    expect(callTool).not.toHaveBeenCalled();
+    expect(finished[0]?.result).toEqual({ status: 'failed', error: 'quota' });
+  });
 });

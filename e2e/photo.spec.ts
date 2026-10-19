@@ -188,3 +188,16 @@ test('a shown dish photo stays shown while the network drops and returns (final 
   );
   await expect(shown(page, 'Dish photo')).toBeVisible();
 });
+
+test('Import pressed while a big photo is still resizing waits for it (spec §3)', async ({
+  page,
+}) => {
+  await signIn(page, freshEmail('photo-resize'));
+  await photoTab(page);
+  await choose(page, 'Add page', ['big-page.jpg']);
+  await page.getByRole('button', { name: 'Import recipe' }).click();
+  // The press is never lost: it waits ("Still preparing photos…", which can be
+  // brief on a fast machine) and then imports, without a second press.
+  await expect(page.getByText(/^(Still preparing photos…|Reading your recipe…)$/)).toBeVisible();
+  await expect(page.getByText('Reading your recipe…')).toBeVisible({ timeout: 30_000 });
+});

@@ -1,4 +1,4 @@
-import { plainText } from './html';
+import { decodeFully, plainText } from './html';
 import { toImportDraft, type ImportDraft } from './importDraft';
 import { parseIngredientLine } from './ingredients';
 
@@ -52,7 +52,13 @@ export function isoMinutes(value: unknown): number | null {
 
 function instructionSteps(value: unknown, depth = 0): string[] {
   if (depth > 6) return [];
-  if (typeof value === 'string') return value.split(/\r?\n/).map(plainText).filter(Boolean);
+  // Paragraphs, line breaks and new lines each start a step, escaped or not.
+  if (typeof value === 'string') {
+    return decodeFully(value)
+      .split(/\r?\n|<\/p\s*>|<br\s*\/?>/i)
+      .map(plainText)
+      .filter(Boolean);
+  }
   if (Array.isArray(value)) return value.flatMap((item) => instructionSteps(item, depth + 1));
   if (!isNode(value)) return [];
   if (value.itemListElement !== undefined) {

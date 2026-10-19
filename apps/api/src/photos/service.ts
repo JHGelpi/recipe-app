@@ -10,7 +10,13 @@ export type PhotoService = {
   remove(householdId: string, id: string): Promise<void>;
 };
 
-type Row = { household_id: string; width: number; height: number; deleted: boolean };
+type Row = {
+  household_id: string;
+  width: number;
+  height: number;
+  deleted: boolean;
+  uploaded?: boolean;
+};
 const WRITERS = ['admin', 'member'];
 
 /**
@@ -36,8 +42,14 @@ export function createPhotoService(deps: {
         // Dismissed while uploading: the phone stops retrying on 410.
         if (row.deleted) return 'gone';
         if (row.width !== info.width || row.height !== info.height) return 'wrong_size';
+        // RLS checks the member's live role here (rule 4): a demoted member
+        // updates nothing, and no file is written. A second upload keeps the
+        // first stamp (coalesce), which the uploaded_at guard allows.
+        const stamped = await tx`
+          update public.photos set uploaded_at = coalesce(uploaded_at, now())
+          where id = ${id} returning id`;
+        if (stamped.length === 0) return 'forbidden';
         await deps.store.put(row.household_id, id, bytes);
-        await tx`update public.photos set uploaded_at = now() where id = ${id}`;
         return 'stored';
       });
     },
@@ -45,10 +57,15 @@ export function createPhotoService(deps: {
     get: (token, id) =>
       deps.asUser(token, async (tx) => {
         const [row] = await tx<Row[]>`
-          select household_id, width, height, deleted_at is not null as deleted
+          select household_id, width, height, deleted_at is not null as deleted,
+                 uploaded_at is not null as uploaded
           from public.photos where id = ${id}`;
         if (!row || row.deleted) return null;
-        return deps.store.read(row.household_id, id);
+        // Only an uploaded photo's file may be looked for elsewhere: its own
+        // upload is what an unfinished move left behind (final review).
+        return row.uploaded
+          ? deps.store.repair(row.household_id, id)
+          : deps.store.read(row.household_id, id);
       }),
 
     remove: (householdId, id) => deps.store.remove(householdId, id),

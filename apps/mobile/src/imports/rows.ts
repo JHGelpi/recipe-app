@@ -12,7 +12,8 @@ export type ImportRecord = {
   source_type: 'text' | 'url' | 'photo';
   source_text: string | null;
   source_url: string | null;
-  status: ImportStatus;
+  /** 'unknown': a status from a newer server this app does not know. */
+  status: ImportStatus | 'unknown';
   error: ImportError | null;
   draft: ImportDraft | null;
   parse_started_at: string | null;
@@ -22,6 +23,8 @@ export type ImportRecord = {
   uploaded: number;
   localPending: number;
   firstPage: string | null;
+  /** Photo pages the server refused for good (attachment ARCHIVED). */
+  refused: number;
 };
 
 const textOrNull = (value: unknown): string | null => (typeof value === 'string' ? value : null);
@@ -45,7 +48,7 @@ export function importFromRow(row: Record<string, unknown>): ImportRecord | null
   }
   const status = (IMPORT_STATUSES as readonly unknown[]).includes(row.status)
     ? (row.status as ImportStatus)
-    : 'pending';
+    : 'unknown';
   const error = (IMPORT_ERRORS as readonly unknown[]).includes(row.error)
     ? (row.error as ImportError)
     : null;
@@ -63,6 +66,7 @@ export function importFromRow(row: Record<string, unknown>): ImportRecord | null
     uploaded: Number(row.uploaded ?? 0),
     localPending: Number(row.local_pending ?? 0),
     firstPage: textOrNull(row.first_page),
+    refused: Number(row.refused ?? 0),
   };
 }
 

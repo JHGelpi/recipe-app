@@ -30,9 +30,9 @@ describe('importFromRow', () => {
     expect(importFromRow({ ...row, draft: JSON.stringify(['x']) })?.draft).toBeNull();
   });
 
-  it('unknown status and error values read as pending and null; unknown source types are dropped', () => {
+  it('unknown status and error values read as unknown and null; unknown source types are dropped', () => {
     expect(importFromRow({ ...row, status: 'weird', error: 'odd' })).toMatchObject({
-      status: 'pending',
+      status: 'unknown',
       error: null,
     });
     expect(importFromRow({ ...row, source_type: 'video' })).toBeNull();

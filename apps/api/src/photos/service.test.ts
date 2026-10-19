@@ -10,19 +10,25 @@ const member = { sub: 'u1', household_id: H, household_role: 'member', exp: 0 };
 
 function setup(
   row: { household_id: string; width: number; height: number; deleted: boolean } | null,
+  // False: RLS refuses the update (the member's live role can no longer write).
+  updated = true,
 ) {
   const statements: string[] = [];
   const tx = vi.fn(async (strings: TemplateStringsArray) => {
     statements.push(strings.join('?'));
-    return strings.join('').includes('select') && row ? [row] : [];
+    const text = strings.join('');
+    if (text.includes('update')) return updated ? [{ id: ID }] : [];
+    return text.includes('select') && row ? [row] : [];
   });
   const run = async (_who: unknown, fn: (t: never) => Promise<unknown>) => fn(tx as never);
   const store: PhotoStore = {
     put: vi.fn().mockResolvedValue(undefined),
     read: vi.fn().mockResolvedValue(Uint8Array.from([9])),
+    repair: vi.fn().mockResolvedValue(Uint8Array.from([9])),
     remove: vi.fn().mockResolvedValue(undefined),
     move: vi.fn().mockResolvedValue(undefined),
     copy: vi.fn().mockResolvedValue(true),
+    sweep: vi.fn().mockResolvedValue(0),
   };
   const service = createPhotoService({
     asClaims: run as unknown as AsClaims,
@@ -42,7 +48,16 @@ describe('photo service', () => {
     });
     expect(await service.put(member, ID, syntheticJpeg(10, 20))).toBe('stored');
     expect(store.put).toHaveBeenCalledWith(H, ID, expect.any(Uint8Array));
-    expect(statements.at(-1)).toContain('uploaded_at = now()');
+    expect(statements.at(-1)).toContain('uploaded_at = coalesce(uploaded_at, now())');
+  });
+
+  it('writes no file when the database says the member can no longer write (spec §3)', async () => {
+    const { service, store } = setup(
+      { household_id: H, width: 10, height: 20, deleted: false },
+      false,
+    );
+    expect(await service.put(member, ID, syntheticJpeg(10, 20))).toBe('forbidden');
+    expect(store.put).not.toHaveBeenCalled();
   });
 
   it('refuses a viewer before reading anything', async () => {

@@ -60,11 +60,15 @@ export function buildSubstituteRequest(
     ...recipe.steps.map((step, index) => `${index + 1}. ${step.text}`),
   ]
     .join('\n')
-    .slice(0, RECIPE_MAX)
-    // The recipe must not be able to end its own block and talk to the model.
-    .replace(/<\/recipe>/gi, '</ recipe>');
-  const user = ['<recipe>', body, '</recipe>', `Ingredient to replace: ${target?.raw ?? ''}`].join(
-    '\n',
-  );
+    .slice(0, RECIPE_MAX);
+  // The recipe must not be able to end its own block and talk to the model;
+  // the line to replace is inside the block and escaped like the rest.
+  const escape = (text: string) => text.replace(/<\/recipe>/gi, '</ recipe>');
+  const user = [
+    '<recipe>',
+    escape(body),
+    `Ingredient to replace: ${escape(target?.raw ?? '')}`,
+    '</recipe>',
+  ].join('\n');
   return { system: prompt, user };
 }

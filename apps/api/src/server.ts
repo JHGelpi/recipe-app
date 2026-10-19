@@ -1,7 +1,7 @@
 import { serve } from '@hono/node-server';
 import { createApp } from './app';
 import { createVerifier } from './auth/verify';
-import { loadConfig } from './config';
+import { aiMode, loadConfig } from './config';
 import { connect, createAsAnonymous, createAsClaims, createAsUser, createPing } from './db/asUser';
 import { fetchPage, FETCH_DEFAULTS } from './import/fetchPage';
 import { createImportService } from './import/service';
@@ -16,9 +16,15 @@ import { createPhotoService } from './photos/service';
 import { createDiskPhotoStore } from './photos/store';
 
 const config = loadConfig();
+console.log(JSON.stringify({ event: 'ai_mode', mode: aiMode(config.ai) }));
 const sql = connect(config.databaseUrl);
 const verify = createVerifier(config.verifier);
 const photoStore = createDiskPhotoStore(config.photosDir);
+// Spec §3: leftovers of interrupted uploads are cleared once a day old.
+void photoStore
+  .sweep(86_400_000)
+  .then((removed) => removed && console.log(JSON.stringify({ event: 'photo_sweep', removed })))
+  .catch((error: unknown) => console.error('Photo sweep failed', error));
 const photos = createPhotoService({
   asClaims: createAsClaims(sql),
   asUser: createAsUser(sql, verify),

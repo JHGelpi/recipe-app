@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { loadConfig } from './config';
+import { aiMode, loadConfig } from './config';
 
 const env = { DATABASE_URL: 'postgres://x', JWT_SECRET: 's' };
 
@@ -37,5 +37,13 @@ describe('loadConfig', () => {
 
   it('refuses a cap that is not a number', () => {
     expect(() => loadConfig({ ...env, AI_MONTHLY_CAP_USD: 'lots' })).toThrow('AI_MONTHLY_CAP_USD');
+  });
+});
+
+describe('aiMode', () => {
+  it('names the AI the API talks to', () => {
+    expect(aiMode({ apiKey: 'k', baseUrl: 'http://fake-ai:4010' })).toBe('fake');
+    expect(aiMode({ apiKey: 'k', baseUrl: null })).toBe('claude');
+    expect(aiMode({ apiKey: null, baseUrl: null })).toBe('none');
   });
 });

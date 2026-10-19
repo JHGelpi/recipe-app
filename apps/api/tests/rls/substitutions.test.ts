@@ -46,6 +46,18 @@ describe('substitutions RLS', () => {
     expect([seen.length, changed.length]).toEqual([0, 0]);
   });
 
+  it('a viewer cannot change a remembered answer (spec §3)', async () => {
+    const member = await signInAs(SEED.memberA);
+    const viewer = await signInAs(SEED.viewerA);
+    const row = insert(member, RECIPE_A);
+    await row.run;
+    const changed = await as(
+      viewer,
+      (tx) => tx`update public.substitutions set note = 'x' where id = ${row.id} returning id`,
+    );
+    expect(changed).toHaveLength(0);
+  });
+
   it('refuses a viewer, and an answer for another household’s recipe', async () => {
     const viewer = await signInAs(SEED.viewerA);
     const adminA = await signInAs(SEED.adminA);

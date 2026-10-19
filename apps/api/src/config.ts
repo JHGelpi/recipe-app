@@ -53,3 +53,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     photosDir: env.PHOTOS_DIR || '/data/photos',
   };
 }
+
+/** Which AI the API calls, logged at start so a stack left in test mode is obvious. */
+export function aiMode(ai: {
+  apiKey: string | null;
+  baseUrl: string | null;
+}): 'fake' | 'claude' | 'none' {
+  if (ai.baseUrl) return 'fake';
+  return ai.apiKey ? 'claude' : 'none';
+}

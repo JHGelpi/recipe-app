@@ -1,7 +1,7 @@
 import { usePowerSync } from '@powersync/react';
 import { router } from 'expo-router';
 import { PAGE_EDGE, PHOTO_LIMITS } from '@recipe-app/domain';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, View } from 'react-native';
 import { confirm } from '../components/confirm';
 import { PhotoImage } from '../components/PhotoImage';
@@ -11,7 +11,7 @@ import { importSourceFrom } from '../imports/form';
 import { useAiUsage, useImports } from '../imports/hooks';
 import { createImport, createPhotoImport, dismissImport } from '../imports/repository';
 import { importPreview } from '../imports/rows';
-import { formatUsd, importView } from '../imports/status';
+import { formatUsd, importView, retryMessage } from '../imports/status';
 import { pickPhotos } from '../photos/pick';
 import { PhotoReadError, preparePhoto } from '../photos/prepare';
 import { photoSaver } from '../photos/queue';
@@ -34,13 +34,21 @@ export function ImportScreen({ claims }: { claims: Claims }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  if (!canWrite(claims.role)) {
-    return (
-      <Screen>
-        <Text>Viewers cannot import recipes.</Text>
-      </Screen>
-    );
-  }
+  // Photos still resizing, and an Import pressed meanwhile (spec §3).
+  const [preparing, setPreparing] = useState(0);
+  const [waiting, setWaiting] = useState(false);
+  // Unsaved page previews are freed when the screen goes away.
+  const pagesRef = useRef(pages);
+  pagesRef.current = pages;
+  useEffect(() => () => pagesRef.current.forEach((page) => URL.revokeObjectURL(page.preview)), []);
+  useEffect(() => {
+    if (waiting && preparing === 0) {
+      setWaiting(false);
+      void submit();
+    }
+    // submit reads the latest pages when the preparing count reaches zero.
+  }, [waiting, preparing]);
+
   const value = kind === 'text' ? text : url;
   const empty = kind === 'photo' ? pages.length === 0 : value.trim() === '';
 
@@ -48,6 +56,7 @@ export function ImportScreen({ claims }: { claims: Claims }) {
     const files = await pickPhotos(true);
     setError(null);
     for (const file of files.slice(0, PHOTO_LIMITS.pages - pages.length)) {
+      setPreparing((n) => n + 1);
       try {
         const prepared = await preparePhoto(file, PAGE_EDGE);
         setPages((list) =>
@@ -57,6 +66,8 @@ export function ImportScreen({ claims }: { claims: Claims }) {
         );
       } catch (caught) {
         setError(caught instanceof PhotoReadError ? caught.message : 'Could not add that photo.');
+      } finally {
+        setPreparing((n) => n - 1);
       }
     }
   }
@@ -78,6 +89,11 @@ export function ImportScreen({ claims }: { claims: Claims }) {
   }
 
   async function submit() {
+    if (kind === 'photo' && preparing > 0) {
+      setWaiting(true);
+      setNotice('Still preparing photos…');
+      return;
+    }
     if (busy || empty) return;
     if (kind === 'photo') {
       setBusy(true);
@@ -117,13 +133,20 @@ export function ImportScreen({ claims }: { claims: Claims }) {
 
   async function retry(id: string) {
     const outcome = await withSession((deps) => requestParse(id, deps));
-    if (outcome !== 'started' && outcome !== 'busy') {
-      setNotice("Couldn't start it again. Check your connection and try again.");
-    }
+    const message = retryMessage(outcome ?? 'retry');
+    if (message) setNotice(message);
   }
 
   async function dismiss(id: string) {
     if (await confirm('Dismiss this import?')) await dismissImport(db, claims, id);
+  }
+
+  if (!canWrite(claims.role)) {
+    return (
+      <Screen>
+        <Text>Viewers cannot import recipes.</Text>
+      </Screen>
+    );
   }
 
   return (
@@ -225,8 +248,8 @@ export function ImportScreen({ claims }: { claims: Claims }) {
         <Button
           full
           label="Import recipe"
-          disabled={empty}
-          aria-disabled={busy || empty}
+          disabled={empty && preparing === 0}
+          aria-disabled={busy || (empty && preparing === 0)}
           onPress={() => void submit()}
         />
         {notice ? <Text aria-live="polite">{notice}</Text> : null}
@@ -272,9 +295,8 @@ export function ImportScreen({ claims }: { claims: Claims }) {
               {view.canRetry ? (
                 <Button variant="secondary" label="Try again" onPress={() => void retry(item.id)} />
               ) : null}
-              {!view.busy ? (
-                <Button variant="ghost" label="Dismiss" onPress={() => void dismiss(item.id)} />
-              ) : null}
+              {/* Always: a pending import the server keeps failing is never stranded. */}
+              <Button variant="ghost" label="Dismiss" onPress={() => void dismiss(item.id)} />
             </View>
           </Card>
         );

@@ -8,6 +8,7 @@ import {
   RECORD_RECIPE_TOOL,
   type ParseRequest,
 } from '../llm/parseRecipe';
+import { AI_RESERVE_MICROUSD } from '../llm/usage';
 import { jpegInfo } from '../photos/jpeg';
 import type { PhotoStore } from '../photos/store';
 import type { FetchResult } from './fetchPage';
@@ -23,7 +24,7 @@ export type ProcessDeps = {
   log?: (event: Record<string, unknown>) => void;
 };
 
-type Meter = { microUsd: number };
+type Meter = { microUsd: number; reserved: number };
 
 /** The pages' bytes in order, or null when one is missing or not a JPEG. */
 async function readPages(deps: ProcessDeps, row: ClaimedImport): Promise<Uint8Array[] | null> {
@@ -62,10 +63,12 @@ async function parse(
     request = (tags) => buildParseRequest({ text, url }, tags);
   }
 
-  const { spentMicroUsd, tags } = await deps.store.context(claims);
-  if (spentMicroUsd >= Math.round(deps.ai.capUsd * 1_000_000)) {
+  const { tags } = await deps.store.context(claims);
+  // A reservation under the household's lock, so parallel calls can't pass the cap.
+  if (!(await deps.store.reserve(claims, Math.round(deps.ai.capUsd * 1_000_000)))) {
     return { status: 'failed', error: 'quota' };
   }
+  meter.reserved = AI_RESERVE_MICROUSD;
 
   let call;
   try {
@@ -92,7 +95,7 @@ export async function processImport(
   claims: TokenClaims,
   row: ClaimedImport,
 ): Promise<void> {
-  const meter: Meter = { microUsd: 0 };
+  const meter: Meter = { microUsd: 0, reserved: 0 };
   let result: ParseResult;
   try {
     result = await parse(deps, claims, row, meter);
@@ -100,5 +103,5 @@ export async function processImport(
     deps.log?.({ event: 'import_failed', id: row.id, message: String(error) });
     result = { status: 'failed', error: 'ai_unavailable' };
   }
-  await deps.store.finish(claims, row, result, meter.microUsd);
+  await deps.store.finish(claims, row, result, meter.microUsd, meter.reserved);
 }

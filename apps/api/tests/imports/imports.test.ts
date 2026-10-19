@@ -128,6 +128,18 @@ describe('POST /api/imports/:id/parse', () => {
     expect((await settled(cook, id)).status).toBe('ready');
   });
 
+  it('parallel imports cannot pass the cap (spec §3)', async () => {
+    const cook = await fresh();
+    await adminSql`insert into public.ai_usage (household_id, month, spent_microusd)
+      values (${cook.householdId}, date_trunc('month', now() at time zone 'utc')::date, 1999000)`;
+    const ids = await Promise.all([1, 2, 3].map(() => textImport(cook, `${SOUP}\nFAKE_SLOW`)));
+    await Promise.all(ids.map((id) => parse(cook, id)));
+    const rows = await Promise.all(ids.map((id) => settled(cook, id)));
+    expect(rows.filter((row) => row.status === 'ready')).toHaveLength(1);
+    expect(rows.filter((row) => row.error === 'quota')).toHaveLength(2);
+    expect(await spent(cook)).toBe(1_999_000 + 7_000);
+  });
+
   it('refuses at the monthly cap without calling the AI', async () => {
     const cook = await fresh();
     await adminSql`insert into public.ai_usage (household_id, month, spent_microusd)

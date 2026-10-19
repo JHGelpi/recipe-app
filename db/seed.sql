@@ -73,8 +73,8 @@ insert into public.ai_usage (household_id, month, spent_microusd) values
   ('00000000-0000-0000-0000-00000000000b', date_trunc('month', now() at time zone 'utc')::date, 0);
 
 -- One photo row per household, so the isolation suite's photos checks are not
--- vacuous. No recipe points at them and no file exists, so no device ever
--- downloads them.
+-- vacuous. Each is a dish photo of its household's seed recipe, but no recipe
+-- uses it as its photo and no file exists, so no device ever downloads it.
 insert into public.photos (id, household_id, kind, recipe_id, media_type, bytes, width, height) values
   ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-00000000000a', 'dish', '00000000-0000-0000-0000-0000000000c1', 'image/jpeg', 1, 1, 1),
   ('00000000-0000-0000-0000-0000000000f2', '00000000-0000-0000-0000-00000000000b', 'dish', '00000000-0000-0000-0000-0000000000c2', 'image/jpeg', 1, 1, 1);
