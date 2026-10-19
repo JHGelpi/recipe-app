@@ -59,3 +59,13 @@ test('selecting a tag keeps the buttons right', async ({ page }) => {
   // The selected chip moves first; the bar may jump back to the start.
   await expect(page.getByRole('button', { name: 'Scroll tags right' })).toBeVisible();
 });
+
+test('typing into Title right after New recipe keeps every letter @firefox', async ({ page }) => {
+  await signIn(page, freshEmail('quicktitle'));
+  await page.getByRole('button', { name: /^Add a recipe/ }).click();
+  await page.getByRole('button', { name: 'New recipe' }).click();
+  const title = page.getByLabel('Title', { exact: true });
+  await title.click();
+  await page.keyboard.type('Quick');
+  await expect(title).toHaveValue('Quick');
+});

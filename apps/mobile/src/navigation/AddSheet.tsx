@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal, Pressable, View } from 'react-native';
 import { colors, radius, shadow, space } from '../theme';
 import { Button, Text } from '../ui';
@@ -24,13 +24,20 @@ export function AddSheet({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
+  // Choosing New recipe or Import hides the sheet at once: while it slid out,
+  // its focus trap took the first tap on the next screen (Firefox).
+  const [instant, setInstant] = useState(false);
+  useEffect(() => {
+    if (open) setInstant(false);
+  }, [open]);
   const go = (path: '/recipe/new' | '/import') => {
+    setInstant(true);
     onClose();
     router.push(path);
   };
   return (
     // onRequestClose: the Android back button, when this runs natively.
-    <Modal visible={open} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={open} transparent animationType={instant ? 'none' : 'slide'} onRequestClose={onClose}>
       <View style={{ flex: 1, justifyContent: 'flex-end' }}>
         <Pressable
           role="button"
