@@ -201,6 +201,8 @@ services:
       BACKUP_REMOTE: ${BACKUP_REMOTE:-}
       BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:-}
       BACKUP_ALERT_TO: ${BACKUP_ALERT_TO:-}
+      # The build the proxy serves, recorded in each backup's manifest (prod:deploy sets it).
+      BUILD_TIME: ${BUILD_TIME:-}
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: ${SMTP_PORT}
       SMTP_USER: ${SMTP_USER}

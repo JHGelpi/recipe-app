@@ -5,6 +5,7 @@ import { env } from './test-support/env';
 // `pnpm test:e2e` rebuilds and starts the stack first.
 export default defineConfig({
   testDir: './e2e',
+  globalSetup: './e2e/setup.ts',
   globalTeardown: './e2e/teardown.ts',
   fullyParallel: false,
   workers: 1,

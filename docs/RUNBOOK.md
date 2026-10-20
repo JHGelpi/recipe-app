@@ -52,7 +52,7 @@ When you later set up email on geltech.dev, its MX and TXT records go in Cloudfl
 ### 3. Zoho app password
 
 1. At accounts.zoho.com, signed in as `wes@data2insightsllc.com`: **Security**, then **App Passwords**, then **Generate New Password**, named `Dishkept`. Copy it.
-2. The SMTP settings are `smtp.zoho.com`, port `465` (SSL). Zoho only allows sending from the address you log in with, so the login and From address are the same.
+2. The SMTP settings are `smtp.zoho.com`, port `465` (SSL). Zoho only allows sending from the address you log in with, so the login and From address are the same. Port `587` also works: the alert then uses STARTTLS.
 
 Zoho's free plan doesn't include SMTP. If step 7's test code never arrives, check the plan first.
 
@@ -82,8 +82,6 @@ Then:
 3. Delete the copy in Cloud Shell: `rm gcs-backup-key.json`.
 
 The service account can add and read backups but **cannot delete or overwrite** them, so a compromised PC can't erase old backups. The lifecycle rule removes them after 30 days.
-
-That also means **a second backup on the same day fails at upload**: the file name holds only the date. If `prod:backup-now` emails a failure on a day that already has a backup, that's why; the local copy was still written.
 
 **Check:** `ls -l .local/gcs-backup-key.json` shows the file.
 
@@ -140,11 +138,11 @@ pnpm prod:backup-now
 pnpm prod:restore-test
 ```
 
-The drill asks for the path to a file holding your secret key. See "Restore" for how to make it and remove it after.
+The drill asks for the path to a file holding your secret key. See "Restore" for how to make it and remove it after. The drill checks the counts and one photo file's bytes against the backup. It needs a clean, current `main`, like deploy.
 
 **Check:**
 - the drill prints `DRILL PASSED`;
-- the bucket shows `dishkept-YYYY-MM-DD.tar.age`.
+- the bucket shows `dishkept-YYYY-MM-DDTHHMMZ.tar.age`.
 
 **Run the drill again every month.**
 
@@ -168,6 +166,7 @@ The drill asks for the path to a file holding your secret key. See "Restore" for
 | See the list | `pnpm prod:allowed` |
 | Open or close sign-up for everyone | `pnpm prod:gate off` / `pnpm prod:gate on` |
 | Back up now | `pnpm prod:backup-now` |
+| Check that alert emails arrive | `pnpm prod:test-alert` (sends "Dishkept alert test" to `BACKUP_ALERT_TO`) |
 | Stop production (for example before a long e2e run) | `pnpm prod:stop`; start it again with `pnpm prod:start` (needs a clean, current `main` in `~/dishkept`) |
 
 People with an invite, share or friend link don't need to be on the list. The app gets them a 24-hour pass. People who already have an account can always sign in.
@@ -180,7 +179,7 @@ Phones pick up a new build on their own. A phone at the home screen may take it 
 
 1. Put your secret key in a temporary file:
    `(umask 077; cat > /tmp/age.key)`, then paste the `AGE-SECRET-KEY-1…` line, press Enter, then Ctrl-D. Pasting it into `cat` keeps it out of your shell history.
-2. Run `pnpm prod:restore` for the latest backup, or `pnpm prod:restore 2026-10-19` for a given day. A day not on this PC is fetched from the bucket.
+2. Run `pnpm prod:restore` for the newest backup, in the bucket or on this PC, or `pnpm prod:restore 2026-10-19` for that day's newest. A backup not on this PC is fetched from the bucket. If the bucket can't be reached, it says so and chooses from this PC's copies.
 3. Enter `/tmp/age.key` when asked. Check the manifest it prints, then type `restore`.
 4. When it finishes: `rm /tmp/age.key`.
 
@@ -189,9 +188,9 @@ A wrong key or a damaged file stops the restore **before** anything is replaced.
 ## Rotating secrets
 
 - **Zoho password:** generate a new app password, put it in `SMTP_PASS` in `.env.production`, then `pnpm prod:deploy`.
-- **Token signing key:** replace `JWT_KEYS`; generate a new one with `pnpm env:init` in an empty folder and copy the line. Then `pnpm prod:deploy`. Everyone signs in again.
+- **Token signing key:** run `pnpm prod:new-signing-key`. It prints a `JWT_KEYS='…'` line; put it in `.env.production` in place of the old `JWT_KEYS=` line. Then `pnpm prod:deploy`. People stay signed in: tokens signed with the old key are refused from then on, and each app renews its session with the new key and retries. (`pnpm test:jwt-rotation` tries these steps on a throwaway project.)
 - **Backup key:** make a new pair (step 5), set `BACKUP_AGE_RECIPIENT`, `pnpm prod:deploy`, then `pnpm prod:backup-now`. **Keep the old secret key for 30 days**, until the last backup made with it has expired.
-- **GCS key:** `gcloud iam service-accounts keys create` a new key, replace `.local/gcs-backup-key.json`, `pnpm prod:deploy`, then delete the old key in the Cloud Console.
+- **GCS key:** `gcloud iam service-accounts keys create` a new key, replace `.local/gcs-backup-key.json`, then `pnpm prod:recreate backup` (a deploy doesn't restart the backup loop for a changed key file). Run `pnpm prod:backup-now` to check it uploads, then delete the old key in the Cloud Console.
 
 ## Switching the sender to a geltech.dev mailbox
 

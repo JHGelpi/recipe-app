@@ -1,4 +1,5 @@
 // Decisions behind the prod:* commands and the guard, kept pure for tests.
+import { generateKeyPairSync, randomUUID } from 'node:crypto';
 
 export const PROJECT = 'dishkept';
 export const ENV_FILE = '.env.production';
@@ -24,6 +25,23 @@ export function composeArgs(project = PROJECT) {
   ];
 }
 
+/**
+ * A .env value as Compose reads it: the last definition wins, an `export`
+ * prefix is allowed, a quoted value ends at its first closing quote, and an
+ * unquoted one drops a trailing " # comment".
+ */
+function dotenvValue(dotenv, name) {
+  const pattern = new RegExp(`^(?:export\\s+)?${name}\\s*=`);
+  const line = dotenv
+    .split('\n')
+    .filter((l) => pattern.test(l))
+    .at(-1);
+  if (line === undefined) return null;
+  const raw = line.slice(line.indexOf('=') + 1).trim();
+  const quoted = /^"([^"]*)"|^'([^']*)'/.exec(raw);
+  return quoted ? (quoted[1] ?? quoted[2]) : raw.replace(/\s+#.*$/, '').trim();
+}
+
 /** Reasons a dev or test command must not run here; empty when it is safe. */
 export function productionSignals({ env, argv, dotenv, prodEnvPresent = false }) {
   const reasons = [];
@@ -34,8 +52,8 @@ export function productionSignals({ env, argv, dotenv, prodEnvPresent = false })
   if ((env.COMPOSE_ENV_FILES ?? '').includes(ENV_FILE))
     reasons.push('COMPOSE_ENV_FILES names .env.production');
   if (argv.some((arg) => arg.includes(ENV_FILE))) reasons.push('the command names .env.production');
-  if (/^APP_ENV=production\s*$/m.test(dotenv)) reasons.push('.env says APP_ENV=production');
-  if (/^COMPOSE_PROJECT_NAME=dishkept\s*$/m.test(dotenv))
+  if (dotenvValue(dotenv, 'APP_ENV') === 'production') reasons.push('.env says APP_ENV=production');
+  if (dotenvValue(dotenv, 'COMPOSE_PROJECT_NAME') === PROJECT)
     reasons.push('.env names the dishkept project');
   return reasons;
 }
@@ -103,12 +121,63 @@ export function checkoutBlockers({ cwd, hasDevEnv }) {
   return blockers;
 }
 
+/** The services prod:recreate may restart: the others reread files from the checkout. */
+export const RECREATABLE = ['backup'];
+
 /** First deploy order: services, then the gate, and only then the public tunnel. */
 export function deploySequence() {
   return [
     { profiles: ['backup'], args: ['up', '-d', '--build', '--wait', '--remove-orphans'] },
+    // The nightly loop records the build the proxy now serves (bug batch §5).
+    { stampBackup: true },
     { restartSync: true },
     { gate: true },
     { profiles: PROD_PROFILES, args: ['up', '-d', '--wait', 'cloudflared'] },
   ];
+}
+
+const BACKUP_NAME = /^dishkept-\d{4}-\d{2}-\d{2}(T\d{4}Z)?\.tar\.age$/;
+
+/**
+ * The backup to restore: the newest of the given day, or the newest of all.
+ * Names sort by time; a legacy date-only name sorts before that day's timed ones.
+ */
+export function pickBackup(names, date) {
+  const valid = [...new Set(names.map((name) => name.trim()))].filter((name) =>
+    BACKUP_NAME.test(name),
+  );
+  const matching = date ? valid.filter((name) => name.startsWith(`dishkept-${date}`)) : valid;
+  return matching.sort().at(-1) ?? null;
+}
+
+/** Household and photo ids only: a manifest's path is used in a shell command. */
+export const PHOTO_PATH = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\.jpg$/;
+
+/** Why the drill's sample photo does not match the backup's hash, or null. */
+export function photoCheckProblem(manifest, sha256) {
+  const check = manifest.photo_check;
+  if (!check || sha256 === check.sha256) return null;
+  return `photo ${check.file}: backup ${check.sha256}, restored ${sha256 || 'missing'}`;
+}
+
+/**
+ * Run in the backup container: every backup name in the bucket (or
+ * BACKUP_REMOTE) and on this PC, one per line. An unreachable bucket is
+ * reported on stderr, and the local names still print.
+ */
+export const LIST_BACKUPS_SH =
+  'rclone lsf "${BACKUP_REMOTE:-offsite:$BACKUP_BUCKET}" --include "dishkept-*.tar.age" || echo bucket-unreachable >&2; ls -1 /backups';
+
+/** A fresh JWT_KEYS value: one ES256 private key as a JWK array (GoTrue signs with it). */
+export function newSigningKeys() {
+  const { privateKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
+  return JSON.stringify([
+    {
+      ...privateKey.export({ format: 'jwk' }),
+      kid: randomUUID(),
+      alg: 'ES256',
+      use: 'sig',
+      key_ops: ['sign', 'verify'],
+    },
+  ]);
 }

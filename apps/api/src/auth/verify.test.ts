@@ -132,3 +132,37 @@ describe('createVerifier with a published key set', () => {
     expect(outcome).toBe('server-error');
   });
 });
+
+describe('createVerifier after the signing key is rotated (bug batch §5)', () => {
+  it('accepts a token from the new key at once, without waiting out the refetch cooldown', async () => {
+    const first = await generateKeyPair('ES256');
+    const second = await generateKeyPair('ES256');
+    const published = async (key: CryptoKey, kid: string) => ({
+      ...(await exportJWK(key)),
+      kid,
+      alg: 'ES256',
+      use: 'sig',
+    });
+    let keys = [await published(first.publicKey, 'first')];
+    const rotating = createServer((_request, response) => {
+      response.setHeader('Content-Type', 'application/json');
+      response.end(JSON.stringify({ keys }));
+    });
+    await new Promise<void>((resolve) => rotating.listen(0, '127.0.0.1', resolve));
+    const url = `http://127.0.0.1:${(rotating.address() as AddressInfo).port}/jwks.json`;
+    const token = (key: CryptoKey, kid: string) =>
+      new SignJWT({ sub: 'user-1' })
+        .setProtectedHeader({ alg: 'ES256', kid })
+        .setAudience('authenticated')
+        .setExpirationTime(now() + 60)
+        .sign(key);
+    try {
+      const verify = createVerifier({ audience: 'authenticated', jwksUrl: url });
+      expect((await verify(await token(first.privateKey, 'first'))).sub).toBe('user-1');
+      keys = [await published(second.publicKey, 'second')];
+      expect((await verify(await token(second.privateKey, 'second'))).sub).toBe('user-1');
+    } finally {
+      await new Promise((resolve) => rotating.close(resolve));
+    }
+  });
+});

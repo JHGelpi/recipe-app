@@ -31,9 +31,13 @@
     "prod:allowed": "node scripts/prod/cli.mjs allowed",
     "prod:gate": "node scripts/prod/cli.mjs gate",
     "prod:backup-now": "node scripts/prod/cli.mjs backup-now",
+    "prod:test-alert": "node scripts/prod/cli.mjs test-alert",
+    "prod:new-signing-key": "node scripts/prod/cli.mjs new-signing-key",
+    "prod:recreate": "node scripts/prod/cli.mjs recreate",
     "prod:restore": "node scripts/prod/cli.mjs restore",
     "prod:restore-test": "node scripts/prod/cli.mjs restore-test",
     "test:backup": "node scripts/guard.mjs && node scripts/test-backup.mjs",
+    "test:jwt-rotation": "node scripts/guard.mjs && node scripts/test-jwt-rotation.mjs",
     "test:prod-config": "node scripts/prod/check-config.mjs",
     "icons:make": "node scripts/make-icons.mjs"
   },
