@@ -163,3 +163,32 @@ test('offline, the shared page says so and loads when the connection returns (Fi
   await expect(visitor.getByRole('heading', { name: title })).toBeVisible({ timeout: 15_000 });
   await context.close();
 });
+
+test('a link made right after adding a dish photo shows it signed out, and Link again gives the same link (FR-27)', async ({
+  page,
+  browser,
+}) => {
+  await signIn(page, freshEmail('share-photo'));
+  const title = unique('Photo soup');
+  await soup(page, title);
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Add photo' }).click();
+  await (await chooser).setFiles('test-support/photos/dish.jpg');
+  await page.getByRole('button', { name: 'Share' }).click();
+  await page.getByRole('button', { name: 'Link' }).click();
+  const link = page.getByLabel('Share link');
+  await expect(link).toBeVisible({ timeout: 60_000 });
+  const url = (await link.textContent())!.trim();
+  await page.getByRole('button', { name: 'Link' }).click();
+  await expect(page.getByText('Copied').or(link)).toBeVisible();
+  expect((await link.textContent())!.trim()).toBe(url);
+
+  const visitor = await (await browser.newContext()).newPage();
+  const photo = visitor.waitForResponse(
+    (response) => response.url().endsWith('/photo') && response.status() === 200,
+  );
+  await visitor.goto(url);
+  await expect(visitor.getByRole('heading', { name: title, level: 1 })).toBeVisible();
+  await photo;
+  await visitor.context().close();
+});

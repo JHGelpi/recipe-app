@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createShare, readShare, saveShare } from './api';
+import { createShare, readShare, saveShare, stopShares } from './api';
 
 const deps = (response: Response | Error) => ({
   fetch: vi.fn(async () => {
@@ -53,5 +53,29 @@ describe('sharing api', () => {
     [404, 'share_unavailable', 'This recipe is no longer shared'],
   ])('maps a save refusal %i to its message', async (status, error, message) => {
     expect(await saveShare(CODE, deps(json(status, { error })))).toEqual({ ok: false, message });
+  });
+});
+
+it('a 5xx reading a share is an error, not "no longer shared"', async () => {
+  const fetchImpl = vi.fn(async () => new Response('{"error":"internal"}', { status: 503 }));
+  expect(await readShare('c'.repeat(43), fetchImpl, 'https://x/api')).toEqual({
+    ok: false,
+    status: 'error',
+  });
+});
+
+it('a failure with no known key says what failed', async () => {
+  const failing = {
+    fetch: vi.fn(async () => new Response('{"error":"internal"}', { status: 500 })),
+    apiUrl: 'https://x/api',
+    token: 't',
+  };
+  expect(await stopShares('r1', failing)).toEqual({
+    ok: false,
+    message: "Couldn't stop sharing. Try again.",
+  });
+  expect(await saveShare('c'.repeat(43), failing)).toEqual({
+    ok: false,
+    message: "Couldn't save this recipe. Try again.",
   });
 });

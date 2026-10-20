@@ -10,7 +10,12 @@ export const SHARE_MESSAGES: Record<string, string> = {
 };
 const OFFLINE = 'Sharing a link needs a connection';
 
-async function call<T>(deps: ApiDeps, path: string, body?: unknown): Promise<Result<T>> {
+async function call<T>(
+  deps: ApiDeps,
+  path: string,
+  body: unknown,
+  fallback: string,
+): Promise<Result<T>> {
   try {
     const response = await deps.fetch(`${deps.apiUrl}${path}`, {
       method: 'POST',
@@ -21,7 +26,7 @@ async function call<T>(deps: ApiDeps, path: string, body?: unknown): Promise<Res
     if (!response.ok)
       return {
         ok: false,
-        message: SHARE_MESSAGES[json?.error ?? ''] ?? 'Something went wrong. Try again.',
+        message: SHARE_MESSAGES[json?.error ?? ''] ?? fallback,
       };
     return { ok: true, value: json as T };
   } catch {
@@ -30,11 +35,26 @@ async function call<T>(deps: ApiDeps, path: string, body?: unknown): Promise<Res
 }
 
 export const createShare = (recipeId: string, deps: ApiDeps) =>
-  call<{ code: string }>(deps, '/shares', { recipe_id: recipeId });
+  call<{ code: string }>(
+    deps,
+    '/shares',
+    { recipe_id: recipeId },
+    "Couldn't make a link. Try again.",
+  );
 export const stopShares = (recipeId: string, deps: ApiDeps) =>
-  call<{ stopped: number }>(deps, '/shares/stop', { recipe_id: recipeId });
+  call<{ stopped: number }>(
+    deps,
+    '/shares/stop',
+    { recipe_id: recipeId },
+    "Couldn't stop sharing. Try again.",
+  );
 export const saveShare = (code: string, deps: ApiDeps) =>
-  call<{ recipe_id: string }>(deps, `/shares/${code}/save`);
+  call<{ recipe_id: string }>(
+    deps,
+    `/shares/${code}/save`,
+    undefined,
+    "Couldn't save this recipe. Try again.",
+  );
 
 /**
  * Readable by anyone with the link. A signed-in reader's token, when given,
@@ -54,6 +74,7 @@ export async function readShare(
       cache: 'no-store',
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
+    if (response.status >= 500) return { ok: false, status: 'error' };
     const json = (await response.json().catch(() => null)) as {
       snapshot?: ShareSnapshot;
       has_photo?: boolean;

@@ -96,6 +96,13 @@ export function SharedRecipeScreen({ code }: { code: string }) {
         <Text>Opening a shared recipe needs a connection</Text>
       </Screen>
     );
+  if (status === 'error')
+    return (
+      <Screen>
+        <Text>Couldn't load this page. Try again.</Text>
+        <Button label="Try again" onPress={() => setAttempt((value) => value + 1)} />
+      </Screen>
+    );
   if (status)
     return (
       <Screen>
