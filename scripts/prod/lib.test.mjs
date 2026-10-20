@@ -14,6 +14,7 @@ import {
   PHOTO_PATH,
   pickBackup,
   productionSignals,
+  RECREATABLE,
 } from './lib.mjs';
 
 describe('the production guard', () => {
@@ -32,6 +33,10 @@ describe('the production guard', () => {
     [{ ...safe, dotenv: 'APP_ENV="production"  # live\n' }],
     [{ ...safe, dotenv: 'COMPOSE_PROJECT_NAME="dishkept"\n' }],
     [{ ...safe, dotenv: "COMPOSE_PROJECT_NAME='dishkept'\n" }],
+    [{ ...safe, dotenv: "APP_ENV='production' # it's live\n" }],
+    [{ ...safe, dotenv: 'APP_ENV="production" # the "live" one\n' }],
+    [{ ...safe, dotenv: 'APP_ENV=development\nAPP_ENV=production\n' }],
+    [{ ...safe, dotenv: 'export APP_ENV=production\n' }],
   ])('refuses on %j', (input) => expect(productionSignals(input).length).toBeGreaterThan(0));
   it('passes a dev .env that only mentions production in a comment or another value', () =>
     expect(
@@ -172,4 +177,8 @@ it('a new signing key is one ES256 private JWK with its own id', () => {
   expect(key).toMatchObject({ kty: 'EC', crv: 'P-256', alg: 'ES256', use: 'sig' });
   expect(typeof key.d).toBe('string');
   expect(JSON.parse(newSigningKeys())[0].kid).not.toBe(key.kid);
+});
+
+it('only the backup loop can be recreated: other services reread files from the checkout', () => {
+  expect(RECREATABLE).toEqual(['backup']);
 });

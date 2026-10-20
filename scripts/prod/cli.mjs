@@ -21,6 +21,7 @@ import {
   photoCheckProblem,
   pickBackup,
   PROD_PROFILES,
+  RECREATABLE,
 } from './lib.mjs';
 
 const profiles = (list) => list.flatMap((p) => ['--profile', p]);
@@ -234,8 +235,12 @@ const commands = {
   // Recreates one service, for a changed mounted file such as the GCS key (RUNBOOK).
   recreate() {
     const service = rest[0];
-    if (!['backup', 'api', 'auth', 'sync', 'proxy'].includes(service ?? ''))
-      fail('Usage: pnpm prod:recreate backup|api|auth|sync|proxy');
+    // Only the backup loop: the others reread sync rules and migrations from
+    // this checkout, which prod:deploy checks is clean, current main.
+    if (!RECREATABLE.includes(service ?? ''))
+      fail(`Usage: pnpm prod:recreate ${RECREATABLE.join('|')}`);
+    // Its environment carries the deployed build; recreating without it would lose the stamp.
+    process.env.BUILD_TIME = deployedBuild();
     if (
       compose(['up', '-d', '--no-deps', '--force-recreate', service], {}, ['backup']).status !== 0
     )
@@ -255,6 +260,9 @@ const commands = {
     if ((await rl.question('Type "restore" to continue: ')).trim() !== 'restore')
       fail('Cancelled.');
     rl.close();
+    // The backup loop's environment carries the deployed build: read it while the proxy runs,
+    // so the `up` after the restore keeps the stamp.
+    process.env.BUILD_TIME = deployedBuild();
     compose(['stop', 'api', 'auth', 'sync', 'proxy']);
     const result = compose(
       ['run', '--rm', '-v', `${keyPath}:/run/secrets/age.key:ro`, 'backup', 'restore', file],

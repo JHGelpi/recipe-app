@@ -25,13 +25,21 @@ export function composeArgs(project = PROJECT) {
   ];
 }
 
-/** A .env value as Compose reads it: quotes removed, a trailing " # comment" dropped. */
+/**
+ * A .env value as Compose reads it: the last definition wins, an `export`
+ * prefix is allowed, a quoted value ends at its first closing quote, and an
+ * unquoted one drops a trailing " # comment".
+ */
 function dotenvValue(dotenv, name) {
-  const line = dotenv.split('\n').find((l) => new RegExp(`^${name}\\s*=`).test(l));
+  const pattern = new RegExp(`^(?:export\\s+)?${name}\\s*=`);
+  const line = dotenv
+    .split('\n')
+    .filter((l) => pattern.test(l))
+    .at(-1);
   if (line === undefined) return null;
   const raw = line.slice(line.indexOf('=') + 1).trim();
-  const quoted = /^(["'])(.*)\1/.exec(raw);
-  return quoted ? quoted[2] : raw.replace(/\s+#.*$/, '').trim();
+  const quoted = /^"([^"]*)"|^'([^']*)'/.exec(raw);
+  return quoted ? (quoted[1] ?? quoted[2]) : raw.replace(/\s+#.*$/, '').trim();
 }
 
 /** Reasons a dev or test command must not run here; empty when it is safe. */
@@ -112,6 +120,9 @@ export function checkoutBlockers({ cwd, hasDevEnv }) {
   }
   return blockers;
 }
+
+/** The services prod:recreate may restart: the others reread files from the checkout. */
+export const RECREATABLE = ['backup'];
 
 /** First deploy order: services, then the gate, and only then the public tunnel. */
 export function deploySequence() {
