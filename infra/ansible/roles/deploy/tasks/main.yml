@@ -1,0 +1,9 @@
+- name: Deploy even with nothing new, when asked (-e force_deploy=true)
+  ansible.builtin.debug:
+    msg: Deploying because force_deploy is set
+  changed_when: true
+  when: force_deploy | bool
+  notify: Deploy Dishkept
+
+- name: Deploy now, so later plays see the running stack
+  ansible.builtin.meta: flush_handlers

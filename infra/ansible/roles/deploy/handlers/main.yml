@@ -1,0 +1,6 @@
+- name: Deploy Dishkept
+  ansible.builtin.command: corepack pnpm prod:deploy{{ '' if tunnel | bool else ' --no-tunnel' }}
+  args:
+    chdir: "{{ app_dir }}"
+  changed_when: true
+  when: not ansible_check_mode

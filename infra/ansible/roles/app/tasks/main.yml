@@ -1,0 +1,66 @@
+- name: Keep production off the Windows drives (the prod:* guard says the same)
+  ansible.builtin.assert:
+    that: not app_dir.startswith('/mnt/')
+    fail_msg: "{{ app_dir }} is on a Windows drive; production runs from ~/dishkept"
+
+- name: Look for an existing checkout
+  ansible.builtin.stat:
+    path: "{{ app_dir }}/.git"
+  register: app_checkout
+
+- name: Read the checkout's branch and changes
+  ansible.builtin.shell: |
+    set -e
+    cd "{{ app_dir }}"
+    git rev-parse --abbrev-ref HEAD
+    git status --porcelain
+  register: app_checkout_state
+  changed_when: false
+  # Read-only, so it runs in --check too.
+  check_mode: false
+  when: app_checkout.stat.exists
+
+- name: Refuse a checkout with local changes or on another branch (Review Focus 2)
+  ansible.builtin.assert:
+    that:
+      - app_checkout_state.stdout_lines[0] == 'main'
+      - app_checkout_state.stdout_lines | length == 1
+    fail_msg: >-
+      {{ app_dir }} must be a clean main checkout; found branch
+      {{ app_checkout_state.stdout_lines[0] }} with changes:
+      {{ app_checkout_state.stdout_lines[1:] | join(', ') }}
+  when: app_checkout.stat.exists
+
+- name: Clone or fast-forward to main
+  ansible.builtin.git:
+    repo: "{{ repo_url }}"
+    dest: "{{ app_dir }}"
+    version: main
+    update: true
+  register: app_code
+  no_log: "{{ inventory_hostname == 'vm' }}"
+  notify:
+    - Install dependencies
+    - Deploy Dishkept
+
+- name: Make the private folder
+  ansible.builtin.file:
+    path: "{{ app_dir }}/.local"
+    state: directory
+    mode: "0700"
+
+- name: Write .env.production
+  ansible.builtin.copy:
+    content: "{{ vault_prod_env }}"
+    dest: "{{ app_dir }}/.env.production"
+    mode: "0600"
+  no_log: true
+  notify: Deploy Dishkept
+
+- name: Write the GCS backup key
+  ansible.builtin.copy:
+    content: "{{ vault_gcs_backup_key }}"
+    dest: "{{ app_dir }}/.local/gcs-backup-key.json"
+    mode: "0600"
+  no_log: true
+  notify: Deploy Dishkept

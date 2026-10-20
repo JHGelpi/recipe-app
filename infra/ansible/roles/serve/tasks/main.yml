@@ -1,0 +1,27 @@
+# The PC only serves while Docker Desktop runs (RUNBOOK "Keep the PC serving").
+- name: Find Docker Desktop's settings file
+  ansible.builtin.shell: |
+    set -o pipefail
+    wslpath "$(cmd.exe /c 'echo %APPDATA%' 2>/dev/null | tr -d '\r')"
+  args:
+    executable: /bin/bash
+  register: serve_appdata
+  changed_when: false
+  check_mode: false
+  failed_when: false
+
+- name: Read Docker Desktop's settings
+  ansible.builtin.slurp:
+    src: "{{ serve_appdata.stdout }}/Docker/settings-store.json"
+  register: serve_docker_settings
+  failed_when: false
+  when: serve_appdata.rc == 0
+
+- name: Warn if Docker Desktop doesn't start at sign-in
+  ansible.builtin.debug:
+    msg: >-
+      WARNING: Docker Desktop doesn't start when you sign in, so production stops after a
+      reboot. Turn on Settings > General > "Start Docker Desktop when you sign in".
+  when: >-
+    serve_docker_settings.content is not defined
+    or not ((serve_docker_settings.content | b64decode | from_json).AutoStart | default(false))

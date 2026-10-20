@@ -1,0 +1,17 @@
+# The two places production can run (infrastructure spec §4). A run names one: -l pc or -l vm.
+all:
+  hosts:
+    pc:
+      ansible_connection: local
+      repo_url: https://github.com/JHGelpi/recipe-app.git
+    vm:
+      ansible_host: dishkept-vm
+      # OS Login's user name for your Google account, for example you_example_com.
+      ansible_user: "{{ lookup('ansible.builtin.env', 'DISHKEPT_VM_USER') }}"
+      ansible_ssh_private_key_file: ~/.ssh/google_compute_engine
+      ansible_ssh_common_args: >-
+        -o ProxyCommand='gcloud compute start-iap-tunnel %h 22 --listen-on-stdin
+        --zone={{ vm_zone }} --project={{ lookup('ansible.builtin.env', 'DISHKEPT_GCP_PROJECT') }}'
+        -o StrictHostKeyChecking=accept-new
+      # The repo is private: the VM clones with a read-only token (plan, Global Constraints).
+      repo_url: "https://x-access-token:{{ vault_github_read_token }}@github.com/JHGelpi/recipe-app.git"
