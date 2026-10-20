@@ -8,7 +8,7 @@ Sharing out (FR-26, FR-27) sends recipes to people outside the household, some w
 
 ## Decision
 
-- **A `shares` row per link** holds a validated snapshot of the recipe and a copy of its dish photo file (`photos/<household>/<share id>.jpg`). The link code is 32 random bytes; only its sha256 is stored. Links last until stopped. A recipe in the Trash pauses its links.
+- **A `shares` row per link** holds a validated snapshot of the recipe and a copy of its dish photo file (`photos/<household>/<share id>.jpg`). The link code is 32 random bytes. Reads look it up by its sha256. Since the bug batch, the code is also kept (`shares.kept_code`, not synced) so Link hands out a recipe's live link again rather than making a new one each tap; the household can already make links to its own recipes, so keeping the code exposes nothing new to it. Links made before then have no kept code and are never reused. Links last until stopped. A recipe in the Trash pauses its links.
 - **Definer functions:** `create_share`, `stop_shares`, `read_share` and `save_share`, with `search_path = ''`, check the caller themselves. `read_share` returns one snapshot by its code hash, and only while the share and its recipe are live.
 - **`asAnonymous`:** the API serves signed-out visitors through `asAnonymous`, the `authenticated` role with empty claims. Every RLS policy denies it; it may call only `read_share`.
 - **Saving a copy:** `save_share` makes a new recipe in the caller's household (admins and members), with new ids and the source "Shared by the <household>".

@@ -10,6 +10,9 @@
 	# Production: the tunnel connector forwards the visitor's scheme and address.
 	servers :8080 {
 		trusted_proxies static {$TRUSTED_PROXIES:127.0.0.1/32}
+		# Read X-Forwarded-For from the right, skipping trusted proxies, so a
+		# visitor cannot choose the address the sign-up limits see.
+		trusted_proxies_strict
 	}
 	servers :8443 {
 		listener_wrappers {
@@ -70,7 +73,10 @@
 			request_body {
 				max_size 4MB
 			}
-			reverse_proxy api:3000
+			reverse_proxy api:3000 {
+				# The visitor's address for the API's sign-up limits.
+				header_up X-Client-IP {client_ip}
+			}
 		}
 		handle_path /sync/* {
 			reverse_proxy sync:8080 {

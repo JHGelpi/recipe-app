@@ -1,9 +1,11 @@
+import { markLatestLink } from './latestLink';
 // A friend link (/welcome/<code>) opened while signed out (production spec §4).
 const KEY = 'recipes.pendingFriend';
 const CODE = /^[A-Za-z0-9_-]{43}$/;
 
 export function setPendingFriend(code: string): void {
   globalThis.sessionStorage?.setItem(KEY, code);
+  markLatestLink('friend');
 }
 export function peekPendingFriend(): string | null {
   const code = globalThis.sessionStorage?.getItem(KEY) ?? null;

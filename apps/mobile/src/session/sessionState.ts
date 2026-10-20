@@ -71,6 +71,21 @@ export function ownerKey(userId: string, householdId: string | null): string {
 const ownerUser = (owner: string) => owner.split(':')[0];
 
 /**
+ * The owner key to store once settled. A session with no claims says nothing
+ * about the household, so it keeps the same user's stored key; rewriting it
+ * would make the next session with claims look like a move and wipe.
+ */
+export function ownerToRecord(
+  session: { userId: string; householdId: string | null },
+  stored: string | null,
+): string {
+  if (session.householdId === null && stored !== null && ownerUser(stored) === session.userId) {
+    return stored;
+  }
+  return ownerKey(session.userId, session.householdId);
+}
+
+/**
  * Local data is wiped when the user signs out, when someone other than the
  * recorded owner signs in, or when the same user's household has changed
  * (FR-5: joined, left or removed). A session the server ended keeps the

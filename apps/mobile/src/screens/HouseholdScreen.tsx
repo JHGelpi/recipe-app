@@ -13,10 +13,13 @@ import {
   friendUrl,
   inviteUrl,
   leaveHousehold,
+  listFriendLinks,
   listInvites,
   removeMember,
   renameHousehold,
+  revokeFriendLink,
   setMemberRole,
+  type FriendLink,
   type PendingInvite,
   type Result,
 } from '../household/api';
@@ -57,6 +60,13 @@ export function HouseholdScreen({ claims }: { claims: Claims }) {
     if (result?.ok) setInvites(result.value);
   }, [admin, online]);
   useEffect(() => void refresh(), [refresh]);
+  const [friendLinks, setFriendLinks] = useState<FriendLink[]>([]);
+  const refreshFriendLinks = useCallback(async () => {
+    if (!online) return;
+    const result = await withSession(listFriendLinks);
+    if (result?.ok) setFriendLinks(result.value);
+  }, [online]);
+  useEffect(() => void refreshFriendLinks(), [refreshFriendLinks]);
 
   async function act<T>(run: () => Promise<Result<T> | null>, then?: (value: T) => void) {
     setMessage(null);
@@ -281,23 +291,60 @@ export function HouseholdScreen({ claims }: { claims: Claims }) {
         />
       ) : null}
       {online ? (
-        <Button
-          variant="ghost"
-          label="Invite a friend to Dishkept"
-          onPress={() =>
-            void act(
-              () => withSession(createFriendLink),
-              async ({ code }) => {
-                const url = friendUrl(code);
-                const how = await shareLink(
-                  `Make your own recipe collection on Dishkept: ${url}`,
-                  url,
+        <>
+          <Button
+            variant="ghost"
+            label="Invite a friend to Dishkept"
+            onPress={() =>
+              void act(
+                () => withSession(createFriendLink),
+                async ({ code }) => {
+                  const url = friendUrl(code);
+                  const how = await shareLink(
+                    `Make your own recipe collection on Dishkept: ${url}`,
+                    url,
+                  );
+                  if (how === 'copied') setMessage('Link copied');
+                  void refreshFriendLinks();
+                },
+              )
+            }
+          />
+          {friendLinks.length > 0 ? (
+            <Card title="Friend links" level={3}>
+              {friendLinks.map((link) => {
+                const made = new Date(link.created_at).toLocaleDateString();
+                return (
+                  <View
+                    key={link.id}
+                    style={{ flexDirection: 'row', gap: space.md, alignItems: 'center' }}
+                  >
+                    <Text tone="muted" style={{ flex: 1 }}>
+                      Expires in {days(link.expires_at)} days · made {made}
+                    </Text>
+                    <Button
+                      variant="ghost"
+                      label="Revoke"
+                      aria-label={`Revoke link made ${made}`}
+                      onPress={async () => {
+                        if (
+                          !(await confirm(
+                            'Revoke this link? Anyone who has it can no longer use it to join Dishkept.',
+                          ))
+                        )
+                          return;
+                        await act(
+                          () => withSession((deps) => revokeFriendLink(link.id, deps)),
+                          () => void refreshFriendLinks(),
+                        );
+                      }}
+                    />
+                  </View>
                 );
-                if (how === 'copied') setMessage('Link copied');
-              },
-            )
-          }
-        />
+              })}
+            </Card>
+          ) : null}
+        </>
       ) : null}
       {canWrite(claims.role) ? (
         <RowCard

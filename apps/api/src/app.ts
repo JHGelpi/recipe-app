@@ -25,8 +25,13 @@ export type AppDeps = {
   household: HouseholdService;
   sharing: SharingService;
   signup: SignupService;
-  /** Per-email and per-link limits for signed-out pass requests. */
-  limits: { email: (key: string) => boolean; code: (key: string) => boolean };
+  /** Per-email, per-link, per-address and global limits for signed-out link requests. */
+  limits: {
+    email: (key: string) => boolean;
+    code: (key: string) => boolean;
+    ip: (key: string) => boolean;
+    all: (key: string) => boolean;
+  };
 };
 
 const MAX_BODY_BYTES = 1024 * 1024;
@@ -220,6 +225,8 @@ export function createApp(deps: AppDeps): Hono {
     signup: deps.signup,
     limitEmail: deps.limits.email,
     limitCode: deps.limits.code,
+    limitIp: deps.limits.ip,
+    limitAll: deps.limits.all,
   });
 
   return app;

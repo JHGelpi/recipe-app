@@ -22,14 +22,16 @@ const recipeRow = {
   photo_height: 3,
 };
 
-function setup(rows: Record<string, unknown[]>, files: Partial<PhotoStore> = {}) {
+function setup(rows: Record<string, unknown[] | Error>, files: Partial<PhotoStore> = {}) {
   const statements: string[] = [];
   const tx = Object.assign(
     vi.fn(async (strings: TemplateStringsArray) => {
       const sql = strings.join('?');
       statements.push(sql);
       const key = Object.keys(rows).find((k) => sql.includes(k));
-      return key ? rows[key]! : [];
+      const value = key ? rows[key]! : [];
+      if (value instanceof Error) throw value;
+      return value;
     }),
     { json: (value: unknown) => value },
   );
@@ -37,7 +39,7 @@ function setup(rows: Record<string, unknown[]>, files: Partial<PhotoStore> = {})
   const store = {
     copy: vi.fn().mockResolvedValue(true),
     read: vi.fn().mockResolvedValue(Uint8Array.from([1])),
-    remove: vi.fn(),
+    remove: vi.fn().mockResolvedValue(undefined),
     ...files,
   } as unknown as PhotoStore;
   const service = createSharingService({
@@ -50,6 +52,28 @@ function setup(rows: Record<string, unknown[]>, files: Partial<PhotoStore> = {})
 }
 
 describe('sharing service', () => {
+  it('reuses the recipe’s live link: same share id, new snapshot', async () => {
+    const { service, store, statements } = setup({
+      'from public.shares': [{ id: 's-live' }],
+      'from public.recipes': [recipeRow],
+      'public.create_share(': [{ id: 's-live', token: 'k'.repeat(43) }],
+    });
+    expect(await service.create('jwt', RECIPE)).toEqual({ code: 'k'.repeat(43) });
+    expect(vi.mocked(store.copy).mock.calls[0]?.[3]).toBe('s-live');
+    expect(statements.some((sql) => sql.includes('kept_code is not null'))).toBe(true);
+  });
+
+  it('a refused new share deletes the photo it copied', async () => {
+    const refused = Object.assign(new Error('forbidden'), { code: 'P0001' });
+    const { service, store } = setup({
+      'from public.recipes': [recipeRow],
+      'public.create_share(': refused,
+    });
+    await expect(service.create('jwt', RECIPE)).rejects.toEqual(new ShareRefusal('forbidden'));
+    const shareId = vi.mocked(store.copy).mock.calls[0]?.[3];
+    expect(store.remove).toHaveBeenCalledWith('h1', shareId);
+  });
+
   it('snapshots the recipe, copies its dish photo under the share id, and returns the code', async () => {
     const { service, store, statements } = setup({
       'from public.recipes': [recipeRow],

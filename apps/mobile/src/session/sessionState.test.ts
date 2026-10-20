@@ -4,6 +4,7 @@ import {
   householdChanged,
   localDataAction,
   ownerKey,
+  ownerToRecord,
   provisionalSession,
   resolveSession,
   sessionFromAuth,
@@ -147,4 +148,11 @@ describe('signed out with nothing left to wipe (bug batch spec §2)', () => {
     expect(localDataAction({ status: 'signedOut', byUser: true }, null)).toBe('keep');
     expect(localDataAction({ status: 'signedOut', byUser: true }, 'user-1:house-1')).toBe('wipe');
   });
+});
+
+it('a session with no claims keeps the stored owner key of the same user', () => {
+  expect(ownerToRecord({ userId: 'u1', householdId: null }, 'u1:h1')).toBe('u1:h1');
+  expect(ownerToRecord({ userId: 'u1', householdId: null }, null)).toBe('u1');
+  expect(ownerToRecord({ userId: 'u1', householdId: null }, 'u2:h9')).toBe('u1');
+  expect(ownerToRecord({ userId: 'u1', householdId: 'h2' }, 'u1:h1')).toBe('u1:h2');
 });

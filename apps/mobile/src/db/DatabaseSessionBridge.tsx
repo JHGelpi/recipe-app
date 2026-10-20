@@ -10,6 +10,7 @@ import {
   householdChanged,
   localDataAction,
   ownerKey,
+  ownerToRecord,
   type SettledSession,
 } from '../session/sessionState';
 import { useSession } from '../session/SessionProvider';
@@ -66,7 +67,11 @@ export function DatabaseSessionBridge({ children }: { children: ReactNode }) {
         if (localDataAction(session, dbOwner.get()) === 'wipe') {
           // FR-5: a move gets a one-time notice; a Join set its own already.
           if (householdChanged(session, dbOwner.get()) && !hasNotice()) {
-            setNotice({ kind: 'moved', name: null });
+            setNotice({
+              kind: 'moved',
+              name: null,
+              householdId: session.status === 'signedIn' ? session.householdId : null,
+            });
           }
           // Photos first: their files live outside the database (Review Focus 4).
           // A failure here must never stop the database wipe below.
@@ -85,7 +90,7 @@ export function DatabaseSessionBridge({ children }: { children: ReactNode }) {
           dbOwner.clear();
         }
         if (session.status === 'signedIn') {
-          dbOwner.set(ownerKey(session.userId, session.householdId));
+          dbOwner.set(ownerToRecord(session, dbOwner.get()));
           setReadyFor(ownerKey(session.userId, session.householdId));
         } else {
           setReadyFor(null);

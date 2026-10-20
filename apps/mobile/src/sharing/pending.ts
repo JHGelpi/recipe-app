@@ -1,3 +1,4 @@
+import { markLatestLink } from '../session/latestLink';
 // A shared recipe someone chose to save while signed out (spec §6), and the
 // one-time "Saved to your recipes" message.
 const PENDING = 'recipes.pendingShare';
@@ -8,6 +9,7 @@ type Pending = { code: string; title: string };
 
 export function setPendingShare(pending: Pending): void {
   globalThis.sessionStorage?.setItem(PENDING, JSON.stringify(pending));
+  markLatestLink('share');
 }
 
 export function peekPendingShare(): Pending | null {

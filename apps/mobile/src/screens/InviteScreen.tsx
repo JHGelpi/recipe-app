@@ -1,6 +1,6 @@
 import { usePowerSync } from '@powersync/react';
 import { Link, router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator } from 'react-native';
 import { withSession } from '../imports/api';
 import {
@@ -55,6 +55,8 @@ function SignedInInvite({ code }: { code: string }) {
   const [preview, setPreview] = useState<InvitePreview | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
+  // A second tap before the first finishes must not post again.
+  const busy = useRef(false);
 
   useEffect(() => {
     let live = true;
@@ -73,22 +75,29 @@ function SignedInInvite({ code }: { code: string }) {
   }, [code, db]);
 
   async function join() {
-    if (!preview) return;
+    if (!preview || busy.current) return;
+    busy.current = true;
     setJoining(true);
     setMessage(null);
     // Unsent edits must reach the server before the data moves (Review Focus 1).
     if (!(await waitForUploads(db))) {
+      busy.current = false;
       setJoining(false);
       setMessage('Still saving your changes. Try again in a moment.');
       return;
     }
     const result = await withSession((deps) => acceptInvite(code, deps));
     if (!result?.ok) {
+      busy.current = false;
       setJoining(false);
       setMessage(result?.message ?? 'Sign in again to join');
       return;
     }
-    setNotice({ kind: 'joined', name: preview.household_name });
+    setNotice({
+      kind: 'joined',
+      name: preview.household_name,
+      householdId: result.value.household_id,
+    });
     await auth.refreshSession();
     router.replace('/');
   }

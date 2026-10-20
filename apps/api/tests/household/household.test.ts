@@ -109,4 +109,23 @@ describe('household endpoints', () => {
     await call(joiner, 'POST', '/invites/accept', { token: await invite(admin) });
     expect((await call(admin, 'GET', `/photos/${photo}`)).status).toBe(200);
   });
+
+  it('friend links are listed to a viewer and revoked once; then the link reads as ended', async () => {
+    const admin = await fresh();
+    const viewer = await fresh();
+    await call(viewer, 'POST', '/invites/accept', { token: await invite(admin, 'viewer') });
+    const viewerNow = await signInFresh(viewer.email);
+    const made = await call(viewerNow, 'POST', '/friend-links', {});
+    const { code } = (await made.json()) as { code: string };
+    const listed = (await (await call(admin, 'GET', '/friend-links')).json()) as { id: string }[];
+    expect(listed).toHaveLength(1);
+    expect((await call(viewerNow, 'DELETE', `/friend-links/${listed[0]!.id}`)).status).toBe(204);
+    expect((await call(admin, 'DELETE', `/friend-links/${listed[0]!.id}`)).status).toBe(404);
+    const status = await fetch(`${env.apiUrl}/friend-links/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+    });
+    expect(await status.json()).toEqual({ status: 'ended' });
+  });
 });

@@ -9,6 +9,7 @@ import { usePhotoUri } from '../photos/usePhotoUri';
 import type { RecipeRecord } from '../recipes/rows';
 import { createShare } from '../sharing/api';
 import { shareFile, shareOrCopy } from '../sharing/share';
+import { waitForPhoto } from '../sharing/waitForPhoto';
 import { colors, radius, space } from '../theme';
 import { Button, Card, Text } from '../ui';
 
@@ -60,6 +61,16 @@ export function SharePanel({ recipe }: { recipe: RecipeRecord }) {
     }
     setMessage(null);
     await waitForUploads(db);
+    if (recipe.photo_id) {
+      const uploaded = await waitForPhoto(db, recipe.photo_id, {
+        onWait: () => setMessage('Uploading the photo…'),
+      });
+      if (!uploaded) {
+        setMessage("The photo hasn't finished uploading. Try again in a moment.");
+        return;
+      }
+      setMessage(null);
+    }
     const result = await withSession((deps) => createShare(recipe.id, deps));
     if (!result?.ok) {
       setMessage(result?.message ?? 'Sharing a link needs a connection');

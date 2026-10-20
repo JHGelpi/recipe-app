@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { isHttpUrl, SOURCE_LIMITS } from './imports';
-import { UNITS } from './ingredients';
-import { RECIPE_LIMITS, TITLE_MAX } from './limits';
+import { RECIPE_LIMITS } from './limits';
+import { ingredientSchema, recipeTitleSchema, stepSchema, tagSchema } from './recipeParts';
 
 export * from './imports';
 export * from './ingredients';
@@ -17,39 +17,10 @@ export * from './substitutions';
 export * from './household';
 export * from './sharing';
 export * from './shopping';
+export * from './recipeParts';
 export { RECIPE_LIMITS, TITLE_MAX } from './limits';
 
-export const recipeTitleSchema = z
-  .string()
-  .trim()
-  .min(1, 'Title is required')
-  .max(TITLE_MAX, `Title must be ${TITLE_MAX} characters or fewer`);
-
 const timestampSchema = z.iso.datetime({ offset: true });
-
-export const unitSchema = z.enum(UNITS);
-
-export const ingredientSchema = z.strictObject({
-  id: z.guid(),
-  raw: z.string().trim().min(1).max(500),
-  quantity: z.number().nonnegative().nullable(),
-  quantity_max: z.number().nonnegative().nullable(),
-  unit: unitSchema.nullable(),
-  item: z.string().max(500),
-  note: z.string().max(500).nullable(),
-  heading: z.boolean(),
-});
-
-export const stepSchema = z.strictObject({
-  id: z.guid(),
-  text: z.string().trim().min(1).max(2000),
-});
-
-export const tagSchema = z
-  .string()
-  .min(1)
-  .max(RECIPE_LIMITS.tagLength)
-  .refine((tag) => tag === tag.trim().toLowerCase(), 'Tags are trimmed and lowercase');
 
 const minutesSchema = (label: string) =>
   z

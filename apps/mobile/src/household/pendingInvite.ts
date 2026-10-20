@@ -1,7 +1,9 @@
+import { markLatestLink } from '../session/latestLink';
 // An invite opened while signed out, picked up after sign-in (spec §6).
 const KEY = 'recipes.pendingInvite';
 export function setPendingInvite(code: string): void {
   globalThis.sessionStorage?.setItem(KEY, code);
+  markLatestLink('invite');
 }
 export function peekPendingInvite(): string | null {
   const code = globalThis.sessionStorage?.getItem(KEY) ?? null;

@@ -55,7 +55,27 @@ async function recipeWithPhoto(actor: Actor, title: string): Promise<string> {
   return recipe;
 }
 
+async function shareLink(actor: Actor, recipeId: string): Promise<string> {
+  const response = await call(actor, 'POST', '/shares', { recipe_id: recipeId });
+  expect(response.status).toBe(201);
+  return ((await response.json()) as { code: string }).code;
+}
+
+async function stop(actor: Actor, recipeId: string): Promise<void> {
+  expect((await call(actor, 'POST', '/shares/stop', { recipe_id: recipeId })).status).toBe(200);
+}
+
 describe('sharing endpoints', () => {
+  it('Link twice gives the same code; after Stop sharing, a new one', async () => {
+    const cook = await fresh();
+    const recipeId = await recipeWithPhoto(cook, 'Twice soup');
+    const first = await shareLink(cook, recipeId);
+    const second = await shareLink(cook, recipeId);
+    expect(second).toBe(first);
+    await stop(cook, recipeId);
+    expect(await shareLink(cook, recipeId)).not.toBe(first);
+  });
+
   it('shares a snapshot anyone can read, with its photo, until stopped or trashed', async () => {
     const cook = await fresh();
     const recipe = await recipeWithPhoto(cook, 'Shared stew');

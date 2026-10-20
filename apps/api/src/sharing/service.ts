@@ -31,7 +31,7 @@ const KEYS: readonly string[] = ['forbidden', 'share_unavailable', 'own_househol
 export function createSharingService(deps: {
   asUser: AsUser;
   asAnonymous: Anonymous;
-  store: Pick<PhotoStore, 'copy' | 'read'>;
+  store: Pick<PhotoStore, 'copy' | 'read' | 'remove'>;
   now?: () => Date;
 }): SharingService {
   const now = deps.now ?? (() => new Date());
@@ -82,7 +82,13 @@ export function createSharingService(deps: {
             left join public.photos p on p.id = r.photo_id and p.uploaded_at is not null and p.deleted_at is null
             where r.id = ${recipeId} and r.deleted_at is null`;
           if (!recipe) throw new ShareRefusal('not_found');
-          const shareId = randomUUID();
+          // The recipe's live link, if its code was kept, is handed out again
+          // with the latest snapshot (bug batch §4).
+          const [live] = await tx<{ id: string }[]>`
+            select id from public.shares
+            where recipe_id = ${recipeId} and deleted_at is null and kept_code is not null
+            order by created_at desc limit 1`;
+          const shareId = live?.id ?? randomUUID();
           const copied =
             typeof recipe.photo_id === 'string'
               ? await deps.store.copy(
@@ -117,9 +123,18 @@ export function createSharingService(deps: {
               now(),
             ),
           );
-          const [row] = await tx<{ token: string }[]>`
-            select token from public.create_share(${shareId}, ${recipeId}, ${json(tx, snapshot)})`;
-          return { code: row!.token };
+          const household = String(recipe.household_id);
+          // A reused link whose recipe lost its photo keeps no stale copy.
+          if (live && !copied) await deps.store.remove(household, shareId).catch(() => {});
+          try {
+            const [row] = await tx<{ token: string }[]>`
+              select token from public.create_share(${shareId}, ${recipeId}, ${json(tx, snapshot)})`;
+            return { code: row!.token };
+          } catch (error) {
+            // A refused new link must not leave its photo copy behind.
+            if (copied && !live) await deps.store.remove(household, shareId).catch(() => {});
+            throw error;
+          }
         }),
       ),
 
