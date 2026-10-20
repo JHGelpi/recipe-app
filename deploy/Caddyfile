@@ -5,8 +5,6 @@
 	skip_install_trust
 	# Safari sends no SNI when connecting to an IP address.
 	default_sni {$LAN_HTTPS_HOST:localhost}
-	# A browser that sends plain HTTP to the HTTPS port is redirected to
-	# HTTPS rather than shown an error.
 	# Production: the tunnel connector forwards the visitor's scheme and address.
 	servers :8080 {
 		trusted_proxies static {$TRUSTED_PROXIES:127.0.0.1/32}
@@ -14,6 +12,8 @@
 		# visitor cannot choose the address the sign-up limits see.
 		trusted_proxies_strict
 	}
+	# A browser that sends plain HTTP to the HTTPS port is redirected to
+	# HTTPS rather than shown an error.
 	servers :8443 {
 		listener_wrappers {
 			http_redirect

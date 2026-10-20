@@ -27,7 +27,16 @@ describe('the production guard', () => {
     [{ ...safe, argv: ['--env-file', '.env.production'] }],
     [{ ...safe, dotenv: 'APP_ENV=production\n' }],
     [{ ...safe, dotenv: 'COMPOSE_PROJECT_NAME=dishkept\n' }],
+    [{ ...safe, dotenv: 'APP_ENV="production"\n' }],
+    [{ ...safe, dotenv: "APP_ENV='production'\n" }],
+    [{ ...safe, dotenv: 'APP_ENV="production"  # live\n' }],
+    [{ ...safe, dotenv: 'COMPOSE_PROJECT_NAME="dishkept"\n' }],
+    [{ ...safe, dotenv: "COMPOSE_PROJECT_NAME='dishkept'\n" }],
   ])('refuses on %j', (input) => expect(productionSignals(input).length).toBeGreaterThan(0));
+  it('passes a dev .env that only mentions production in a comment or another value', () =>
+    expect(
+      productionSignals({ ...safe, dotenv: '# APP_ENV=production\nAPP_ENV=development\n' }),
+    ).toEqual([]));
 });
 
 describe('deploy preconditions', () => {

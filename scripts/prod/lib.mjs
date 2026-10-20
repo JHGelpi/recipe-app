@@ -25,6 +25,15 @@ export function composeArgs(project = PROJECT) {
   ];
 }
 
+/** A .env value as Compose reads it: quotes removed, a trailing " # comment" dropped. */
+function dotenvValue(dotenv, name) {
+  const line = dotenv.split('\n').find((l) => new RegExp(`^${name}\\s*=`).test(l));
+  if (line === undefined) return null;
+  const raw = line.slice(line.indexOf('=') + 1).trim();
+  const quoted = /^(["'])(.*)\1/.exec(raw);
+  return quoted ? quoted[2] : raw.replace(/\s+#.*$/, '').trim();
+}
+
 /** Reasons a dev or test command must not run here; empty when it is safe. */
 export function productionSignals({ env, argv, dotenv, prodEnvPresent = false }) {
   const reasons = [];
@@ -35,8 +44,8 @@ export function productionSignals({ env, argv, dotenv, prodEnvPresent = false })
   if ((env.COMPOSE_ENV_FILES ?? '').includes(ENV_FILE))
     reasons.push('COMPOSE_ENV_FILES names .env.production');
   if (argv.some((arg) => arg.includes(ENV_FILE))) reasons.push('the command names .env.production');
-  if (/^APP_ENV=production\s*$/m.test(dotenv)) reasons.push('.env says APP_ENV=production');
-  if (/^COMPOSE_PROJECT_NAME=dishkept\s*$/m.test(dotenv))
+  if (dotenvValue(dotenv, 'APP_ENV') === 'production') reasons.push('.env says APP_ENV=production');
+  if (dotenvValue(dotenv, 'COMPOSE_PROJECT_NAME') === PROJECT)
     reasons.push('.env names the dishkept project');
   return reasons;
 }
