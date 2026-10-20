@@ -17,6 +17,7 @@ import {
   LIST_BACKUPS_SH,
   newSigningKeys,
   normalizeEmail,
+  parseFlags,
   PHOTO_PATH,
   photoCheckProblem,
   pickBackup,
@@ -75,7 +76,15 @@ function deployedBuild() {
   return build.stdout?.trim() || 'unknown';
 }
 
-const [command, ...rest] = process.argv.slice(2);
+const [command, ...args] = process.argv.slice(2);
+let flags;
+try {
+  flags = parseFlags(args);
+} catch (error) {
+  console.error(error.message);
+  process.exit(1);
+}
+const rest = flags.positional;
 
 /** Clean, current main: what the stack reads its sync rules and migrations from. */
 function requireCurrentMain(action) {
@@ -87,6 +96,21 @@ function requireCurrentMain(action) {
     originMain: git('rev-parse', 'origin/main'),
   });
   if (blockers.length) fail(`Not ${action}:\n- ${blockers.join('\n- ')}`);
+}
+
+/** --key-file, for runs with no one at the prompt (the VM trial), or the question. */
+async function keyPathFromFlagOrAsk() {
+  if (flags.keyFile) {
+    const keyPath = resolve(flags.keyFile);
+    if (!existsSync(keyPath) || !statSync(keyPath).isFile()) fail(`No key file at ${keyPath}`);
+    return keyPath;
+  }
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    return await askKeyPath(rl);
+  } finally {
+    rl.close();
+  }
 }
 
 /** The private key file, as an absolute path (a bare name would be a Compose volume). */
@@ -162,7 +186,7 @@ const commands = {
   deploy() {
     requireCurrentMain('deploying');
     // The site goes public only once the gate is on (deploySequence).
-    for (const step of deploySequence()) {
+    for (const step of deploySequence({ tunnel: flags.tunnel })) {
       if (step.args) {
         if (compose(step.args, {}, step.profiles).status !== 0)
           fail('Deploy failed: pnpm prod:logs');
@@ -176,6 +200,8 @@ const commands = {
         ensureGate();
       }
     }
+    if (!flags.tunnel)
+      console.log('Started without the tunnel: the site is not reachable from outside.');
     commands.status();
   },
 
@@ -289,9 +315,7 @@ const commands = {
   async 'restore-test'() {
     // The drill builds its images from this checkout.
     requireCurrentMain('running the drill');
-    const rl = createInterface({ input: process.stdin, output: process.stdout });
-    const keyPath = await askKeyPath(rl);
-    rl.close();
+    const keyPath = await keyPathFromFlagOrAsk();
     const file = await fetchBackup();
     const drill = (args, opts = {}) =>
       spawnSync(

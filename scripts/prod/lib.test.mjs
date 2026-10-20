@@ -14,6 +14,7 @@ import {
   PHOTO_PATH,
   pickBackup,
   productionSignals,
+  parseFlags,
   RECREATABLE,
 } from './lib.mjs';
 
@@ -181,4 +182,32 @@ it('a new signing key is one ES256 private JWK with its own id', () => {
 
 it('only the backup loop can be recreated: other services reread files from the checkout', () => {
   expect(RECREATABLE).toEqual(['backup']);
+});
+
+describe('the prod flags (infrastructure spec §5)', () => {
+  it('deploys the tunnel last by default', () => {
+    const steps = deploySequence();
+    expect(steps.at(-1).args).toEqual(['up', '-d', '--wait', 'cloudflared']);
+  });
+
+  it('leaves the tunnel out with --no-tunnel, keeping every other step', () => {
+    const steps = deploySequence({ tunnel: false });
+    expect(steps.some((step) => step.args?.includes('cloudflared'))).toBe(false);
+    expect(steps).toEqual(deploySequence().slice(0, -1));
+  });
+
+  it('reads --no-tunnel and --key-file, and keeps the rest as positional', () => {
+    expect(parseFlags([])).toEqual({ tunnel: true, keyFile: null, positional: [] });
+    expect(parseFlags(['--no-tunnel'])).toEqual({ tunnel: false, keyFile: null, positional: [] });
+    expect(parseFlags(['--key-file', '/tmp/k', '2026-10-19'])).toEqual({
+      tunnel: true,
+      keyFile: '/tmp/k',
+      positional: ['2026-10-19'],
+    });
+  });
+
+  it('refuses --key-file without a path, and unknown flags', () => {
+    expect(() => parseFlags(['--key-file'])).toThrow('--key-file needs a path');
+    expect(() => parseFlags(['--tunnel=no'])).toThrow('Unknown flag: --tunnel=no');
+  });
 });

@@ -125,15 +125,33 @@ export function checkoutBlockers({ cwd, hasDevEnv }) {
 export const RECREATABLE = ['backup'];
 
 /** First deploy order: services, then the gate, and only then the public tunnel. */
-export function deploySequence() {
+export function deploySequence({ tunnel = true } = {}) {
   return [
     { profiles: ['backup'], args: ['up', '-d', '--build', '--wait', '--remove-orphans'] },
     // The nightly loop records the build the proxy now serves (bug batch §5).
     { stampBackup: true },
     { restartSync: true },
     { gate: true },
-    { profiles: PROD_PROFILES, args: ['up', '-d', '--wait', 'cloudflared'] },
+    // Left out for a stack that must not take live traffic, such as the VM trial
+    // (infrastructure spec §5): two connectors on one token split it.
+    ...(tunnel ? [{ profiles: PROD_PROFILES, args: ['up', '-d', '--wait', 'cloudflared'] }] : []),
   ];
+}
+
+/** The flags prod:* commands take (infrastructure spec §5); the rest stay positional. */
+export function parseFlags(args) {
+  const flags = { tunnel: true, keyFile: null, positional: [] };
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === '--no-tunnel') flags.tunnel = false;
+    else if (arg === '--key-file') {
+      const path = args[++i];
+      if (!path || path.startsWith('--')) throw new Error('--key-file needs a path');
+      flags.keyFile = path;
+    } else if (arg.startsWith('--')) throw new Error(`Unknown flag: ${arg}`);
+    else flags.positional.push(arg);
+  }
+  return flags;
 }
 
 const BACKUP_NAME = /^dishkept-\d{4}-\d{2}-\d{2}(T\d{4}Z)?\.tar\.age$/;
