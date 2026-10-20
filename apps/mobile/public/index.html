@@ -23,6 +23,24 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
     <meta name="theme-color" content="#0E121A" />
     <meta name="color-scheme" content="dark" />
+    <!-- The saved appearance, or the system's, before anything paints (ADR-0020).
+         Plain ES5; the app keeps it in step from here (src/theme/useAppearance.ts). -->
+    <script>
+      (function () {
+        var theme = 'dark';
+        try {
+          var saved = localStorage.getItem('dishkept.appearance');
+          if (saved === 'light' || saved === 'dark') theme = saved;
+          else theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        } catch (e) {}
+        document.documentElement.setAttribute('data-theme', theme);
+        var bg = { dark: '#0E121A', light: '#F6F7F9' }[theme];
+        var themeColor = document.querySelector('meta[name="theme-color"]');
+        if (themeColor) themeColor.setAttribute('content', bg);
+        var scheme = document.querySelector('meta[name="color-scheme"]');
+        if (scheme) scheme.setAttribute('content', theme);
+      })();
+    </script>
     <!-- "black", not "black-translucent": translucent draws the page under the
          iPhone's clock and Dynamic Island. -->
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />
@@ -44,14 +62,19 @@
         height: 100%;
         flex: 1;
       }
-      /* The theme's background, so no white shows before the app draws. */
-      html,
-      body {
+      /* The theme's background, so nothing else shows before the app draws.
+         The values match src/theme/palettes.ts (indexHtml.test.ts). */
+      html[data-theme='dark'],
+      html[data-theme='dark'] body {
         background-color: #0e121a;
       }
-      /* Keyboard focus is always visible: the theme's mint (UI spec §2). */
+      html[data-theme='light'],
+      html[data-theme='light'] body {
+        background-color: #f6f7f9;
+      }
+      /* Keyboard focus is always visible: the theme's accent (UI spec §2). */
       :focus-visible {
-        outline: 2px solid #00f5d4;
+        outline: 2px solid var(--accent, #00f5d4);
         outline-offset: 2px;
       }
       /* Text fields show focus with their own mint border instead. */
