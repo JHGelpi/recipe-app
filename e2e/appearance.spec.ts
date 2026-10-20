@@ -23,6 +23,22 @@ test.describe('under a light system setting', () => {
     await page.goto('/');
     expect(await look(page)).toEqual(LIGHT);
   });
+
+  test('with storage blocked, the page still follows the system (final review 2)', async ({
+    page,
+    context,
+  }) => {
+    await context.addInitScript(() =>
+      Object.defineProperty(window, 'localStorage', {
+        get() {
+          throw new DOMException('Blocked', 'SecurityError');
+        },
+      }),
+    );
+    await page.route('**/_expo/static/js/**', (route) => route.abort());
+    await page.goto('/');
+    expect(await look(page)).toEqual(LIGHT);
+  });
 });
 
 test.describe('under a dark system setting', () => {

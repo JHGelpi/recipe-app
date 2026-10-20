@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyTheme,
+  deviceStorage,
   installThemeCss,
   readAppearance,
   resolveTheme,
@@ -117,5 +118,23 @@ describe('installThemeCss', () => {
     installThemeCss(doc);
     installThemeCss(doc);
     expect(added).toEqual([{ id: THEME_STYLE_ID, textContent: themeCss() }]);
+  });
+});
+
+describe('deviceStorage (final review 2)', () => {
+  it('is undefined, not a throw, when the browser blocks storage', () => {
+    const before = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      get() {
+        throw new Error('SecurityError');
+      },
+    });
+    try {
+      expect(deviceStorage()).toBeUndefined();
+    } finally {
+      if (before) Object.defineProperty(globalThis, 'localStorage', before);
+      else delete (globalThis as { localStorage?: unknown }).localStorage;
+    }
   });
 });

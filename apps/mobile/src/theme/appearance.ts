@@ -10,6 +10,15 @@ export const THEME_STYLE_ID = 'dishkept-theme';
 
 export type AppearanceStore = Pick<Storage, 'getItem' | 'setItem'>;
 
+/** localStorage, or undefined where the browser blocks it: even reading the property throws there. */
+export function deviceStorage(): AppearanceStore | undefined {
+  try {
+    return globalThis.localStorage;
+  } catch {
+    return undefined;
+  }
+}
+
 /** The saved choice; System when none is saved, it is unknown, or storage can't be read. */
 export function readAppearance(storage: AppearanceStore | undefined): Appearance {
   try {

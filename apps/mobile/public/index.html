@@ -29,9 +29,12 @@
       (function () {
         var theme = 'dark';
         try {
+          theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        } catch (e) {}
+        // Apart, so blocked storage still leaves the system's theme.
+        try {
           var saved = localStorage.getItem('dishkept.appearance');
           if (saved === 'light' || saved === 'dark') theme = saved;
-          else theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         } catch (e) {}
         document.documentElement.setAttribute('data-theme', theme);
         var bg = { dark: '#0E121A', light: '#F6F7F9' }[theme];

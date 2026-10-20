@@ -15,7 +15,8 @@ const dark = {
   scrim: 'rgba(14, 18, 26, 0.72)',
   // The tag bar's edge fade: the background, fully transparent.
   fade: 'rgba(14, 18, 26, 0)',
-  shadow: '#000000',
+  // Carries its own softness: react-native-web drops shadowOpacity for var() colors.
+  shadow: 'rgba(0, 0, 0, 0.35)',
 } as const;
 
 export type ColorName = keyof typeof dark;
@@ -35,7 +36,7 @@ const light: Record<ColorName, string> = {
   onAccent: '#FFFFFF',
   scrim: 'rgba(14, 18, 26, 0.48)',
   fade: 'rgba(246, 247, 249, 0)',
-  shadow: '#000000',
+  shadow: 'rgba(14, 18, 26, 0.18)',
 };
 
 export const palettes: Record<Theme, Record<ColorName, string>> = { dark, light };

@@ -3,6 +3,7 @@ import {
   APPEARANCE_KEY,
   applyTheme,
   DARK_QUERY,
+  deviceStorage,
   installThemeCss,
   readAppearance,
   resolveTheme,
@@ -11,7 +12,7 @@ import {
   type Appearance,
 } from './appearance';
 
-const store = () => globalThis.localStorage as Storage | undefined;
+const store = deviceStorage;
 
 // The page's current choice. Held here too, so a choice storage refused still lasts the visit.
 let current: Appearance | undefined;
