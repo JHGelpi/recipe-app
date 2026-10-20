@@ -51,3 +51,6 @@ test-results/
 
 # Proxy data: the private CA that phones trust (see README)
 .local/
+
+# OpenTofu's provider cache; the lock file is committed.
+infra/tofu/.terraform/
