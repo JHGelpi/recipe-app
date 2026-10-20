@@ -8,7 +8,7 @@
   ansible.builtin.get_url:
     url: https://download.docker.com/linux/debian/gpg
     dest: /etc/apt/keyrings/docker.asc
-    mode: "0644"
+    mode: '0644'
   become: true
 
 - name: Add Docker's apt repository
@@ -33,7 +33,7 @@
 
 - name: Let the user run docker
   ansible.builtin.user:
-    name: "{{ ansible_user_id }}"
+    name: '{{ ansible_user_id }}'
     groups: docker
     append: true
   become: true

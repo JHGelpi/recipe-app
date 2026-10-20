@@ -35,6 +35,8 @@ pnpm photos:samples          # regenerate the photo fixtures and eval samples (P
 pnpm test:backup             # backup → restore drill round trip against the test stack (local folder for GCS)
 pnpm test:prod-config        # the production overlay publishes no ports; drills never start the tunnel
 pnpm test:jwt-rotation       # the runbook's signing-key rotation on a throwaway project (needs dev's .env)
+pnpm test:infra              # tofu fmt/validate, Ansible syntax and lint; touches no cloud account
+pnpm infra:secrets           # build or update the Ansible Vault file (--edit, --refresh); infra/README.md
 # Production: only `pnpm prod:*` (init, deploy, status, logs, stop, start, allow, disallow, allowed, gate,
 # backup-now, test-alert, recreate, new-signing-key, restore, restore-test) touches it; see docs/RUNBOOK.md.
 # After test runs, `pnpm dev:backend` switches the stack back to the real AI service.

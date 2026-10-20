@@ -1,5 +1,5 @@
 # Non-secret settings. Secrets are in vault.yml beside this file (ansible-vault).
-app_dir: "{{ ansible_env.HOME }}/dishkept"
+app_dir: '{{ ansible_env.HOME }}/dishkept'
 vm_zone: us-east1-b
 # false starts the stack without cloudflared (prod:deploy --no-tunnel): the VM trial.
 tunnel: true

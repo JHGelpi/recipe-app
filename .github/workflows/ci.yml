@@ -23,6 +23,11 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.10.5
+      - run: pip install ansible-core ansible-lint
+      - run: pnpm test:infra
 
   backend:
     runs-on: ubuntu-latest

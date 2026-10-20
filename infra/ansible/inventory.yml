@@ -14,4 +14,4 @@ all:
         --zone={{ vm_zone }} --project={{ lookup('ansible.builtin.env', 'DISHKEPT_GCP_PROJECT') }}'
         -o StrictHostKeyChecking=accept-new
       # The repo is private: the VM clones with a read-only token (plan, Global Constraints).
-      repo_url: "https://x-access-token:{{ vault_github_read_token }}@github.com/JHGelpi/recipe-app.git"
+      repo_url: 'https://x-access-token:{{ vault_github_read_token }}@github.com/JHGelpi/recipe-app.git'

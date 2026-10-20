@@ -1,11 +1,11 @@
 - name: Keep production off the Windows drives (the prod:* guard says the same)
   ansible.builtin.assert:
     that: not app_dir.startswith('/mnt/')
-    fail_msg: "{{ app_dir }} is on a Windows drive; production runs from ~/dishkept"
+    fail_msg: '{{ app_dir }} is on a Windows drive; production runs from ~/dishkept'
 
 - name: Look for an existing checkout
   ansible.builtin.stat:
-    path: "{{ app_dir }}/.git"
+    path: '{{ app_dir }}/.git'
   register: app_checkout
 
 - name: Read the checkout's branch and changes
@@ -33,8 +33,8 @@
 
 - name: Clone or fast-forward to main
   ansible.builtin.git:
-    repo: "{{ repo_url }}"
-    dest: "{{ app_dir }}"
+    repo: '{{ repo_url }}'
+    dest: '{{ app_dir }}'
     version: main
     update: true
   register: app_code
@@ -45,22 +45,22 @@
 
 - name: Make the private folder
   ansible.builtin.file:
-    path: "{{ app_dir }}/.local"
+    path: '{{ app_dir }}/.local'
     state: directory
-    mode: "0700"
+    mode: '0700'
 
 - name: Write .env.production
   ansible.builtin.copy:
-    content: "{{ vault_prod_env }}"
-    dest: "{{ app_dir }}/.env.production"
-    mode: "0600"
+    content: '{{ vault_prod_env }}'
+    dest: '{{ app_dir }}/.env.production'
+    mode: '0600'
   no_log: true
   notify: Deploy Dishkept
 
 - name: Write the GCS backup key
   ansible.builtin.copy:
-    content: "{{ vault_gcs_backup_key }}"
-    dest: "{{ app_dir }}/.local/gcs-backup-key.json"
-    mode: "0600"
+    content: '{{ vault_gcs_backup_key }}'
+    dest: '{{ app_dir }}/.local/gcs-backup-key.json'
+    mode: '0600'
   no_log: true
   notify: Deploy Dishkept

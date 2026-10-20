@@ -22,12 +22,12 @@
           ansible.builtin.copy:
             content: "{{ age_secret_key }}\n"
             dest: /tmp/dishkept-age.key
-            mode: "0600"
+            mode: '0600'
           no_log: true
         - name: Restore the newest backup into a throwaway stack
           ansible.builtin.command: corepack pnpm prod:restore-test --key-file /tmp/dishkept-age.key
           args:
-            chdir: "{{ app_dir }}"
+            chdir: '{{ app_dir }}'
           register: drill
           changed_when: false
         - name: Show the drill's result

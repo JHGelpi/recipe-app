@@ -12,7 +12,7 @@
 
 - name: Read Docker Desktop's settings
   ansible.builtin.slurp:
-    src: "{{ serve_appdata.stdout }}/Docker/settings-store.json"
+    src: '{{ serve_appdata.stdout }}/Docker/settings-store.json'
   register: serve_docker_settings
   failed_when: false
   when: serve_appdata.rc == 0
