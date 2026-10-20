@@ -232,6 +232,10 @@ const commands = {
     return compose(['run', '--rm', '-e', 'BUILD_TIME', 'backup', 'now']);
   },
 
+  // Sends the backup alert's test message, so the mail settings can be checked (bug batch §5).
+  'test-alert': () =>
+    compose(['run', '--rm', '--no-deps', '--entrypoint', '/opt/backup/alert.sh', 'backup', 'test']),
+
   async restore() {
     const date = rest[0];
     if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) fail('Usage: pnpm prod:restore [YYYY-MM-DD]');

@@ -129,6 +129,39 @@ const mail = await (
 ).json();
 if (!mail.messages?.some((m) => m.Subject.includes('backup FAILED'))) fail('no alert email');
 
+// 2b. The alert carries a Date header and the run's last lines.
+const alertId = mail.messages.find((m) => m.Subject.includes('backup FAILED')).ID;
+const headers = await (
+  await fetch(`http://127.0.0.1:8025/api/v1/message/${alertId}/headers`)
+).json();
+if (!headers.Date?.length) fail('the alert has no Date header');
+const body = (await (await fetch(`http://127.0.0.1:8025/api/v1/message/${alertId}`)).json()).Text;
+if (!body.includes('nosuchremote')) fail(`the alert has no log lines:\n${body}`);
+
+// 2c. TLS by port: STARTTLS on 587, implicit TLS on 465, none for Mailpit.
+const flags = (port) =>
+  dc(['run', '--rm', '--entrypoint', 'sh', 'backup', '/opt/backup/smtp-tls.sh', port]).trim();
+if (flags('587') !== '--tls=on --tls-starttls=on') fail(`587: ${flags('587')}`);
+if (flags('465') !== '--tls=on --tls-starttls=off') fail(`465: ${flags('465')}`);
+if (flags('1025') !== '--tls=off --tls-starttls=off') fail(`1025: ${flags('1025')}`);
+
+// 2d. The test alert sends with no log (Review Focus 4).
+dc([
+  'run',
+  '--rm',
+  '--no-deps',
+  '-e',
+  'BACKUP_ALERT_TO=ops-test@example.test',
+  '--entrypoint',
+  '/opt/backup/alert.sh',
+  'backup',
+  'test',
+]);
+const tested = await (
+  await fetch('http://127.0.0.1:8025/api/v1/search?query=to:ops-test@example.test')
+).json();
+if (!tested.messages?.some((m) => m.Subject === 'Dishkept alert test')) fail('no test alert');
+
 // 3. Restore into a drill project; the wrong key fails before anything is dropped.
 const drill = ['-p', 'recipe-app-drill'];
 // Its own loopback port, so it never clashes with the dev database's.

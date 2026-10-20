@@ -31,6 +31,7 @@
     "prod:allowed": "node scripts/prod/cli.mjs allowed",
     "prod:gate": "node scripts/prod/cli.mjs gate",
     "prod:backup-now": "node scripts/prod/cli.mjs backup-now",
+    "prod:test-alert": "node scripts/prod/cli.mjs test-alert",
     "prod:restore": "node scripts/prod/cli.mjs restore",
     "prod:restore-test": "node scripts/prod/cli.mjs restore-test",
     "test:backup": "node scripts/guard.mjs && node scripts/test-backup.mjs",

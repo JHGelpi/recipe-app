@@ -52,7 +52,7 @@ When you later set up email on geltech.dev, its MX and TXT records go in Cloudfl
 ### 3. Zoho app password
 
 1. At accounts.zoho.com, signed in as `wes@data2insightsllc.com`: **Security**, then **App Passwords**, then **Generate New Password**, named `Dishkept`. Copy it.
-2. The SMTP settings are `smtp.zoho.com`, port `465` (SSL). Zoho only allows sending from the address you log in with, so the login and From address are the same.
+2. The SMTP settings are `smtp.zoho.com`, port `465` (SSL). Zoho only allows sending from the address you log in with, so the login and From address are the same. Port `587` also works: the alert then uses STARTTLS.
 
 Zoho's free plan doesn't include SMTP. If step 7's test code never arrives, check the plan first.
 
@@ -166,6 +166,7 @@ The drill asks for the path to a file holding your secret key. See "Restore" for
 | See the list | `pnpm prod:allowed` |
 | Open or close sign-up for everyone | `pnpm prod:gate off` / `pnpm prod:gate on` |
 | Back up now | `pnpm prod:backup-now` |
+| Check that alert emails arrive | `pnpm prod:test-alert` (sends "Dishkept alert test" to `BACKUP_ALERT_TO`) |
 | Stop production (for example before a long e2e run) | `pnpm prod:stop`; start it again with `pnpm prod:start` (needs a clean, current `main` in `~/dishkept`) |
 
 People with an invite, share or friend link don't need to be on the list. The app gets them a 24-hour pass. People who already have an account can always sign in.

@@ -35,7 +35,7 @@ pnpm photos:samples          # regenerate the photo fixtures and eval samples (P
 pnpm test:backup             # backup → restore drill round trip against the test stack (local folder for GCS)
 pnpm test:prod-config        # the production overlay publishes no ports; drills never start the tunnel
 # Production: only `pnpm prod:*` (init, deploy, status, logs, stop, start, allow, disallow, allowed, gate,
-# backup-now, restore, restore-test) touches it; see docs/RUNBOOK.md.
+# backup-now, test-alert, restore, restore-test) touches it; see docs/RUNBOOK.md.
 # After test runs, `pnpm dev:backend` switches the stack back to the real AI service.
 # After changing powersync/sync-config.yaml, restart sync: `docker compose restart sync` (it reads the file only at start).
 pnpm lint && pnpm typecheck
