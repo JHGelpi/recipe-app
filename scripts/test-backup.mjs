@@ -22,7 +22,24 @@ const wrong = dc(['run', '--rm', '--entrypoint', 'age-keygen', 'backup']).match(
   /^AGE-SECRET-KEY-\S+$/m,
 )[0];
 
-const env = ['-e', `BACKUP_AGE_RECIPIENT=${recipient}`, '-e', 'BACKUP_REMOTE=/backups/offsite'];
+const env = [
+  '-e',
+  `BACKUP_AGE_RECIPIENT=${recipient}`,
+  '-e',
+  'BACKUP_REMOTE=/backups/offsite',
+  '-e',
+  'BUILD_TIME=2026-01-02 03:04',
+];
+const SAMPLE = '00000000-0000-4000-8000-00000000b4c4/00000000-0000-4000-8000-00000000b4c5.jpg';
+dc([
+  'run',
+  '--rm',
+  '--entrypoint',
+  'sh',
+  'backup',
+  '-c',
+  `mkdir -p /data/photos/${SAMPLE.split('/')[0]} && printf 'sample photo bytes' > /data/photos/${SAMPLE}`,
+]);
 // 1. Retention: nine old local copies; after one backup only seven remain.
 dc([
   'run',
@@ -46,7 +63,7 @@ const listing = dc([
 const local = listing.split('\n').filter((l) => l.startsWith('/backups/dishkept-'));
 if (local.length !== 7) fail(`kept ${local.length} local copies, not 7`);
 const newest = local.sort().at(-1);
-if (!/dishkept-\d{4}-\d{2}-\d{2}\.tar\.age$/.test(newest)) fail(`bad name ${newest}`);
+if (!/dishkept-\d{4}-\d{2}-\d{2}T\d{4}Z\.tar\.age$/.test(newest)) fail(`bad name ${newest}`);
 if (!listing.includes(newest.split('/').pop())) fail('not uploaded to the remote');
 
 // 1b. Catch-up: a slot never tried (PC off at BACKUP_TIME) runs at the next tick; the next tick does not.
@@ -55,6 +72,41 @@ const due = dc(['run', '--rm', ...env, 'backup', 'tick']);
 if (!due.includes('backup ok')) fail(`a missed slot did not back up:\n${due}`);
 const again = dc(['run', '--rm', ...env, 'backup', 'tick']);
 if (!again.includes('not due')) fail(`a tried slot backed up again:\n${again}`);
+
+// 1c. A psql that fails while the manifest is built fails the run; nothing is uploaded (Review Focus 2).
+const before = dc([
+  'run',
+  '--rm',
+  '--entrypoint',
+  'sh',
+  'backup',
+  '-c',
+  'ls -1 /backups/offsite | wc -l',
+]).trim();
+const broken = spawnSync('docker', [
+  'compose',
+  '--profile',
+  'backup',
+  'run',
+  '--rm',
+  ...env,
+  '--entrypoint',
+  'sh',
+  'backup',
+  '-c',
+  `mkdir -p /tmp/fake && printf '%s\\n' '#!/bin/sh' 'case "$*" in *public.shares*) echo "fake psql failure" >&2; exit 2;; esac' 'exec /usr/local/bin/psql "$@"' > /tmp/fake/psql && chmod +x /tmp/fake/psql && sleep 61 && PATH=/tmp/fake:$PATH /opt/backup/backup.sh`,
+]);
+if (broken.status === 0) fail('a failing psql in the manifest still reported success');
+const after = dc([
+  'run',
+  '--rm',
+  '--entrypoint',
+  'sh',
+  'backup',
+  '-c',
+  'ls -1 /backups/offsite | wc -l',
+]).trim();
+if (after !== before) fail('a failed manifest was uploaded');
 
 // 2. A failing upload emails an alert (Mailpit).
 const failed = spawnSync('docker', [
@@ -136,6 +188,10 @@ try {
   const manifest = JSON.parse(
     good.stdout.slice(good.stdout.indexOf('{'), good.stdout.lastIndexOf('}') + 1),
   );
+  if (manifest.build !== '2026-01-02 03:04') fail(`manifest build ${manifest.build}`);
+  if (!/^\d{4}-\d{2}-\d{2}T\d{4}Z$/.test(manifest.time ?? ''))
+    fail(`manifest time ${manifest.time}`);
+  if (!manifest.photo_check?.sha256) fail('manifest has no photo check');
   const q = (sql) =>
     Number(ddc(['exec', '-T', 'db', 'psql', '-U', 'postgres', '-d', 'app', '-Atc', sql]).trim());
   const actual = {
@@ -161,6 +217,22 @@ try {
   if (diffs.length) fail(`counts differ:\n- ${diffs.join('\n- ')}`);
   console.log(`test:backup ok: ${JSON.stringify(actual)}`);
 } finally {
+  spawnSync(
+    'docker',
+    [
+      'compose',
+      '--profile',
+      'backup',
+      'run',
+      '--rm',
+      '--entrypoint',
+      'sh',
+      'backup',
+      '-c',
+      `rm -rf /data/photos/${SAMPLE.split('/')[0]}`,
+    ],
+    { stdio: 'inherit' },
+  );
   spawnSync('docker', ['compose', ...drill, '--profile', 'backup', 'down', '-v'], {
     stdio: 'inherit',
     env: drillEnv,

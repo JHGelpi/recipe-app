@@ -53,6 +53,22 @@ const psql = (sql) => {
 };
 const literal = (value) => `'${value.replaceAll("'", "''")}'`;
 
+/** The build time baked into the served bundle (the app footer's "Build ..."). */
+function deployedBuild() {
+  const build = compose(
+    [
+      'exec',
+      '-T',
+      'proxy',
+      'sh',
+      '-c',
+      "grep -rhoE '20[0-9]{2}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}' /srv/web/_expo/static/js | head -n 1",
+    ],
+    { stdio: ['ignore', 'pipe', 'ignore'], encoding: 'utf8' },
+  );
+  return build.stdout?.trim() || 'unknown';
+}
+
 const [command, ...rest] = process.argv.slice(2);
 
 /** Clean, current main: what the stack reads its sync rules and migrations from. */
@@ -156,6 +172,10 @@ const commands = {
       if (step.args) {
         if (compose(step.args, {}, step.profiles).status !== 0)
           fail('Deploy failed: pnpm prod:logs');
+      } else if (step.stampBackup) {
+        process.env.BUILD_TIME = deployedBuild();
+        if (compose(['up', '-d', '--no-deps', 'backup'], {}, ['backup']).status !== 0)
+          fail('Deploy failed: pnpm prod:logs backup');
       } else if (step.restartSync) {
         compose(['restart', 'sync']);
       } else if (step.gate) {
@@ -167,19 +187,7 @@ const commands = {
 
   status() {
     compose(['ps']);
-    // The build time baked into the served bundle (the app footer's "Build ...").
-    const build = compose(
-      [
-        'exec',
-        '-T',
-        'proxy',
-        'sh',
-        '-c',
-        "grep -rhoE '20[0-9]{2}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}' /srv/web/_expo/static/js | head -n 1",
-      ],
-      { stdio: ['ignore', 'pipe', 'ignore'], encoding: 'utf8' },
-    );
-    console.log(`Deployed build: ${build.stdout?.trim() || 'unknown'}`);
+    console.log(`Deployed build: ${deployedBuild()}`);
     const last = compose(['exec', '-T', 'backup', 'cat', '/backups/last-success'], {
       stdio: ['ignore', 'pipe', 'ignore'],
       encoding: 'utf8',
@@ -219,7 +227,10 @@ const commands = {
     console.log(`Gate ${rest[0]}`);
   },
 
-  'backup-now': () => compose(['run', '--rm', 'backup', 'now']),
+  'backup-now'() {
+    process.env.BUILD_TIME = deployedBuild();
+    return compose(['run', '--rm', '-e', 'BUILD_TIME', 'backup', 'now']);
+  },
 
   async restore() {
     const date = rest[0];

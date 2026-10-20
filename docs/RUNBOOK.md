@@ -83,8 +83,6 @@ Then:
 
 The service account can add and read backups but **cannot delete or overwrite** them, so a compromised PC can't erase old backups. The lifecycle rule removes them after 30 days.
 
-That also means **a second backup on the same day fails at upload**: the file name holds only the date. If `prod:backup-now` emails a failure on a day that already has a backup, that's why; the local copy was still written.
-
 **Check:** `ls -l .local/gcs-backup-key.json` shows the file.
 
 ### 5. The backup key
@@ -144,7 +142,7 @@ The drill asks for the path to a file holding your secret key. See "Restore" for
 
 **Check:**
 - the drill prints `DRILL PASSED`;
-- the bucket shows `dishkept-YYYY-MM-DD.tar.age`.
+- the bucket shows `dishkept-YYYY-MM-DDTHHMMZ.tar.age`.
 
 **Run the drill again every month.**
 

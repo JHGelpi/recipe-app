@@ -107,3 +107,8 @@ it('deploy turns the gate on before the tunnel makes the site public', () => {
   expect(gate).toBeGreaterThan(0);
   expect(tunnel).toBeGreaterThan(gate);
 });
+
+it('deploy stamps the backup loop with the build right after the stack is up', () => {
+  const steps = deploySequence();
+  expect(steps.findIndex((step) => step.stampBackup)).toBe(1);
+});

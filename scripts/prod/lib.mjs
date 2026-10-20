@@ -107,6 +107,8 @@ export function checkoutBlockers({ cwd, hasDevEnv }) {
 export function deploySequence() {
   return [
     { profiles: ['backup'], args: ['up', '-d', '--build', '--wait', '--remove-orphans'] },
+    // The nightly loop records the build the proxy now serves (bug batch §5).
+    { stampBackup: true },
     { restartSync: true },
     { gate: true },
     { profiles: PROD_PROFILES, args: ['up', '-d', '--wait', 'cloudflared'] },
