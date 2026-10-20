@@ -8,9 +8,12 @@ import { TabBar } from '../src/navigation/TabBar';
 import { registerServiceWorker } from '../src/pwa/serviceWorker';
 import { UpdateBanner } from '../src/pwa/UpdateBanner';
 import { SessionProvider } from '../src/session/SessionProvider';
-import { colors } from '../src/theme';
+import { AppearanceSync, colors, installTheme } from '../src/theme';
 import { FONT_FILES } from '../src/theme/fonts';
 import { IONICONS_FONT } from '../src/ui/Icon';
+
+// The color variables must exist before anything renders with them (ADR-0020).
+installTheme();
 
 export default function RootLayout() {
   useEffect(() => {
@@ -21,6 +24,7 @@ export default function RootLayout() {
 
   return (
     <SessionProvider>
+      <AppearanceSync />
       <DatabaseProvider>
         <DatabaseSessionBridge>
           <View style={{ flex: 1, backgroundColor: colors.bg }}>

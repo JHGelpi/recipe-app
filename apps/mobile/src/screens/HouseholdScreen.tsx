@@ -30,8 +30,19 @@ import { auth } from '../session/auth';
 import { clearFilter } from '../recipes/listFilter';
 import { canWrite, type Claims } from '../session/claims';
 import { useSession } from '../session/SessionProvider';
-import { colors, radius, space } from '../theme';
-import { Banner, Button, Card, Chip, Icon, RowCard, Screen, Text, TextField } from '../ui';
+import { colors, radius, space, useAppearance, type Appearance } from '../theme';
+import {
+  Banner,
+  Button,
+  Card,
+  Chip,
+  Icon,
+  PillTabs,
+  RowCard,
+  Screen,
+  Text,
+  TextField,
+} from '../ui';
 
 const ROLES: [HouseholdRoleName, string][] = [
   ['admin', 'Admin'],
@@ -40,11 +51,18 @@ const ROLES: [HouseholdRoleName, string][] = [
 ];
 const days = (iso: string) => Math.max(0, Math.ceil((Date.parse(iso) - Date.now()) / 86_400_000));
 
+const APPEARANCE_TABS: readonly { value: Appearance; label: string }[] = [
+  { value: 'system', label: 'System' },
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+];
+
 /** FR-3–FR-6: who is in the household, and (for Admins) invites and roles. */
 export function HouseholdScreen({ claims }: { claims: Claims }) {
   const db = usePowerSync();
   const { signOut } = useSession();
   const online = useNetworkOnline();
+  const { appearance, setAppearance } = useAppearance();
   const members = useMembers(claims.householdId);
   const name = useHouseholdName(claims.householdId);
   const admin = claims.role === 'admin';
@@ -346,6 +364,10 @@ export function HouseholdScreen({ claims }: { claims: Claims }) {
           ) : null}
         </>
       ) : null}
+      {/* A device setting, not household data, so viewers have it too (rule 4 doesn't apply). */}
+      <Card title="Appearance">
+        <PillTabs tabs={APPEARANCE_TABS} value={appearance} onChange={setAppearance} />
+      </Card>
       {canWrite(claims.role) ? (
         <RowCard
           title="Trash"
