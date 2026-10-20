@@ -39,6 +39,7 @@
     "test:backup": "node scripts/guard.mjs && node scripts/test-backup.mjs",
     "test:jwt-rotation": "node scripts/guard.mjs && node scripts/test-jwt-rotation.mjs",
     "test:prod-config": "node scripts/prod/check-config.mjs",
+    "infra:secrets": "node scripts/infra/secrets.mjs",
     "icons:make": "node scripts/make-icons.mjs"
   },
   "packageManager": "pnpm@12.11.2+sha512.25a51652a196785af5f28bda6dfe8dc582ebefa4ac1d180221ce1390231c5fb76637822ea4b6e4633ce74acdcb0a77f725af11bad38177fdeddaee818a955cb9",
