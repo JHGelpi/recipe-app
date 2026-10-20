@@ -1,5 +1,6 @@
 import { peekPendingInvite } from '../household/pendingInvite';
 import { peekPendingShare } from '../sharing/pending';
+import { latestLink, type LinkKind } from './latestLink';
 import { peekPendingFriend } from './pendingFriend';
 
 export type PassSource = { kind: 'invite' | 'share' | 'friend'; code: string };
@@ -8,14 +9,22 @@ export const INVITE_ONLY =
   'Dishkept is invite-only for now. Ask someone who uses it to send you an invite.';
 export const LINK_EXPIRED = 'This link has expired. Ask for a new one.';
 
-/** The link this visitor arrived through, if any (production spec §4). Not consumed. */
+const ORDER: LinkKind[] = ['invite', 'share', 'friend'];
+const CODES: Record<LinkKind, () => string | null> = {
+  invite: peekPendingInvite,
+  share: () => peekPendingShare()?.code ?? null,
+  friend: peekPendingFriend,
+};
+
+/** The link this visitor arrived through, the latest first (production spec §4). Not consumed. */
 export function passSource(): PassSource | null {
-  const invite = peekPendingInvite();
-  if (invite) return { kind: 'invite', code: invite };
-  const share = peekPendingShare();
-  if (share) return { kind: 'share', code: share.code };
-  const friend = peekPendingFriend();
-  return friend ? { kind: 'friend', code: friend } : null;
+  const latest = latestLink();
+  const order = latest ? [latest, ...ORDER.filter((kind) => kind !== latest)] : ORDER;
+  for (const kind of order) {
+    const code = CODES[kind]();
+    if (code) return { kind, code };
+  }
+  return null;
 }
 
 /** Asks for a 24-hour sign-up pass. Any refusal, rate limits included, reads as expired. */

@@ -5,7 +5,13 @@ import { registerSignupRoutes } from './routes';
 
 const CODE = 'k3J9xQ2mZb7LwP0aYc5RdT8vNf1HgE4sUo6IiKjMnBq';
 
-function app(granted = true, limit = 100, status: 'live' | 'ended' | 'unknown' = 'live') {
+function app(
+  granted = true,
+  limit = 100,
+  status: 'live' | 'ended' | 'unknown' = 'live',
+  ipLimit = 100,
+  allLimit = 100,
+) {
   const grant = vi.fn(async () => granted);
   const friendLinkStatus = vi.fn(async () => status);
   const hono = new Hono();
@@ -13,11 +19,13 @@ function app(granted = true, limit = 100, status: 'live' | 'ended' | 'unknown' =
     signup: { grant, friendLinkStatus },
     limitEmail: createRateLimiter({ limit, windowMs: 60_000 }),
     limitCode: createRateLimiter({ limit, windowMs: 60_000 }),
+    limitIp: createRateLimiter({ limit: ipLimit, windowMs: 60_000 }),
+    limitAll: createRateLimiter({ limit: allLimit, windowMs: 60_000 }),
   });
-  const post = (body: unknown) =>
+  const post = (body: unknown, ip = '203.0.113.1') =>
     hono.request('/api/signup-pass', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Client-IP': ip },
       body: JSON.stringify(body),
     });
   const check = (body: unknown) =>
@@ -75,4 +83,22 @@ it('friend link checks share the per-link limit', async () => {
   const { check } = app(true, 1);
   await check({ code: CODE });
   expect((await check({ code: CODE })).status).toBe(429);
+});
+
+it('one address asking for many emails is 429 after its limit; another address is not', async () => {
+  const { grant, post } = app(true, 100, 'live', 1);
+  await post({ kind: 'share', code: CODE, email: 'a@b.co' });
+  expect((await post({ kind: 'share', code: CODE, email: 'c@d.co' })).status).toBe(429);
+  expect((await post({ kind: 'share', code: CODE, email: 'e@f.co' }, '203.0.113.2')).status).toBe(
+    204,
+  );
+  expect(grant).toHaveBeenCalledTimes(2);
+});
+
+it('a global cap holds across addresses and emails', async () => {
+  const { post } = app(true, 100, 'live', 100, 1);
+  await post({ kind: 'share', code: CODE, email: 'a@b.co' }, '203.0.113.1');
+  expect((await post({ kind: 'share', code: CODE, email: 'c@d.co' }, '203.0.113.2')).status).toBe(
+    429,
+  );
 });

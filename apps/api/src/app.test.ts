@@ -38,7 +38,7 @@ function deps(overrides: Partial<AppDeps> = {}): AppDeps {
       grant: vi.fn().mockResolvedValue(true),
       friendLinkStatus: async () => 'live' as const,
     },
-    limits: { email: () => true, code: () => true },
+    limits: { email: () => true, code: () => true, ip: () => true, all: () => true },
     photos: {
       put: vi.fn().mockResolvedValue('stored'),
       get: vi.fn().mockResolvedValue(null),

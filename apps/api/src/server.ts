@@ -58,10 +58,13 @@ const sharing = createSharingService({
   store: photoStore,
 });
 const signup = createSignupService({ asAnonymous: createAsAnonymous(sql) });
-// 10 asks per email and 30 per link an hour; GoTrue rate-limits the emails themselves.
+// 10 asks per email, 30 per link and 30 per address an hour, 300 in all;
+// GoTrue rate-limits the emails themselves.
 const limits = {
   email: createRateLimiter({ limit: 10, windowMs: 3_600_000 }),
   code: createRateLimiter({ limit: 30, windowMs: 3_600_000 }),
+  ip: createRateLimiter({ limit: 30, windowMs: 3_600_000 }),
+  all: createRateLimiter({ limit: 300, windowMs: 3_600_000 }),
 };
 const app = createApp({
   verify,

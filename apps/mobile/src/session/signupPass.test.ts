@@ -79,3 +79,12 @@ it('reads a friend link status; offline or an error reads as live', async () => 
   const down = vi.fn(async () => Promise.reject(new TypeError('offline')));
   expect(await friendLinkStatus(B, deps(down))).toBe('live');
 });
+
+it('prefers the link opened last over an older pending invite or share', () => {
+  setPendingInvite(A);
+  setPendingShare({ code: A, title: 'Pie' });
+  setPendingFriend(B);
+  expect(passSource()).toEqual({ kind: 'friend', code: B });
+  setPendingInvite(B);
+  expect(passSource()).toEqual({ kind: 'invite', code: B });
+});

@@ -70,7 +70,10 @@
 			request_body {
 				max_size 4MB
 			}
-			reverse_proxy api:3000
+			reverse_proxy api:3000 {
+				# The visitor's address for the API's sign-up limits.
+				header_up X-Client-IP {client_ip}
+			}
 		}
 		handle_path /sync/* {
 			reverse_proxy sync:8080 {

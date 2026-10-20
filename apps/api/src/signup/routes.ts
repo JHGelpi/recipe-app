@@ -1,4 +1,4 @@
-import type { Hono } from 'hono';
+import type { Context, Hono } from 'hono';
 import type { PassKind, SignupService } from './service';
 
 const KINDS: readonly string[] = ['invite', 'share', 'friend'];
@@ -12,8 +12,12 @@ export function registerSignupRoutes(
     signup: SignupService;
     limitEmail: (key: string) => boolean;
     limitCode: (key: string) => boolean;
+    limitIp: (key: string) => boolean;
+    limitAll: (key: string) => boolean;
   },
 ): void {
+  const ip = (c: Context) => c.req.header('X-Client-IP') ?? 'unknown';
+
   app.post('/api/signup-pass', async (c) => {
     const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null;
     const kind = body?.kind;
@@ -29,7 +33,15 @@ export function registerSignupRoutes(
     ) {
       return c.json({ error: 'invalid_body' }, 400);
     }
-    if (!deps.limitEmail(email) || !deps.limitCode(code)) return c.json({ error: 'too_many' }, 429);
+    // Per address, per email, per link, then everyone: a refused check
+    // counts against none after it.
+    if (
+      !deps.limitIp(ip(c)) ||
+      !deps.limitEmail(email) ||
+      !deps.limitCode(code) ||
+      !deps.limitAll('all')
+    )
+      return c.json({ error: 'too_many' }, 429);
     const granted = await deps.signup.grant(kind as PassKind, code, email);
     return granted ? c.body(null, 204) : c.json({ error: 'link_expired' }, 404);
   });
@@ -39,7 +51,8 @@ export function registerSignupRoutes(
     const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null;
     const code = body?.code;
     if (typeof code !== 'string' || !CODE.test(code)) return c.json({ error: 'invalid_body' }, 400);
-    if (!deps.limitCode(code)) return c.json({ error: 'too_many' }, 429);
+    if (!deps.limitIp(ip(c)) || !deps.limitCode(code) || !deps.limitAll('all'))
+      return c.json({ error: 'too_many' }, 429);
     return c.json({ status: await deps.signup.friendLinkStatus(code) });
   });
 }
