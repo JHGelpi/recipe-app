@@ -78,6 +78,11 @@ test('a substitute is asked online, added to notes, and remembered offline (FR-2
   await expect(
     page.getByText('Instead of 1 cup buttermilk: 1 cup fake yogurt — Fake effect.'),
   ).toBeVisible();
+  // The answer above came from the API; once reloaded, the panel can only show the copy
+  // synced to this device, so wait for it before going offline (PR #20 CI).
+  await page.reload();
+  await page.getByRole('button', { name: 'Substitute for 1 cup buttermilk' }).click();
+  await expect(page.getByText('Fake yogurt', { exact: true })).toBeVisible({ timeout: 30_000 });
 
   await context.setOffline(true);
   await reloadOffline(page);
