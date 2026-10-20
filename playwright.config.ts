@@ -14,6 +14,9 @@ export default defineConfig({
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL: process.env.E2E_BASE_URL ?? env.publicUrl,
+    // The suite was written against the dark theme; light mode has its own spec
+    // (appearance.spec.ts), which sets the scheme per test.
+    colorScheme: 'dark',
     // Tracing every test held enough memory over a full run to exhaust this
     // 8 GB machine; failures still write error-context.md with a page snapshot.
     // E2E_TRACE=1 keeps traces of failures when they are needed.

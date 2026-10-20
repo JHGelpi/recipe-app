@@ -17,7 +17,7 @@ Success means:
 - **Bottom tab bar** (Recipes · Favorites · raised **+** · Household). Trash and Sign out move into Household.
 - **Recipe list:** rows with thumbnails, not big photo cards.
 - **Approach:** a small design system of our own (a theme plus about ten building blocks). No UI kit.
-- **Dark only.** No light mode in this sub-project.
+- **Dark only.** No light mode in this sub-project. Light mode came later: `2026-10-20-light-mode-design.md`.
 - **Icon:** crop the supplied 400 px `app_icon.png`; a larger original can replace it later.
 
 ### Out of scope

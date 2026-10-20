@@ -14,6 +14,7 @@ The app had no shared styles: each screen wrote its own colors, and it looked li
 - **A bottom tab bar** (Recipes, Favorites, +, Household) rendered by the root layout. Favorites is its own route, `/favorites`.
 - **Fonts** (`@expo-google-fonts/outfit`, `@expo-google-fonts/plus-jakarta-sans`) and an Ionicons subset (`@expo/vector-icons`) are bundled and precached. The app never waits for them.
 - **Dark only.** The app is named **Dishkept**. Icons are generated from the owner's artwork by `pnpm icons:make`.
+  - Amended by [ADR-0020](0020-light-mode-with-css-variables.md): a light palette and a System · Light · Dark choice per device.
 
 ## Alternatives considered
 

@@ -139,7 +139,7 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 | NFR-8 | Availability | Best effort on a home PC; move to a VM when uptime matters (ADR-0018). |
 | NFR-9 | Data durability | Nightly encrypted off-site backups kept 30 days; restore tested (ADR-0018). No data loss on device reinstall once synced. |
 | NFR-10 | Portability | Household can export all recipes (JSON + PDFs). |
-| NFR-11 | Accessibility | Supports OS dynamic text size, VoiceOver/TalkBack, WCAG AA contrast. |
+| NFR-11 | Accessibility | Supports OS dynamic text size, VoiceOver/TalkBack, WCAG AA contrast in light and dark themes; the theme follows the device setting or the person's choice (ADR-0020). |
 | NFR-12 | Store compliance | Native builds only: in-app account deletion; Sign in with Apple offered on iOS if other social sign-in is offered. |
 | NFR-13 | Attribution | Imported web recipes retain source URL and author attribution. |
 
