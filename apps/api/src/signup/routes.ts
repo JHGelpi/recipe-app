@@ -33,13 +33,14 @@ export function registerSignupRoutes(
     ) {
       return c.json({ error: 'invalid_body' }, 400);
     }
-    // Per address, per email, per link, then everyone: a refused check
-    // counts against none after it.
+    // Per address, then everyone, then per email and per link: a refused
+    // check counts against none after it, so past the global cap no new
+    // email or link keys are recorded (final review).
     if (
       !deps.limitIp(ip(c)) ||
+      !deps.limitAll('all') ||
       !deps.limitEmail(email) ||
-      !deps.limitCode(code) ||
-      !deps.limitAll('all')
+      !deps.limitCode(code)
     )
       return c.json({ error: 'too_many' }, 429);
     const granted = await deps.signup.grant(kind as PassKind, code, email);
@@ -51,7 +52,7 @@ export function registerSignupRoutes(
     const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null;
     const code = body?.code;
     if (typeof code !== 'string' || !CODE.test(code)) return c.json({ error: 'invalid_body' }, 400);
-    if (!deps.limitIp(ip(c)) || !deps.limitCode(code) || !deps.limitAll('all'))
+    if (!deps.limitIp(ip(c)) || !deps.limitAll('all') || !deps.limitCode(code))
       return c.json({ error: 'too_many' }, 429);
     return c.json({ status: await deps.signup.friendLinkStatus(code) });
   });

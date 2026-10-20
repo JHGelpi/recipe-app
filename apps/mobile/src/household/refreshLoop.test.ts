@@ -27,3 +27,18 @@ it('a refresh that fails after the loop was stopped schedules nothing', async ()
   await vi.advanceTimersByTimeAsync(600_000);
   expect(refresh).toHaveBeenCalledTimes(1);
 });
+
+it('a loop started while the last one is still refreshing retries once that refresh fails', async () => {
+  let fail!: (value: { error: unknown }) => void;
+  const refresh = vi
+    .fn<() => Promise<{ error: unknown }>>()
+    .mockImplementationOnce(() => new Promise((resolve) => (fail = resolve)))
+    .mockResolvedValue({ error: null });
+  const state = newRetryState();
+  const stopFirst = startRefreshLoop(refresh, state);
+  stopFirst();
+  startRefreshLoop(refresh, state);
+  fail({ error: new Error('offline') });
+  await vi.advanceTimersByTimeAsync(600_000);
+  expect(refresh).toHaveBeenCalledTimes(2);
+});

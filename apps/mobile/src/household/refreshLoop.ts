@@ -17,7 +17,13 @@ export function startRefreshLoop(
   let timer: ReturnType<typeof setTimeout> | undefined;
   let stopped = false;
   const attempt = () => {
-    if (stopped || state.busy) return;
+    if (stopped) return;
+    // A refresh started by an earlier loop is still running; check again
+    // later, since that loop schedules nothing once stopped (final review).
+    if (state.busy) {
+      timer = setTimeout(attempt, FIRST_DELAY_MS);
+      return;
+    }
     const wait = state.at - Date.now();
     if (wait > 0) {
       timer = setTimeout(attempt, wait);

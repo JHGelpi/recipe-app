@@ -125,3 +125,25 @@ test('a friend link is listed on Household; once revoked, its page says it has e
   await expect(friend.getByText('This link has ended. Ask for a new one.')).toBeVisible();
   await friend.context().close();
 });
+
+test('a live friend link works even when its status check never answers (final review)', async ({
+  page,
+  browser,
+  context,
+}) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await signIn(page, freshEmail('friend-slow'));
+  await page.getByRole('link', { name: 'Household', exact: true }).click();
+  await page.getByRole('button', { name: 'Invite a friend to Dishkept' }).click();
+  await expect(page.getByText('Link copied')).toBeVisible();
+  const url = await page.evaluate(() => navigator.clipboard.readText());
+
+  await setGate(true);
+  const friend = await (await browser.newContext()).newPage();
+  // A stalled connection: the check is sent but never answered.
+  await friend.route('**/api/friend-links/status', () => {});
+  await friend.goto(url);
+  await enterEmail(friend, freshEmail('friend-slow-new'));
+  await expect(friend.getByText(/^We sent a 6-digit code/)).toBeVisible();
+  await friend.context().close();
+});

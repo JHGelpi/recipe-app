@@ -102,3 +102,25 @@ it('a global cap holds across addresses and emails', async () => {
     429,
   );
 });
+
+it('past the global cap, a request records no email or link key (final review)', async () => {
+  const grant = vi.fn(async () => true);
+  const limitEmail = vi.fn(() => true);
+  const limitCode = vi.fn(() => true);
+  const hono = new Hono();
+  registerSignupRoutes(hono, {
+    signup: { grant, friendLinkStatus: vi.fn(async () => 'live' as const) },
+    limitEmail,
+    limitCode,
+    limitIp: () => true,
+    limitAll: () => false,
+  });
+  const response = await hono.request('/api/signup-pass', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Client-IP': '203.0.113.9' },
+    body: JSON.stringify({ kind: 'share', code: CODE, email: 'a@b.co' }),
+  });
+  expect(response.status).toBe(429);
+  expect(limitEmail).not.toHaveBeenCalled();
+  expect(limitCode).not.toHaveBeenCalled();
+});

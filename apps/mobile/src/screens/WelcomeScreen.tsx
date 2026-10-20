@@ -12,16 +12,16 @@ export function WelcomeScreen({ code }: { code: string }) {
   const [ended, setEnded] = useState(false);
   useEffect(() => {
     if (state.status !== 'signedOut') return;
+    // Kept at once, ended or not: a slow check must not leave an email
+    // typed meanwhile without its link, and through an ended link a new
+    // email reads "expired", not "invite-only".
+    setPendingFriend(code);
     let live = true;
     void friendLinkStatus(code, {
       fetch: (input, init) => fetch(input, init),
       apiUrl: config.apiUrl,
     }).then((status) => {
-      if (!live) return;
-      // Kept either way, so a new email through an ended link reads "expired",
-      // not "invite-only".
-      setPendingFriend(code);
-      if (status === 'ended') setEnded(true);
+      if (live && status === 'ended') setEnded(true);
     });
     return () => {
       live = false;
