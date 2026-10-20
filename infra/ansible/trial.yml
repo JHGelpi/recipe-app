@@ -1,5 +1,15 @@
 # The VM trial (infrastructure spec §6 step 8): deploy without the tunnel, then the
 # restore drill against the newest backup in the bucket.
+# Its own play, with no facts gathered, so the PC is never touched (final review 6).
+- name: Check the trial runs on the VM
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Only on the VM
+      ansible.builtin.assert:
+        that: inventory_hostname == 'vm'
+        fail_msg: the trial runs on the VM only; use -l vm
+
 - name: Set up the VM without the tunnel
   ansible.builtin.import_playbook: site.yml
   vars:
@@ -13,9 +23,6 @@
       prompt: Your AGE-SECRET-KEY-1... line (hidden)
       private: true
   tasks:
-    - name: Only on the VM
-      ansible.builtin.assert:
-        that: inventory_hostname == 'vm'
     - name: Drill with the key, then remove it
       block:
         - name: Write the key for the drill

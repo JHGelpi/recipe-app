@@ -56,17 +56,19 @@ resource "google_compute_firewall" "iap_ssh" {
 }
 
 resource "google_project_iam_member" "os_admin_login" {
-  count   = var.vm ? 1 : 0
-  project = var.project
-  role    = "roles/compute.osAdminLogin"
-  member  = var.owner_member
+  count      = var.vm ? 1 : 0
+  project    = var.project
+  role       = "roles/compute.osAdminLogin"
+  member     = var.owner_member
+  depends_on = [google_project_service.resource_manager]
 }
 
 resource "google_project_iam_member" "iap_tunnel" {
-  count   = var.vm ? 1 : 0
-  project = var.project
-  role    = "roles/iap.tunnelResourceAccessor"
-  member  = var.owner_member
+  count      = var.vm ? 1 : 0
+  project    = var.project
+  role       = "roles/iap.tunnelResourceAccessor"
+  member     = var.owner_member
+  depends_on = [google_project_service.resource_manager]
 }
 
 resource "google_compute_instance" "dishkept" {

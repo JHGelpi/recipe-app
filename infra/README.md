@@ -84,6 +84,8 @@ ansible-playbook site.yml -l vm -e tunnel=false --ask-vault-pass        # a VM t
 
 A second run with nothing new reports `changed=0`.
 
+**If a run fails partway** (for example, Docker Desktop wasn't running), fix the cause and run it again with `-e force_deploy=true`. Nothing new in the checkout means the next plain run wouldn't redeploy.
+
 ## 6. The VM trial
 
 ```sh

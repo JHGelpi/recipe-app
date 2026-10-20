@@ -31,6 +31,27 @@
       {{ app_checkout_state.stdout_lines[1:] | join(', ') }}
   when: app_checkout.stat.exists
 
+- name: Compare the checkout with origin/main
+  ansible.builtin.shell: |
+    set -e
+    cd "{{ app_dir }}"
+    git fetch -q origin main
+    git merge-base --is-ancestor HEAD origin/main
+  register: app_ancestry
+  changed_when: false
+  failed_when: app_ancestry.rc not in [0, 1]
+  check_mode: false
+  # The VM's origin URL carries the read token.
+  no_log: "{{ inventory_hostname == 'vm' }}"
+  when: app_checkout.stat.exists
+
+- name: Refuse local commits, which the update would reset away (final review 4)
+  ansible.builtin.assert:
+    that: app_ancestry.rc == 0
+    fail_msg: >-
+      {{ app_dir }} has commits that are not on origin/main; push them or remove them first
+  when: app_checkout.stat.exists
+
 - name: Clone or fast-forward to main
   ansible.builtin.git:
     repo: '{{ repo_url }}'

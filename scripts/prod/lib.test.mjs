@@ -15,6 +15,7 @@ import {
   pickBackup,
   productionSignals,
   generatedSecrets,
+  argsFor,
   parseFlags,
   PROMPTED,
   promptValue,
@@ -193,10 +194,13 @@ describe('the prod flags (infrastructure spec §5)', () => {
     expect(steps.at(-1).args).toEqual(['up', '-d', '--wait', 'cloudflared']);
   });
 
-  it('leaves the tunnel out with --no-tunnel, keeping every other step', () => {
+  it('with --no-tunnel, starts neither the tunnel nor the backup loop (final review 2)', () => {
+    // A stack that takes no traffic must not upload its own empty backup to the shared bucket.
     const steps = deploySequence({ tunnel: false });
     expect(steps.some((step) => step.args?.includes('cloudflared'))).toBe(false);
-    expect(steps).toEqual(deploySequence().slice(0, -1));
+    expect(steps.some((step) => step.stampBackup)).toBe(false);
+    expect(steps.some((step) => step.profiles?.includes('backup'))).toBe(false);
+    expect(steps.map((step) => Object.keys(step)[0])).toEqual(['profiles', 'restartSync', 'gate']);
   });
 
   it('reads --no-tunnel and --key-file, and keeps the rest as positional', () => {
@@ -254,5 +258,20 @@ describe('production secrets (infrastructure spec §4)', () => {
     expect(promptValue('')).toBeNull();
     expect(promptValue('   ')).toBeNull();
     expect(promptValue("it's")).toBeNull();
+  });
+});
+
+describe('argsFor (final review: prod:logs flags)', () => {
+  it('passes prod:logs flags straight to Compose', () => {
+    expect(argsFor('logs', ['api', '--follow', '--since', '10m'])).toEqual({
+      tunnel: true,
+      keyFile: null,
+      positional: ['api', '--follow', '--since', '10m'],
+    });
+  });
+
+  it('stays strict for every other command, so a typo never deploys the tunnel', () => {
+    expect(() => argsFor('deploy', ['--no-tunel'])).toThrow('Unknown flag: --no-tunel');
+    expect(argsFor('deploy', ['--no-tunnel']).tunnel).toBe(false);
   });
 });

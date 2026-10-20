@@ -144,7 +144,9 @@ A wrong key or a damaged file stops the restore **before** anything is replaced.
 
 ## Rotating secrets
 
-Every secret is in the Vault file. To change one, run `pnpm infra:secrets --edit`, change the line, save, then run `ansible-playbook site.yml -l pc --ask-vault-pass`. That rewrites `.env.production` and redeploys. Commit the updated Vault file.
+Every secret is in the Vault file. To change one, run `pnpm infra:secrets --edit`, change the line, and save. Then run `ansible-playbook site.yml -l <host> --ask-vault-pass`, which rewrites `.env.production` and redeploys. Commit the updated Vault file.
+
+`<host>` is wherever production runs: `pc`, or `vm` after a move. **Never run it against a host production has moved away from:** it would start a second copy, with its own database, on the same tunnel.
 
 - **Zoho password:** generate a new app password, then put it in `SMTP_PASS`.
 - **Token signing key:** run `pnpm prod:new-signing-key` in `~/dishkept`. It prints a `JWT_KEYS='…'` line; put it in place of the old `JWT_KEYS=` line. People stay signed in: tokens signed with the old key are refused from then on, and each app renews its session with the new key and retries. (`pnpm test:jwt-rotation` tries these steps on a throwaway project.)
@@ -164,7 +166,7 @@ Every secret is in the Vault file. To change one, run `pnpm infra:secrets --edit
 
 Once the mailbox exists and its DNS records are in Cloudflare:
 1. Run `pnpm infra:secrets --edit` and set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` and `BACKUP_ALERT_TO`.
-2. Run `ansible-playbook site.yml -l pc --ask-vault-pass`, and commit the Vault file.
+2. Run `ansible-playbook site.yml -l <host> --ask-vault-pass` (`pc`, or `vm` after a move), and commit the Vault file.
 
 Nothing else changes.
 
@@ -178,5 +180,6 @@ The commands are in `infra/README.md` §2, §5 and §6.
 4. On the VM (`gcloud compute ssh dishkept-vm --tunnel-through-iap`), run `cd ~/dishkept && corepack pnpm prod:restore`.
 5. `ansible-playbook site.yml -l vm -e force_deploy=true --ask-vault-pass`. Now the tunnel is on.
 6. The tunnel follows the token, so no DNS changes.
+7. **Retire the PC copy** once the VM has served for a few days. In `~/dishkept` on the PC, run `docker compose -p dishkept down`, so a reboot can't start it again. From then on, every Ansible run uses `-l vm`.
 
 To try the move without changing anything live, run the trial in `infra/README.md` §6. It restores the newest backup on a VM with no tunnel, prints `DRILL PASSED`, and is then destroyed.

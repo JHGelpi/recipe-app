@@ -3,7 +3,10 @@
     msg: Deploying because force_deploy is set
   changed_when: true
   when: force_deploy | bool
-  notify: Deploy Dishkept
+  # Both, so a run after a failed install or deploy can retry it (final review 5).
+  notify:
+    - Install dependencies
+    - Deploy Dishkept
 
 - name: Deploy now, so later plays see the running stack
   ansible.builtin.meta: flush_handlers

@@ -17,7 +17,7 @@ import {
   LIST_BACKUPS_SH,
   newSigningKeys,
   normalizeEmail,
-  parseFlags,
+  argsFor,
   PHOTO_PATH,
   photoCheckProblem,
   pickBackup,
@@ -81,7 +81,7 @@ function deployedBuild() {
 const [command, ...args] = process.argv.slice(2);
 let flags;
 try {
-  flags = parseFlags(args);
+  flags = argsFor(command, args);
 } catch (error) {
   console.error(error.message);
   process.exit(1);
@@ -190,7 +190,9 @@ const commands = {
       }
     }
     if (!flags.tunnel)
-      console.log('Started without the tunnel: the site is not reachable from outside.');
+      console.log(
+        'Started without the tunnel or the backup loop: the site is not reachable from outside.',
+      );
     commands.status();
   },
 

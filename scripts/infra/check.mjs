@@ -9,6 +9,7 @@ export const STEPS = [
   ['tofu', ['validate'], 'infra/tofu'],
   ['ansible-playbook', ['--syntax-check', 'site.yml', 'trial.yml'], 'infra/ansible'],
   ['ansible-lint', ['site.yml', 'trial.yml', 'roles'], 'infra/ansible'],
+  ['node', ['scripts/infra/ansible-checks.mjs'], '.'],
 ];
 
 for (const [cmd, args, cwd] of STEPS) {

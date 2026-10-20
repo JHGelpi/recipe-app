@@ -1,8 +1,10 @@
 // pnpm infra:secrets [--edit | --refresh] (infrastructure spec §4).
 // Plaintext only ever moves through pipes; nothing unencrypted is written.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
-import { createInterface } from 'node:readline/promises';
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { createInterface } from 'node:readline';
+import { Writable } from 'node:stream';
 import { buildProdEnv, generatedSecrets, PROMPTED, promptValue } from '../prod/lib.mjs';
 import {
   parseVaultYaml,
@@ -24,29 +26,64 @@ if (problem) {
   process.exit(1);
 }
 
-/** A hidden answer: nothing is echoed. */
-async function askHidden(question) {
+// Every prompt reads from one readline: a second reader on stdin would find it drained
+// or destroyed (final review 1). Lines are queued, so answers typed or piped ahead of
+// their question are kept. Hidden answers mute the echo.
+let muted = false;
+const rl = createInterface({
+  input: process.stdin,
+  output: new Writable({
+    write(chunk, encoding, done) {
+      if (!muted) process.stdout.write(chunk, encoding);
+      done();
+    },
+  }),
+  terminal: Boolean(process.stdin.isTTY),
+});
+const queued = [];
+const waiting = [];
+let ended = false;
+rl.on('line', (line) => (waiting.length ? waiting.shift()(line) : queued.push(line)));
+rl.on('close', () => {
+  ended = true;
+  while (waiting.length) waiting.shift()(null);
+});
+
+/** The next answer; stops the run if the input ends first. */
+async function ask(question) {
   process.stdout.write(question);
-  const stdin = process.stdin;
-  stdin.setRawMode?.(true);
-  let answer = '';
-  for await (const chunk of stdin) {
-    for (const ch of chunk.toString('utf8')) {
-      if (ch === '\r' || ch === '\n') {
-        stdin.setRawMode?.(false);
-        stdin.pause();
-        process.stdout.write('\n');
-        return answer;
-      }
-      if (ch === '\u0003') process.exit(130);
-      answer = ch === '\u007f' ? answer.slice(0, -1) : answer + ch;
-    }
+  const line = queued.length
+    ? queued.shift()
+    : ended
+      ? null
+      : await new Promise((resolveLine) => waiting.push(resolveLine));
+  if (line === null) {
+    console.error('\nThe input ended before every question was answered; nothing was written.');
+    process.exit(1);
   }
-  return answer;
+  return line;
+}
+
+/** A hidden answer: what is typed is not echoed. */
+async function askHidden(question) {
+  muted = true;
+  try {
+    return await ask(question);
+  } finally {
+    muted = false;
+    process.stdout.write('\n');
+  }
 }
 
 const vaultEnv = (password) => ({ ...process.env, DISHKEPT_VAULT_PASS: password });
-const vaultArgs = ['--vault-password-file', 'scripts/infra/vault-pass.sh'];
+// Must be executable: ansible-vault reads a non-executable file as the password itself,
+// which here is the script's public text (final review 3).
+const VAULT_PASS = fileURLToPath(new URL('./vault-pass.sh', import.meta.url));
+if (!(statSync(VAULT_PASS).mode & 0o111)) {
+  console.error(`${VAULT_PASS} is not executable; run: chmod +x ${VAULT_PASS}`);
+  process.exit(1);
+}
+const vaultArgs = ['--vault-password-file', VAULT_PASS];
 const tofuOutputs = () =>
   JSON.parse(execFileSync('tofu', ['-chdir=infra/tofu', 'output', '-json'], { encoding: 'utf8' }));
 
@@ -68,6 +105,8 @@ function decrypt(password) {
 
 if (mode === 'edit') {
   const password = await askHidden('Vault password: ');
+  // The editor needs the terminal to itself.
+  rl.close();
   const result = spawnSync('ansible-vault', ['edit', ...vaultArgs, VAULT_FILE], {
     env: vaultEnv(password),
     stdio: 'inherit',
@@ -86,11 +125,10 @@ if (mode === 'refresh') {
 
 // create
 const { keyJson, ...fromTofu } = tofuValues(tofuOutputs());
-const rl = createInterface({ input: process.stdin, output: process.stdout });
 const values = { ...generatedSecrets(), ...fromTofu };
 for (const { name, hint } of PROMPTED) {
   for (;;) {
-    const value = promptValue(await rl.question(`${name} (${hint}): `));
+    const value = promptValue(await ask(`${name} (${hint}): `));
     if (value) {
       values[name] = value;
       break;
@@ -101,11 +139,10 @@ for (const { name, hint } of PROMPTED) {
 values.BACKUP_ALERT_TO = values.SMTP_FROM;
 let githubToken;
 for (;;) {
-  githubToken = (await rl.question('GitHub read-only token for the VM (github_pat_...): ')).trim();
+  githubToken = (await ask('GitHub read-only token for the VM (github_pat_...): ')).trim();
   if (/^github_pat_[A-Za-z0-9_]+$/.test(githubToken)) break;
   console.log('Expected a fine-grained token: github_pat_ followed by letters, digits and _.');
 }
-rl.close();
 const password = await askHidden('New Vault password (save it in your password manager): ');
 if ((await askHidden('Again: ')) !== password || !password) {
   console.error('The passwords differ or are empty; nothing was written.');
@@ -113,4 +150,5 @@ if ((await askHidden('Again: ')) !== password || !password) {
 }
 const env = buildProdEnv(readFileSync('.env.production.example', 'utf8'), values);
 encrypt(password, vaultYaml({ env, keyJson, githubToken }));
+rl.close();
 console.log(`Wrote ${VAULT_FILE} (encrypted). Commit it, then run Ansible.`);

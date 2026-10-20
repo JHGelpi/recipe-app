@@ -126,7 +126,7 @@ scripts/infra/      the infra:* commands (Node, like scripts/prod)
 
 ## 5. Changes to the `prod:*` scripts
 
-- **`prod:deploy --no-tunnel`:** brings the stack up without the `tunnel` Compose profile, and prints that the site won't be reachable. Every other step is unchanged.
+- **`prod:deploy --no-tunnel`:** brings the stack up without the `tunnel` Compose profile or the backup loop, and prints that the site won't be reachable. A stack that takes no traffic must not upload its own empty database as the bucket's newest backup (final review).
 - **`prod:restore-test --key-file <path>`:** uses that path instead of asking. The drill is otherwise unchanged, and still never starts the tunnel.
 - Both flags are parsed in `scripts/prod/lib.mjs` and unit-tested there.
 

@@ -126,16 +126,28 @@ export const RECREATABLE = ['backup'];
 
 /** First deploy order: services, then the gate, and only then the public tunnel. */
 export function deploySequence({ tunnel = true } = {}) {
+  // --no-tunnel is a stack that must take no traffic, such as the VM trial (infrastructure
+  // spec §5): no cloudflared, since two connectors on one token split it, and no backup loop,
+  // whose first run would upload this stack's empty database as the bucket's newest backup.
+  if (!tunnel)
+    return [
+      { profiles: [], args: ['up', '-d', '--build', '--wait', '--remove-orphans'] },
+      { restartSync: true },
+      { gate: true },
+    ];
   return [
     { profiles: ['backup'], args: ['up', '-d', '--build', '--wait', '--remove-orphans'] },
     // The nightly loop records the build the proxy now serves (bug batch §5).
     { stampBackup: true },
     { restartSync: true },
     { gate: true },
-    // Left out for a stack that must not take live traffic, such as the VM trial
-    // (infrastructure spec §5): two connectors on one token split it.
-    ...(tunnel ? [{ profiles: PROD_PROFILES, args: ['up', '-d', '--wait', 'cloudflared'] }] : []),
+    { profiles: PROD_PROFILES, args: ['up', '-d', '--wait', 'cloudflared'] },
   ];
+}
+
+/** prod:logs hands its arguments to Compose (--follow, --since); the rest are parsed strictly. */
+export function argsFor(command, args) {
+  return command === 'logs' ? { tunnel: true, keyFile: null, positional: args } : parseFlags(args);
 }
 
 /** The flags prod:* commands take (infrastructure spec §5); the rest stay positional. */

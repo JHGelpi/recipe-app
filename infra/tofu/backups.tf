@@ -17,6 +17,7 @@ resource "google_storage_bucket" "backups" {
 resource "google_service_account" "backup" {
   account_id   = "dishkept-backup"
   display_name = "Dishkept backup"
+  depends_on   = [google_project_service.iam]
 }
 
 # Create and view only: a compromised host can't delete or overwrite old backups.
