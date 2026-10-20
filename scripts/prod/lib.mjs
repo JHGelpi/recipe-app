@@ -1,5 +1,5 @@
 // Decisions behind the prod:* commands and the guard, kept pure for tests.
-import { generateKeyPairSync, randomUUID } from 'node:crypto';
+import { generateKeyPairSync, randomBytes, randomUUID } from 'node:crypto';
 
 export const PROJECT = 'dishkept';
 export const ENV_FILE = '.env.production';
@@ -198,4 +198,35 @@ export function newSigningKeys() {
       key_ops: ['sign', 'verify'],
     },
   ]);
+}
+
+/** Every secret production generates itself (prod:init and infra:secrets share these). */
+export function generatedSecrets() {
+  const hex = () => randomBytes(24).toString('hex');
+  return {
+    POSTGRES_PASSWORD: hex(),
+    APP_OWNER_PASSWORD: hex(),
+    API_LOGIN_PASSWORD: hex(),
+    AUTH_DB_PASSWORD: hex(),
+    POWERSYNC_REPL_PASSWORD: hex(),
+    POWERSYNC_STORAGE_PASSWORD: hex(),
+    JWT_SECRET: randomBytes(32).toString('hex'),
+    JWT_KEYS: newSigningKeys(),
+  };
+}
+
+/** The values only the owner has; the tunnel token and bucket come from OpenTofu. */
+export const PROMPTED = [
+  { name: 'SMTP_USER', hint: 'Zoho login, e.g. wes@data2insightsllc.com' },
+  { name: 'SMTP_PASS', hint: 'Zoho app-specific password' },
+  { name: 'SMTP_FROM', hint: 'must equal SMTP_USER for Zoho' },
+  { name: 'ANTHROPIC_API_KEY', hint: 'sk-ant-...' },
+  { name: 'BACKUP_AGE_RECIPIENT', hint: 'age1... public key' },
+  { name: 'OWNER_EMAIL', hint: 'your sign-in address, added to the allowed list' },
+];
+
+/** An answer as stored, or null to ask again: Compose has no escape inside '…'. */
+export function promptValue(answer) {
+  const value = answer.trim();
+  return value && !value.includes("'") ? value : null;
 }

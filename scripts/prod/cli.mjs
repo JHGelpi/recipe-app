@@ -1,12 +1,12 @@
 // The prod:* commands (production spec §2–§5). Never reads .env.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import {
   backupAge,
   drillCounts,
+  generatedSecrets,
   DRILL_PROFILES,
   buildProdEnv,
   checkoutBlockers,
@@ -22,6 +22,8 @@ import {
   photoCheckProblem,
   pickBackup,
   PROD_PROFILES,
+  PROMPTED,
+  promptValue,
   RECREATABLE,
 } from './lib.mjs';
 
@@ -151,30 +153,17 @@ const commands = {
     const rl = createInterface({ input: process.stdin, output: process.stdout });
     const ask = async (name, hint) => {
       for (;;) {
-        const value = (await rl.question(`${name} (${hint}): `)).trim();
-        if (value && !value.includes("'")) return value;
+        const value = promptValue(await rl.question(`${name} (${hint}): `));
+        if (value) return value;
         console.log("Required, and may not contain a single quote ('). Try again.");
       }
     };
-    const hex = () => randomBytes(24).toString('hex');
     const values = {
-      POSTGRES_PASSWORD: hex(),
-      APP_OWNER_PASSWORD: hex(),
-      API_LOGIN_PASSWORD: hex(),
-      AUTH_DB_PASSWORD: hex(),
-      POWERSYNC_REPL_PASSWORD: hex(),
-      POWERSYNC_STORAGE_PASSWORD: hex(),
-      JWT_SECRET: randomBytes(32).toString('hex'),
-      JWT_KEYS: newSigningKeys(),
+      ...generatedSecrets(),
       TUNNEL_TOKEN: await ask('TUNNEL_TOKEN', 'Cloudflare tunnel token'),
-      SMTP_USER: await ask('SMTP_USER', 'Zoho login, e.g. wes@data2insightsllc.com'),
-      SMTP_PASS: await ask('SMTP_PASS', 'Zoho app-specific password'),
-      SMTP_FROM: await ask('SMTP_FROM', 'must equal SMTP_USER for Zoho'),
-      ANTHROPIC_API_KEY: await ask('ANTHROPIC_API_KEY', 'sk-ant-...'),
       BACKUP_BUCKET: await ask('BACKUP_BUCKET', 'GCS bucket name'),
-      BACKUP_AGE_RECIPIENT: await ask('BACKUP_AGE_RECIPIENT', 'age1... public key'),
-      OWNER_EMAIL: await ask('OWNER_EMAIL', 'your sign-in address, added to the allowed list'),
     };
+    for (const { name, hint } of PROMPTED) values[name] = await ask(name, hint);
     rl.close();
     values.BACKUP_ALERT_TO = values.SMTP_FROM;
     writeFileSync(ENV_FILE, buildProdEnv(readFileSync('.env.production.example', 'utf8'), values), {

@@ -14,7 +14,10 @@ import {
   PHOTO_PATH,
   pickBackup,
   productionSignals,
+  generatedSecrets,
   parseFlags,
+  PROMPTED,
+  promptValue,
   RECREATABLE,
 } from './lib.mjs';
 
@@ -209,5 +212,47 @@ describe('the prod flags (infrastructure spec §5)', () => {
   it('refuses --key-file without a path, and unknown flags', () => {
     expect(() => parseFlags(['--key-file'])).toThrow('--key-file needs a path');
     expect(() => parseFlags(['--tunnel=no'])).toThrow('Unknown flag: --tunnel=no');
+  });
+});
+
+describe('production secrets (infrastructure spec §4)', () => {
+  it('generates every password as hex, and fresh signing keys', () => {
+    const a = generatedSecrets();
+    const b = generatedSecrets();
+    expect(Object.keys(a).sort()).toEqual(
+      [
+        'API_LOGIN_PASSWORD',
+        'APP_OWNER_PASSWORD',
+        'AUTH_DB_PASSWORD',
+        'JWT_KEYS',
+        'JWT_SECRET',
+        'POSTGRES_PASSWORD',
+        'POWERSYNC_REPL_PASSWORD',
+        'POWERSYNC_STORAGE_PASSWORD',
+      ].sort(),
+    );
+    for (const [name, value] of Object.entries(a)) {
+      if (name !== 'JWT_KEYS') expect(value, name).toMatch(/^[0-9a-f]{48,64}$/);
+      expect(value, name).not.toBe(b[name]);
+    }
+    expect(JSON.parse(a.JWT_KEYS)[0]).toMatchObject({ alg: 'ES256', kty: 'EC' });
+  });
+
+  it('asks the owner for the values only they have', () => {
+    expect(PROMPTED.map((p) => p.name)).toEqual([
+      'SMTP_USER',
+      'SMTP_PASS',
+      'SMTP_FROM',
+      'ANTHROPIC_API_KEY',
+      'BACKUP_AGE_RECIPIENT',
+      'OWNER_EMAIL',
+    ]);
+  });
+
+  it('re-asks an empty answer or one with a single quote (Review Focus 4)', () => {
+    expect(promptValue('  sk-ant-x  ')).toBe('sk-ant-x');
+    expect(promptValue('')).toBeNull();
+    expect(promptValue('   ')).toBeNull();
+    expect(promptValue("it's")).toBeNull();
   });
 });
