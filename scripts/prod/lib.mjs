@@ -114,3 +114,35 @@ export function deploySequence() {
     { profiles: PROD_PROFILES, args: ['up', '-d', '--wait', 'cloudflared'] },
   ];
 }
+
+const BACKUP_NAME = /^dishkept-\d{4}-\d{2}-\d{2}(T\d{4}Z)?\.tar\.age$/;
+
+/**
+ * The backup to restore: the newest of the given day, or the newest of all.
+ * Names sort by time; a legacy date-only name sorts before that day's timed ones.
+ */
+export function pickBackup(names, date) {
+  const valid = [...new Set(names.map((name) => name.trim()))].filter((name) =>
+    BACKUP_NAME.test(name),
+  );
+  const matching = date ? valid.filter((name) => name.startsWith(`dishkept-${date}`)) : valid;
+  return matching.sort().at(-1) ?? null;
+}
+
+/** Household and photo ids only: a manifest's path is used in a shell command. */
+export const PHOTO_PATH = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\.jpg$/;
+
+/** Why the drill's sample photo does not match the backup's hash, or null. */
+export function photoCheckProblem(manifest, sha256) {
+  const check = manifest.photo_check;
+  if (!check || sha256 === check.sha256) return null;
+  return `photo ${check.file}: backup ${check.sha256}, restored ${sha256 || 'missing'}`;
+}
+
+/**
+ * Run in the backup container: every backup name in the bucket (or
+ * BACKUP_REMOTE) and on this PC, one per line. An unreachable bucket is
+ * reported on stderr, and the local names still print.
+ */
+export const LIST_BACKUPS_SH =
+  'rclone lsf "${BACKUP_REMOTE:-offsite:$BACKUP_BUCKET}" --include "dishkept-*.tar.age" || echo bucket-unreachable >&2; ls -1 /backups';

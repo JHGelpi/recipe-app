@@ -9,6 +9,9 @@ import {
   checkoutBlockers,
   deploySequence,
   normalizeEmail,
+  photoCheckProblem,
+  PHOTO_PATH,
+  pickBackup,
   productionSignals,
 } from './lib.mjs';
 
@@ -111,4 +114,44 @@ it('deploy turns the gate on before the tunnel makes the site public', () => {
 it('deploy stamps the backup loop with the build right after the stack is up', () => {
   const steps = deploySequence();
   expect(steps.findIndex((step) => step.stampBackup)).toBe(1);
+});
+
+describe('picking a backup to restore', () => {
+  const names = [
+    'dishkept-2026-10-18T0330Z.tar.age',
+    'dishkept-2026-10-19.tar.age',
+    'dishkept-2026-10-19T0330Z.tar.age',
+    'dishkept-2026-10-19T1412Z.tar.age',
+    'last-success',
+    'dishkept-2026-10-19T1412Z.tar.age', // the same file, in the bucket and on this PC
+  ];
+  it('takes the newest overall, and the newest of a given day; legacy names sort first', () => {
+    expect(pickBackup(names)).toBe('dishkept-2026-10-19T1412Z.tar.age');
+    expect(pickBackup(names, '2026-10-18')).toBe('dishkept-2026-10-18T0330Z.tar.age');
+    expect(pickBackup(['dishkept-2026-10-19.tar.age'], '2026-10-19')).toBe(
+      'dishkept-2026-10-19.tar.age',
+    );
+  });
+  it('has nothing for a day without backups, or no names at all', () => {
+    expect(pickBackup(names, '2026-10-20')).toBeNull();
+    expect(pickBackup([])).toBeNull();
+  });
+});
+
+it('the drill compares one photo file to the hash the backup recorded', () => {
+  const manifest = { photo_check: { file: 'a/b.jpg', sha256: 'abc' } };
+  expect(photoCheckProblem(manifest, 'abc')).toBeNull();
+  expect(photoCheckProblem(manifest, 'xyz')).toBe('photo a/b.jpg: backup abc, restored xyz');
+  expect(photoCheckProblem(manifest, '')).toBe('photo a/b.jpg: backup abc, restored missing');
+  expect(photoCheckProblem({ photo_check: null }, '')).toBeNull();
+});
+
+it('photo paths in a manifest are household and photo ids only', () => {
+  expect(
+    PHOTO_PATH.test(
+      '00000000-0000-4000-8000-00000000b4c4/00000000-0000-4000-8000-00000000b4c5.jpg',
+    ),
+  ).toBe(true);
+  expect(PHOTO_PATH.test('../etc/passwd')).toBe(false);
+  expect(PHOTO_PATH.test('a/b.jpg; rm -rf /')).toBe(false);
 });

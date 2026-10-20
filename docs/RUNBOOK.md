@@ -138,7 +138,7 @@ pnpm prod:backup-now
 pnpm prod:restore-test
 ```
 
-The drill asks for the path to a file holding your secret key. See "Restore" for how to make it and remove it after.
+The drill asks for the path to a file holding your secret key. See "Restore" for how to make it and remove it after. The drill checks the counts and one photo file's bytes against the backup. It needs a clean, current `main`, like deploy.
 
 **Check:**
 - the drill prints `DRILL PASSED`;
@@ -179,7 +179,7 @@ Phones pick up a new build on their own. A phone at the home screen may take it 
 
 1. Put your secret key in a temporary file:
    `(umask 077; cat > /tmp/age.key)`, then paste the `AGE-SECRET-KEY-1…` line, press Enter, then Ctrl-D. Pasting it into `cat` keeps it out of your shell history.
-2. Run `pnpm prod:restore` for the latest backup, or `pnpm prod:restore 2026-10-19` for a given day. A day not on this PC is fetched from the bucket.
+2. Run `pnpm prod:restore` for the newest backup, in the bucket or on this PC, or `pnpm prod:restore 2026-10-19` for that day's newest. A backup not on this PC is fetched from the bucket. If the bucket can't be reached, it says so and chooses from this PC's copies.
 3. Enter `/tmp/age.key` when asked. Check the manifest it prints, then type `restore`.
 4. When it finishes: `rm /tmp/age.key`.
 

@@ -1,7 +1,7 @@
 // CI and local: backup → restore drill round trip, with a throwaway key and a
 // local folder in place of GCS (production spec §6). Never touches dishkept.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { drillCounts } from './prod/lib.mjs';
+import { drillCounts, LIST_BACKUPS_SH, photoCheckProblem, pickBackup } from './prod/lib.mjs';
 
 const dc = (args, opts = {}) =>
   execFileSync('docker', ['compose', '--profile', 'backup', ...args], {
@@ -65,6 +65,21 @@ if (local.length !== 7) fail(`kept ${local.length} local copies, not 7`);
 const newest = local.sort().at(-1);
 if (!/dishkept-\d{4}-\d{2}-\d{2}T\d{4}Z\.tar\.age$/.test(newest)) fail(`bad name ${newest}`);
 if (!listing.includes(newest.split('/').pop())) fail('not uploaded to the remote');
+
+// 1d. The restore's listing: the bucket (here BACKUP_REMOTE) and local copies, newest picked, no database started.
+const names = dc([
+  'run',
+  '--rm',
+  '--no-deps',
+  ...env,
+  '--entrypoint',
+  'sh',
+  'backup',
+  '-c',
+  LIST_BACKUPS_SH,
+]);
+if (pickBackup(names.split('\n')) !== newest.split('/').pop())
+  fail(`the listing did not pick the newest:\n${names}`);
 
 // 1b. Catch-up: a slot never tried (PC off at BACKUP_TIME) runs at the next tick; the next tick does not.
 dc(['run', '--rm', '--entrypoint', 'sh', 'backup', '-c', 'echo 0 > /backups/last-attempt']);
@@ -225,6 +240,17 @@ try {
   if (!/^\d{4}-\d{2}-\d{2}T\d{4}Z$/.test(manifest.time ?? ''))
     fail(`manifest time ${manifest.time}`);
   if (!manifest.photo_check?.sha256) fail('manifest has no photo check');
+  const sampleHash = ddc([
+    'run',
+    '--rm',
+    '--entrypoint',
+    'sh',
+    'backup',
+    '-c',
+    `sha256sum /data/photos/${manifest.photo_check.file} | cut -d' ' -f1`,
+  ]).trim();
+  const photoProblem = photoCheckProblem(manifest, sampleHash);
+  if (photoProblem) fail(photoProblem);
   const q = (sql) =>
     Number(ddc(['exec', '-T', 'db', 'psql', '-U', 'postgres', '-d', 'app', '-Atc', sql]).trim());
   const actual = {

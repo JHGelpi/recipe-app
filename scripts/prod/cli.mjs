@@ -14,7 +14,11 @@ import {
   deployBlockers,
   deploySequence,
   ENV_FILE,
+  LIST_BACKUPS_SH,
   normalizeEmail,
+  PHOTO_PATH,
+  photoCheckProblem,
+  pickBackup,
   PROD_PROFILES,
 } from './lib.mjs';
 
@@ -90,32 +94,28 @@ async function askKeyPath(rl) {
   return keyPath;
 }
 
-/** The newest local copy, or the named day's; fetched from GCS when it is not local. */
+/**
+ * The newest backup in the bucket or on this PC, or the named day's newest;
+ * fetched from BACKUP_REMOTE (the bucket) when it is not local. Runs without
+ * starting the database (--no-deps).
+ */
 async function fetchBackup(date) {
-  const name = (args) =>
-    compose(['run', '--rm', '-T', '--entrypoint', 'sh', 'backup', '-c', args], {
-      stdio: ['ignore', 'pipe', 'inherit'],
+  const inBackup = (script, stdio) =>
+    compose(['run', '--rm', '--no-deps', '-T', '--entrypoint', 'sh', 'backup', '-c', script], {
+      stdio,
       encoding: 'utf8',
-    }).stdout.trim();
-  const wanted = date
-    ? `dishkept-${date}.tar.age`
-    : name('ls -1 /backups/dishkept-*.tar.age 2>/dev/null | sort | tail -n 1 | xargs -r basename');
-  if (!wanted) fail('No local backup; name a date to fetch one from GCS.');
-  const fetched = compose(
-    [
-      'run',
-      '--rm',
-      '-T',
-      '--entrypoint',
-      'sh',
-      'backup',
-      '-c',
-      `[ -f /backups/${wanted} ] || rclone copyto "offsite:$BACKUP_BUCKET/${wanted}" /backups/${wanted}; [ -s /backups/${wanted} ]`,
-    ],
-    { stdio: ['ignore', 'inherit', 'inherit'] },
+    });
+  const listed = inBackup(LIST_BACKUPS_SH, ['ignore', 'pipe', 'pipe']);
+  if ((listed.stderr ?? '').includes('bucket-unreachable'))
+    console.log('WARNING: the bucket could not be listed; choosing from this PC’s copies.');
+  const wanted = pickBackup((listed.stdout ?? '').split('\n'), date);
+  if (!wanted) fail(date ? `No backup from ${date}.` : 'No backup found in the bucket or here.');
+  const fetched = inBackup(
+    `[ -f /backups/${wanted} ] || rclone copyto "\${BACKUP_REMOTE:-offsite:$BACKUP_BUCKET}/${wanted}" /backups/${wanted}; [ -s /backups/${wanted} ]`,
+    ['ignore', 'inherit', 'inherit'],
   );
   if (fetched.status !== 0)
-    fail(`Could not get ${wanted} locally or from GCS. Nothing was changed.`);
+    fail(`Could not get ${wanted} locally or from the bucket. Nothing was changed.`);
   return `/backups/${wanted}`;
 }
 
@@ -273,6 +273,8 @@ const commands = {
   },
 
   async 'restore-test'() {
+    // The drill builds its images from this checkout.
+    requireCurrentMain('running the drill');
     const rl = createInterface({ input: process.stdin, output: process.stdout });
     const keyPath = await askKeyPath(rl);
     rl.close();
@@ -342,6 +344,22 @@ const commands = {
         ]).stdout.trim(),
       );
       const diffs = drillCounts(manifest, actual);
+      const check = manifest.photo_check;
+      if (check && !PHOTO_PATH.test(check.file))
+        fail(`The manifest's photo path is not valid: ${check.file}`);
+      const sha = check
+        ? drill([
+            'run',
+            '--rm',
+            '--entrypoint',
+            'sh',
+            'backup',
+            '-c',
+            `sha256sum /data/photos/${check.file} 2>/dev/null | cut -d' ' -f1`,
+          ]).stdout.trim()
+        : '';
+      const photo = photoCheckProblem(manifest, sha);
+      if (photo) diffs.push(photo);
       console.log(
         diffs.length
           ? `DRILL FAILED:\n- ${diffs.join('\n- ')}`
