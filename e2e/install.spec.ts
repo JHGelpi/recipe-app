@@ -83,3 +83,28 @@ test('the icons are the Dishkept artwork at their stated sizes', async ({ reques
     expect([body.readUInt32BE(16), body.readUInt32BE(20)], src).toEqual([size, size]);
   }
 });
+
+test('iOS and other browsers find the Dishkept icon wherever they look for it', async ({
+  page,
+  request,
+}) => {
+  // iOS also asks for these root paths; the app's HTML must not answer them.
+  for (const path of ['/apple-touch-icon.png', '/apple-touch-icon-precomposed.png']) {
+    const response = await request.get(path);
+    expect(response.headers()['content-type'], path).toBe('image/png');
+    const body = await response.body();
+    expect([body.readUInt32BE(16), body.readUInt32BE(20)], path).toEqual([180, 180]);
+  }
+  await page.goto('/');
+  // The page's own tags; the app may add more at run time.
+  await expect(page.locator('link[rel="icon"][sizes="192x192"]')).toHaveAttribute(
+    'href',
+    '/icons/icon-192.png',
+  );
+  const icons = page.locator('link[rel="icon"]');
+  for (const href of await icons.evaluateAll((links) =>
+    links.map((link) => link.getAttribute('href') ?? ''),
+  )) {
+    expect((await request.get(href)).headers()['content-type'], href).toMatch(/^image\//);
+  }
+});

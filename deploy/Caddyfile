@@ -87,6 +87,14 @@
 			root * /srv
 			file_server
 		}
+		# iOS also asks for its home-screen icon at these root paths; without
+		# this they would get the app's HTML.
+		@touch_icon path /apple-touch-icon.png /apple-touch-icon-precomposed.png
+		handle @touch_icon {
+			root * /srv/web
+			rewrite * /icons/apple-touch-icon.png
+			file_server
+		}
 		# Content-hashed bundle names: safe to cache for good.
 		handle /_expo/static/* {
 			root * /srv/web
