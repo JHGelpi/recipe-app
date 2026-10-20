@@ -33,10 +33,17 @@ test('the end of the list scrolls clear of the tab bar (Review Focus 2)', async 
   for (let i = 0; i < 6; i++) await createRecipe(page, { title: unique(`End soup ${i}`) });
   await page.getByRole('link', { name: 'Recipes', exact: true }).click();
   const footer = page.getByLabel('Build');
-  await footer.scrollIntoViewIfNeeded();
-  const end = (await footer.boundingBox())!;
-  const bar = (await page.getByRole('navigation', { name: 'Main' }).boundingBox())!;
-  expect(end.y + end.height).toBeLessThanOrEqual(bar.y + 1);
+  const bar = page.getByRole('navigation', { name: 'Main' });
+  // The list can still be laying out its rows after the first scroll, so
+  // scroll and measure until the footer settles (PR #17 CI).
+  await expect
+    .poll(async () => {
+      await footer.scrollIntoViewIfNeeded();
+      const end = (await footer.boundingBox())!;
+      const top = (await bar.boundingBox())!;
+      return end.y + end.height - (top.y + 1);
+    })
+    .toBeLessThanOrEqual(0);
 });
 
 test('a recipe with no photo shows the quiet placeholder, announced as nothing (Review Focus 5)', async ({
