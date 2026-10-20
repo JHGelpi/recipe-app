@@ -8,10 +8,11 @@ Roles and invites (FR-3 to FR-6) move people, and sometimes their data, between 
 
 ## Decision
 
-- **Narrow definer functions.** Seven `SECURITY DEFINER` functions, owned by `app_owner` with an empty `search_path`, make every cross-household change: `create_invite`, `cancel_invite`, `preview_invite`, `accept_invite`, `set_member_role`, `remove_member` and `leave_household`.
-  - None takes a household id from the caller. Each reads the caller from `auth_user_id()`, locks the caller's household's memberships, checks every rule, and raises a key on refusal.
+- **Narrow definer functions.** Nine `SECURITY DEFINER` functions, owned by `app_owner` with an empty `search_path`, make every cross-household change: `create_invite`, `cancel_invite`, `preview_invite`, `accept_invite`, `set_member_role`, `remove_member`, `leave_household`, and for friend links `create_friend_link` and `revoke_friend_link` (bug batch).
+  - None takes a household id from the caller. Each reads the caller from `auth_user_id()`, checks every rule, and raises a key on refusal. Every function that changes data locks the caller's household's memberships first; `preview_invite` only reads, so it takes no lock, and `accept_invite` re-checks everything under the lock.
+  - Only live memberships (`deleted_at is null`) count as Admins or as other people in the household.
   - Clients reach them only through the API, as the user (`asUser`), and only `authenticated` may execute them.
-  - Internal helpers (`lock_my_household`, `move_to_new_household`, `household_refuse`) cannot be called by clients.
+  - Internal helpers cannot be called by clients: `lock_my_household` and `move_to_new_household` are themselves `SECURITY DEFINER` functions with no grant to clients, and `household_refuse` only raises.
 - **Live role checks.** `auth_household_id()` and `auth_household_role()` read the caller's membership live. A change binds on the next statement.
 - **Sync after a change.** PowerSync still scopes by token claims, so:
   - tokens last 10 minutes;
