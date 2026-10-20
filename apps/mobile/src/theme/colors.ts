@@ -2,6 +2,7 @@ import { colorVariables, palettes, type ColorName } from './palettes';
 
 export {
   colorVariables,
+  NON_TEXT_PAIRS,
   palettes,
   TEXT_PAIRS,
   themeCss,

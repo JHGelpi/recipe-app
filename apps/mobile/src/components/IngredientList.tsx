@@ -75,7 +75,7 @@ export function IngredientList({
                       height: 24,
                       borderRadius: radius.field / 2,
                       borderWidth: 2,
-                      borderColor: done ? colors.accent : colors.line,
+                      borderColor: done ? colors.accent : colors.control,
                       backgroundColor: done ? colors.accent : 'transparent',
                       alignItems: 'center',
                       justifyContent: 'center',

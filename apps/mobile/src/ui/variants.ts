@@ -17,3 +17,13 @@ export const chipTokens: Record<ChipTone, { text: ColorName; background: ColorNa
   neutral: { text: 'text', background: 'raised' },
   selected: { text: 'onAccent', background: 'accent' },
 };
+
+/** Segmented tabs: the chosen one is filled, as the tab bar's active tab is (final review 4). */
+export const pillTabTokens: Record<
+  'selected' | 'idle',
+  // Text tones only: the label is a Text.
+  { text: 'onAccent' | 'muted'; background: ColorName | null }
+> = {
+  selected: { text: 'onAccent', background: 'accent' },
+  idle: { text: 'muted', background: null },
+};

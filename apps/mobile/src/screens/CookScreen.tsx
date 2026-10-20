@@ -129,7 +129,7 @@ function Cooking({ claims, recipe }: { claims: Claims; recipe: RecipeRecord }) {
                       width: 12,
                       height: 12,
                       borderRadius: 6,
-                      backgroundColor: index === at ? colors.accent : colors.line,
+                      backgroundColor: index === at ? colors.accent : colors.control,
                     }}
                   />
                 </Pressable>
