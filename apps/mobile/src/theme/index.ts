@@ -1,6 +1,7 @@
 export {
   colors,
   colorVariables,
+  NON_TEXT_PAIRS,
   palettes,
   TEXT_PAIRS,
   themeCss,

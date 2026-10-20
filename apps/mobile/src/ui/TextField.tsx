@@ -49,7 +49,7 @@ export function TextField({
               ? colors.accent
               : warn
                 ? colors.tag
-                : colors.line,
+                : colors.control,
           paddingHorizontal: space.md,
         }}
       >

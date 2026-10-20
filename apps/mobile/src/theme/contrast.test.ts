@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { contrast } from './contrast';
-import { palettes, TEXT_PAIRS, type Theme } from './palettes';
+import { NON_TEXT_PAIRS, palettes, TEXT_PAIRS, type Theme } from './palettes';
 
 describe('contrast (WCAG 2)', () => {
   it('is 21 for black on white and 1 for a color on itself', () => {
@@ -14,6 +14,13 @@ describe('contrast (WCAG 2)', () => {
       expect(contrast(palettes[theme][text], palettes[theme][background])).toBeGreaterThanOrEqual(
         4.5,
       );
+    });
+
+    // WCAG 1.4.11: checkbox borders, step dots and field edges must be seen.
+    it.each(NON_TEXT_PAIRS)('the %s control on %s passes 3:1', (control, background) => {
+      expect(
+        contrast(palettes[theme][control], palettes[theme][background]),
+      ).toBeGreaterThanOrEqual(3);
     });
   });
 });

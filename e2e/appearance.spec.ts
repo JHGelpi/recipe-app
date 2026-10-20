@@ -1,5 +1,5 @@
 import { expect, test, type Page } from './fixtures';
-import { freshEmail, signIn } from './helpers';
+import { createRecipe, freshEmail, signIn, unique } from './helpers';
 
 const LIGHT_BG = 'rgb(246, 247, 249)';
 const DARK_BG = 'rgb(14, 18, 26)';
@@ -114,6 +114,8 @@ test.describe('the Appearance setting', () => {
     await signIn(page, freshEmail('appearance-tabs'));
     const other = await context.newPage();
     await other.goto('/');
+    // The inline script alone makes it light; wait for the app, whose listener follows choices.
+    await expect(other.getByRole('link', { name: 'Household' })).toBeVisible();
     await expect.poll(() => look(other)).toEqual(LIGHT);
 
     await openAppearance(page);
@@ -125,5 +127,35 @@ test.describe('the Appearance setting', () => {
     await page.emulateMedia({ colorScheme: 'dark' });
     await expect.poll(() => look(page)).toEqual(DARK);
     await other.close();
+  });
+
+  test('in light, the chosen option is filled and an unticked ingredient box shows (WCAG 1.4.11)', async ({
+    page,
+  }) => {
+    await signIn(page, freshEmail('appearance-controls'));
+    await openAppearance(page);
+    await expect(page.getByRole('tab', { name: 'System' })).toHaveCSS(
+      'background-color',
+      'rgb(0, 117, 106)',
+    );
+    await expect(page.getByRole('tab', { name: 'Dark' })).toHaveCSS(
+      'background-color',
+      'rgba(0, 0, 0, 0)',
+    );
+
+    await createRecipe(page, {
+      title: unique('Box cake'),
+      ingredients: '2 cups flour',
+      steps: 'Mix.\nBake.',
+    });
+    await page.getByRole('button', { name: 'Cook' }).click();
+    const box = page
+      .getByRole('checkbox', { name: '2 cups flour' })
+      .locator('[aria-hidden="true"]');
+    await expect(box.first()).toHaveCSS('border-top-color', 'rgb(125, 134, 150)');
+    // The step not being shown is a control-colored dot.
+    await expect(
+      page.getByRole('button', { name: 'Go to step 2' }).locator('div').first(),
+    ).toHaveCSS('background-color', 'rgb(125, 134, 150)');
   });
 });

@@ -5,6 +5,8 @@ const dark = {
   surface: '#1A1F2C',
   raised: '#242A3A',
   line: '#2A3142',
+  // Edges people must see (checkboxes, step dots, fields): 3:1 on every background.
+  control: '#6B7488',
   accent: '#00F5D4',
   tag: '#FF9F1C',
   text: '#F8F9FA',
@@ -28,6 +30,7 @@ const light: Record<ColorName, string> = {
   surface: '#FFFFFF',
   raised: '#ECEFF4',
   line: '#D3D9E3',
+  control: '#7D8696',
   accent: '#00756A',
   tag: '#A85400',
   text: '#0E121A',
@@ -57,6 +60,15 @@ export function themeCss(): string {
     })
     .join('\n');
 }
+
+/** Controls and their states on every background they sit on (WCAG 1.4.11, 3:1). */
+export const NON_TEXT_PAIRS: readonly [ColorName, ColorName][] = [
+  ['control', 'bg'],
+  ['control', 'surface'],
+  ['control', 'raised'],
+  ['accent', 'bg'],
+  ['accent', 'surface'],
+];
 
 /** Every text color the app draws on every background it draws it on. */
 export const TEXT_PAIRS: readonly [ColorName, ColorName][] = [

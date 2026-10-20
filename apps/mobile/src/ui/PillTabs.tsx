@@ -1,6 +1,7 @@
 import { Pressable, View } from 'react-native';
 import { colors, radius, space } from '../theme';
 import { Text } from './Text';
+import { pillTabTokens } from './variants';
 
 /** Segmented tabs (Example 4). */
 export function PillTabs<T extends string>({
@@ -18,6 +19,9 @@ export function PillTabs<T extends string>({
       style={{
         flexDirection: 'row',
         backgroundColor: colors.surface,
+        // So the track shows inside a card, which is surface too.
+        borderWidth: 1,
+        borderColor: colors.line,
         borderRadius: radius.pill,
         padding: space.xs,
         gap: space.xs,
@@ -25,6 +29,7 @@ export function PillTabs<T extends string>({
     >
       {tabs.map((tab) => {
         const on = tab.value === value;
+        const token = pillTabTokens[on ? 'selected' : 'idle'];
         return (
           <Pressable
             key={tab.value}
@@ -37,10 +42,10 @@ export function PillTabs<T extends string>({
               borderRadius: radius.pill,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: on ? colors.raised : 'transparent',
+              backgroundColor: token.background ? colors[token.background] : 'transparent',
             }}
           >
-            <Text variant="label" tone={on ? 'text' : 'muted'}>
+            <Text variant="label" tone={token.text}>
               {tab.label}
             </Text>
           </Pressable>
