@@ -1,6 +1,6 @@
 // The prod:* commands (production spec §2–§5). Never reads .env.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { generateKeyPairSync, randomBytes, randomUUID } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createInterface } from 'node:readline/promises';
@@ -15,6 +15,7 @@ import {
   deploySequence,
   ENV_FILE,
   LIST_BACKUPS_SH,
+  newSigningKeys,
   normalizeEmail,
   PHOTO_PATH,
   photoCheckProblem,
@@ -131,14 +132,6 @@ const commands = {
       }
     };
     const hex = () => randomBytes(24).toString('hex');
-    const { privateKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
-    const jwk = {
-      ...privateKey.export({ format: 'jwk' }),
-      kid: randomUUID(),
-      alg: 'ES256',
-      use: 'sig',
-      key_ops: ['sign', 'verify'],
-    };
     const values = {
       POSTGRES_PASSWORD: hex(),
       APP_OWNER_PASSWORD: hex(),
@@ -147,7 +140,7 @@ const commands = {
       POWERSYNC_REPL_PASSWORD: hex(),
       POWERSYNC_STORAGE_PASSWORD: hex(),
       JWT_SECRET: randomBytes(32).toString('hex'),
-      JWT_KEYS: JSON.stringify([jwk]),
+      JWT_KEYS: newSigningKeys(),
       TUNNEL_TOKEN: await ask('TUNNEL_TOKEN', 'Cloudflare tunnel token'),
       SMTP_USER: await ask('SMTP_USER', 'Zoho login, e.g. wes@data2insightsllc.com'),
       SMTP_PASS: await ask('SMTP_PASS', 'Zoho app-specific password'),
@@ -235,6 +228,19 @@ const commands = {
   // Sends the backup alert's test message, so the mail settings can be checked (bug batch §5).
   'test-alert': () =>
     compose(['run', '--rm', '--no-deps', '--entrypoint', '/opt/backup/alert.sh', 'backup', 'test']),
+
+  // Prints a new JWT_KEYS line for the signing-key rotation (RUNBOOK).
+  'new-signing-key': () => console.log(`JWT_KEYS='${newSigningKeys()}'`),
+  // Recreates one service, for a changed mounted file such as the GCS key (RUNBOOK).
+  recreate() {
+    const service = rest[0];
+    if (!['backup', 'api', 'auth', 'sync', 'proxy'].includes(service ?? ''))
+      fail('Usage: pnpm prod:recreate backup|api|auth|sync|proxy');
+    if (
+      compose(['up', '-d', '--no-deps', '--force-recreate', service], {}, ['backup']).status !== 0
+    )
+      fail('Recreate failed: pnpm prod:logs');
+  },
 
   async restore() {
     const date = rest[0];

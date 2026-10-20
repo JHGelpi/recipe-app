@@ -1,7 +1,8 @@
 // Creates .env from .env.example, generating every secret.
 // Safe to re-run: an existing .env is never touched.
-import { generateKeyPairSync, randomBytes, randomUUID } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { newSigningKeys } from './prod/lib.mjs';
 
 if (existsSync('.env')) {
   console.log('.env already exists; leaving it alone.');
@@ -9,14 +10,6 @@ if (existsSync('.env')) {
 }
 
 const hex = () => randomBytes(24).toString('hex');
-
-function signingKeys() {
-  const { privateKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
-  const jwk = privateKey.export({ format: 'jwk' });
-  const key = { ...jwk, kid: randomUUID(), alg: 'ES256', use: 'sig', key_ops: ['sign', 'verify'] };
-  // Single quotes keep the JSON literal for both Docker Compose and Node.
-  return `'${JSON.stringify([key])}'`;
-}
 
 const generated = {
   POSTGRES_PASSWORD: hex(),
@@ -26,7 +19,8 @@ const generated = {
   POWERSYNC_REPL_PASSWORD: hex(),
   POWERSYNC_STORAGE_PASSWORD: hex(),
   JWT_SECRET: randomBytes(32).toString('hex'),
-  JWT_KEYS: signingKeys(),
+  // Single quotes keep the JSON literal for both Docker Compose and Node.
+  JWT_KEYS: `'${newSigningKeys()}'`,
 };
 
 const lines = readFileSync('.env.example', 'utf8')

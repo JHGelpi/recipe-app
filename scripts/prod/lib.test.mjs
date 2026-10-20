@@ -6,6 +6,7 @@ import {
   deployBlockers,
   DRILL_PROFILES,
   drillCounts,
+  newSigningKeys,
   checkoutBlockers,
   deploySequence,
   normalizeEmail,
@@ -154,4 +155,12 @@ it('photo paths in a manifest are household and photo ids only', () => {
   ).toBe(true);
   expect(PHOTO_PATH.test('../etc/passwd')).toBe(false);
   expect(PHOTO_PATH.test('a/b.jpg; rm -rf /')).toBe(false);
+});
+
+it('a new signing key is one ES256 private JWK with its own id', () => {
+  const [key, ...rest] = JSON.parse(newSigningKeys());
+  expect(rest).toEqual([]);
+  expect(key).toMatchObject({ kty: 'EC', crv: 'P-256', alg: 'ES256', use: 'sig' });
+  expect(typeof key.d).toBe('string');
+  expect(JSON.parse(newSigningKeys())[0].kid).not.toBe(key.kid);
 });

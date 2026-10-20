@@ -34,9 +34,24 @@ export function createVerifier(config: VerifierConfig): VerifyToken {
   let check: (token: string) => Promise<JWTPayload>;
   if ('jwksUrl' in config) {
     const keys = createRemoteJWKSet(new URL(config.jwksUrl));
-    check = async (token) =>
-      (await jwtVerify(token, keys, { audience: config.audience, algorithms: ['ES256', 'RS256'] }))
-        .payload;
+    const options = { audience: config.audience, algorithms: ['ES256', 'RS256'] };
+    // After a signing-key rotation, a token names a key the cached set lacks.
+    // jose would wait out a 30 s refetch cooldown, refusing (and so signing
+    // out) everyone meanwhile; reload at once instead, at most every 5 s so a
+    // stream of made-up key ids can't hammer the auth service (bug batch §5).
+    let reloadedAt = 0;
+    check = async (token) => {
+      try {
+        return (await jwtVerify(token, keys, options)).payload;
+      } catch (error) {
+        if (!(error instanceof errors.JWKSNoMatchingKey) || Date.now() - reloadedAt < 5_000) {
+          throw error;
+        }
+        reloadedAt = Date.now();
+        await keys.reload();
+        return (await jwtVerify(token, keys, options)).payload;
+      }
+    };
   } else {
     const key = new TextEncoder().encode(config.secret);
     check = async (token) =>

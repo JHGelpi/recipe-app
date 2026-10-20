@@ -188,9 +188,9 @@ A wrong key or a damaged file stops the restore **before** anything is replaced.
 ## Rotating secrets
 
 - **Zoho password:** generate a new app password, put it in `SMTP_PASS` in `.env.production`, then `pnpm prod:deploy`.
-- **Token signing key:** replace `JWT_KEYS`; generate a new one with `pnpm env:init` in an empty folder and copy the line. Then `pnpm prod:deploy`. Everyone signs in again.
+- **Token signing key:** run `pnpm prod:new-signing-key`. It prints a `JWT_KEYS='…'` line; put it in `.env.production` in place of the old `JWT_KEYS=` line. Then `pnpm prod:deploy`. People stay signed in: tokens signed with the old key are refused from then on, and each app renews its session with the new key and retries. (`pnpm test:jwt-rotation` tries these steps on a throwaway project.)
 - **Backup key:** make a new pair (step 5), set `BACKUP_AGE_RECIPIENT`, `pnpm prod:deploy`, then `pnpm prod:backup-now`. **Keep the old secret key for 30 days**, until the last backup made with it has expired.
-- **GCS key:** `gcloud iam service-accounts keys create` a new key, replace `.local/gcs-backup-key.json`, `pnpm prod:deploy`, then delete the old key in the Cloud Console.
+- **GCS key:** `gcloud iam service-accounts keys create` a new key, replace `.local/gcs-backup-key.json`, then `pnpm prod:recreate backup` (a deploy doesn't restart the backup loop for a changed key file). Run `pnpm prod:backup-now` to check it uploads, then delete the old key in the Cloud Console.
 
 ## Switching the sender to a geltech.dev mailbox
 

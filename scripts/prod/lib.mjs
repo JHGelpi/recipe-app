@@ -1,4 +1,5 @@
 // Decisions behind the prod:* commands and the guard, kept pure for tests.
+import { generateKeyPairSync, randomUUID } from 'node:crypto';
 
 export const PROJECT = 'dishkept';
 export const ENV_FILE = '.env.production';
@@ -146,3 +147,17 @@ export function photoCheckProblem(manifest, sha256) {
  */
 export const LIST_BACKUPS_SH =
   'rclone lsf "${BACKUP_REMOTE:-offsite:$BACKUP_BUCKET}" --include "dishkept-*.tar.age" || echo bucket-unreachable >&2; ls -1 /backups';
+
+/** A fresh JWT_KEYS value: one ES256 private key as a JWK array (GoTrue signs with it). */
+export function newSigningKeys() {
+  const { privateKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
+  return JSON.stringify([
+    {
+      ...privateKey.export({ format: 'jwk' }),
+      kid: randomUUID(),
+      alg: 'ES256',
+      use: 'sig',
+      key_ops: ['sign', 'verify'],
+    },
+  ]);
+}
