@@ -48,7 +48,7 @@ In light mode the mint and amber are darker, because bright mint on white is abo
 
 ### `colors.ts`
 - `palettes: { dark, light }` hold the hex values, with the same keys. `ColorName` is the key type.
-- `colors` maps each name to `var(--<name>)` on web. On native it is `palettes.dark` (`Platform.OS`).
+- `colors` maps each name to `var(--<name>)` on web. Where there is no page (native, and unit tests) it is `palettes.dark`; the check is `typeof document`, since importing `react-native` would break the unit tests.
 - `themeCss()` returns the stylesheet text:
   - `:root[data-theme="dark"]` and `:root[data-theme="light"]`, each declaring `--<name>: <value>;` for every token;
   - plus `color-scheme: dark` or `light` for each theme.
@@ -81,7 +81,7 @@ The inline style block declares only what's needed before the bundle loads:
 - the page background for each theme: `html[data-theme="light"]` and `html[data-theme="dark"]`, each with that palette's `bg`;
 - the focus outline as `var(--accent)`, with a fallback to the dark accent's hex.
 
-At startup, the app adds `themeCss()` as a `<style id="dishkept-theme">` in `<head>`, once, before the first render (in the root layout module). From then on, the background is `var(--bg)`.
+At startup, the app adds `themeCss()` as a `<style id="dishkept-theme">` in `<head>`, once, before the first render (in the root layout module). From then on, the app's own root view paints `var(--bg)` over the same colour.
 
 `index.html`'s hex values have to match `palettes`. A unit test reads the file and checks each one, so the two can't drift.
 
