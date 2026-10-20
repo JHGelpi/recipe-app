@@ -133,3 +133,7 @@ describe('pdfSafeText (Review Focus 3)', () => {
     expect(pdfSafeText('Line one\nline two')).toBe('Line one\nline two');
   });
 });
+
+it('the share snapshot schema is a plain object schema, not a lazy one', () => {
+  expect(shareSnapshotSchema.def.type).toBe('object');
+});

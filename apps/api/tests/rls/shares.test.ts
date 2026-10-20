@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { SEED, signInAs, signInFresh, type Actor } from '../../../../test-support/auth';
-import { adminSql, as } from '../helpers/db';
+import { adminSql, as, refusalCode } from '../helpers/db';
 import { asAnonymous } from '../helpers/anonymous';
 
 const fresh = () =>
@@ -202,5 +202,35 @@ describe('shares', () => {
     expect(left[0]!.n).toBe(0);
     expect((await read(fresher)).status).toBe('ok');
     expect((await read(code)).status).toBe('stopped');
+  });
+});
+
+describe('kept link codes (bug batch §4)', () => {
+  it('a live link is reused with the new snapshot; another household’s or a stopped link is refused', async () => {
+    const cook = await signInFresh(`share-keep-${randomUUID()}@example.test`);
+    const other = await signInFresh(`share-other-${randomUUID()}@example.test`);
+    const recipe = randomUUID();
+    await as(
+      cook,
+      (tx) =>
+        tx`insert into public.recipes (id, household_id, title) values (${recipe}, ${cook.householdId}, 'Kept soup')`,
+    );
+    const snap = (title: string) => ({ title });
+    const create = (actor: Actor, id: string, title: string) =>
+      as(
+        actor,
+        (tx) => tx<{ id: string; token: string }[]>`
+        select * from public.create_share(${id}::uuid, ${recipe}::uuid, ${tx.json(snap(title))})`,
+      );
+    const id = randomUUID();
+    const [first] = await create(cook, id, 'One');
+    const [again] = await create(cook, id, 'Two');
+    expect(again!.token).toBe(first!.token);
+    const [row] = await adminSql<{ title: string; kept: string }[]>`
+      select snapshot ->> 'title' as title, kept_code as kept from public.shares where id = ${id}`;
+    expect(row).toEqual({ title: 'Two', kept: first!.token });
+    expect(await refusalCode(create(other, id, 'Theirs'))).toBe('P0001');
+    await as(cook, (tx) => tx`select public.stop_shares(${recipe}::uuid)`);
+    expect(await refusalCode(create(cook, id, 'Three'))).toBe('P0001');
   });
 });
