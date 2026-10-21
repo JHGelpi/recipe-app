@@ -69,7 +69,7 @@ scripts/infra/      the infra:* commands (Node, like scripts/prod)
 - **Region:** `us-east1` throughout.
 
 ### The VM (`vm.tf`, only when `var.vm = true`)
-- **The machine:** `dishkept-vm`, `e2-small` (2 GB), Debian 12, a 20 GB balanced disk, and no external IP.
+- **The machine:** `dishkept-vm`, `e2-micro` by default (the free tier: 1 GB, with a 2 GB swap file from Ansible's `swap` role), Debian 12, a 30 GB standard disk, and no external IP. `-var machine_type=e2-small` gives it 2 GB if the micro proves too small.
 - **Network:** a `dishkept` network and subnet, with a Cloud Router and Cloud NAT for outbound. The tunnel dials out, and images and packages are pulled.
 - **Firewall:** inbound allows only TCP 22 from IAP's range, `35.235.240.0/20`.
 - **SSH:** the owner's account uses OS Login (`roles/compute.osAdminLogin`, granted on the project to the applying user).

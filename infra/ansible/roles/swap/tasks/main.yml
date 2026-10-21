@@ -1,0 +1,24 @@
+# The e2-micro VM has 1 GB; building the web image needs more (free-tier change).
+- name: Make a swap file
+  ansible.builtin.command: fallocate -l {{ swap_size }} /swapfile
+  args:
+    creates: /swapfile
+  become: true
+  notify:
+    - Format the swap file
+    - Use the swap file now
+
+- name: Keep the swap file private
+  ansible.builtin.file:
+    path: /swapfile
+    mode: '0600'
+  become: true
+
+- name: Use the swap file at boot
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    line: /swapfile none swap sw 0 0
+  become: true
+
+- name: Turn swap on before anything is built
+  ansible.builtin.meta: flush_handlers
