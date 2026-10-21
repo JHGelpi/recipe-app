@@ -7,85 +7,25 @@ Production is the Compose project **`dishkept`** on this PC, reached at **https:
 
 ## First-time setup
 
-### 0. A separate clone for production
-
-Production runs from **its own clone of the repo on the Linux disk**, never from the checkout you develop in.
-- The stack reads its sync rules and migrations from the checkout every time it starts, including after a reboot. A feature branch must never be what production starts from.
+OpenTofu creates the cloud resources, and Ansible sets up this PC and deploys (ADR-0021). The commands are in [`infra/README.md`](../infra/README.md). Run them from your development checkout. Ansible makes and keeps the production clone at `~/dishkept` on the Linux disk.
+- The stack reads its sync rules and migrations from that clone every time it starts, including after a reboot, so it is always a clean `main`.
 - A Windows drive (`/mnt/c`, `/mnt/d`) can't keep `.env.production` private.
 
-The `prod:*` commands refuse to run from a dev checkout (one with a `.env`) or from a Windows drive.
-
-```sh
-git clone https://github.com/JHGelpi/recipe-app.git ~/dishkept
-cd ~/dishkept
-corepack pnpm install
-```
-
-Run every command below from `~/dishkept`, and never run `pnpm dev:*` or tests there; the guard refuses them.
-
-**Check:** `pwd` shows `/home/<you>/dishkept`, and `ls .env` says there is no such file.
-
+The `prod:*` commands refuse to run from a dev checkout (one with a `.env`) or from a Windows drive. Never run `pnpm dev:*` or tests in `~/dishkept`; the guard refuses them.
 
 Do these steps in order. Each ends with a **Check:**; don't go on until it holds.
 
-### 1. Move geltech.dev's DNS to Cloudflare
+### 1. What you need first
 
-1. Sign in at dash.cloudflare.com. Choose **Add a domain**, enter `geltech.dev`, and pick the **Free** plan.
-2. Cloudflare shows two nameservers (like `xxx.ns.cloudflare.com`).
-3. At Porkbun: **Domain Management**, then `geltech.dev`, then **Details**, then **Authoritative Nameservers**. Replace Porkbun's nameservers with Cloudflare's two and save. Porkbun stays the registrar; only DNS moves.
+1. **A Cloudflare account and an API token:** in the Cloudflare dashboard, under My Profile, then API Tokens, create a token with **Zone: Edit**, **DNS: Edit** and **Cloudflare Tunnel: Edit** for your account. Note your account id (the dashboard's sidebar).
+2. **A Zoho app password:** at accounts.zoho.com, signed in as `wes@data2insightsllc.com`, go to **Security**, then **App Passwords**, then **Generate New Password**, named `Dishkept`. The SMTP settings are `smtp.zoho.com`, port `465` (SSL), and the login and From address are the same. Zoho's free plan doesn't include SMTP.
+3. **The Claude API key.**
+4. **A GitHub fine-grained token:** Contents: Read, on this repo only, valid for a year. The VM clones the private repo with it.
+5. **A backup bucket name,** for example `dishkept-backups-<something>` (names are global), and a **Vault password**. Put both in your password manager.
 
-**Check:** Cloudflare's overview page for `geltech.dev` says **Active**. This can take from minutes to a few hours.
+**Check:** you have the five items, with the Vault password saved.
 
-When you later set up email on geltech.dev, its MX and TXT records go in Cloudflare's DNS page, not Porkbun's.
-
-### 2. Create the tunnel
-
-1. In Cloudflare: **Zero Trust**, then **Networks**, then **Tunnels**, then **Create a tunnel**. Choose **Cloudflared** and name it `dishkept`.
-2. On the install page, copy the **token**: the long string after `--token`. Ignore the install commands; the stack runs `cloudflared` itself.
-3. **Public Hostnames**, then **Add a public hostname**:
-   - subdomain `dishkept`, domain `geltech.dev`;
-   - service type `HTTP`, URL `proxy:8080`.
-4. Save.
-
-**Check:** the tunnel is listed. It shows **Healthy** after step 7.
-
-### 3. Zoho app password
-
-1. At accounts.zoho.com, signed in as `wes@data2insightsllc.com`: **Security**, then **App Passwords**, then **Generate New Password**, named `Dishkept`. Copy it.
-2. The SMTP settings are `smtp.zoho.com`, port `465` (SSL). Zoho only allows sending from the address you log in with, so the login and From address are the same. Port `587` also works: the alert then uses STARTTLS.
-
-Zoho's free plan doesn't include SMTP. If step 7's test code never arrives, check the plan first.
-
-**Check:** step 7.
-
-### 4. Google Cloud Storage bucket
-
-Run these in **Cloud Shell** (the `>_` button at console.cloud.google.com), in your project. Choose a bucket name, for example `dishkept-backups-<something>` (names are global).
-
-```sh
-PROJECT=$(gcloud config get-value project)
-BUCKET=dishkept-backups-<something>
-gcloud storage buckets create gs://$BUCKET --location=us-east1 \
-  --uniform-bucket-level-access --public-access-prevention
-echo '{"rule":[{"action":{"type":"Delete"},"condition":{"age":30}}]}' > lifecycle.json
-gcloud storage buckets update gs://$BUCKET --lifecycle-file=lifecycle.json
-gcloud iam service-accounts create dishkept-backup --display-name="Dishkept backup"
-SA=dishkept-backup@$PROJECT.iam.gserviceaccount.com
-gcloud storage buckets add-iam-policy-binding gs://$BUCKET --member=serviceAccount:$SA --role=roles/storage.objectCreator
-gcloud storage buckets add-iam-policy-binding gs://$BUCKET --member=serviceAccount:$SA --role=roles/storage.objectViewer
-gcloud iam service-accounts keys create gcs-backup-key.json --iam-account=$SA
-```
-
-Then:
-1. In Cloud Shell's **⋮** menu, choose **Download** and save `gcs-backup-key.json`.
-2. Put it in the production clone at `~/dishkept/.local/gcs-backup-key.json` (`mkdir -p ~/dishkept/.local` first). The file is git-ignored.
-3. Delete the copy in Cloud Shell: `rm gcs-backup-key.json`.
-
-The service account can add and read backups but **cannot delete or overwrite** them, so a compromised PC can't erase old backups. The lifecycle rule removes them after 30 days.
-
-**Check:** `ls -l .local/gcs-backup-key.json` shows the file.
-
-### 5. The backup key
+### 2. The backup key
 
 ```sh
 docker run --rm alpine sh -c "apk add -q age && age-keygen"
@@ -93,45 +33,62 @@ docker run --rm alpine sh -c "apk add -q age && age-keygen"
 
 This prints a public key (`age1…`) and a secret key (`AGE-SECRET-KEY-1…`).
 
-- **Put the `AGE-SECRET-KEY-1…` line in your password manager, and print it. Without it, no backup can ever be restored.** Don't store it in the repo or anywhere on the server.
-- Keep the `age1…` public key for step 6.
+- **Put the `AGE-SECRET-KEY-1…` line in your password manager, and print it. Without it, no backup can ever be restored.** Don't store it in the repo, in the Vault file, or anywhere on the server.
+- Keep the `age1…` public key for step 5.
 
 When restoring, you'll paste the secret line into a file for a moment. See "Restore".
 
 **Check:** the secret key is in your password manager.
 
-### 6. Write `.env.production`
+### 3. The cloud resources
 
-```sh
-pnpm prod:init
-```
+Set the credentials (`infra/README.md` §2), then run `infra/bootstrap.sh`, `tofu init`, `tofu plan` and `tofu apply` (§3).
 
-It generates fresh database passwords and a signing key, then asks for:
-- the tunnel token;
-- the Zoho login, app password and From address (the same as the login);
-- the Claude API key;
-- the bucket name;
-- the `age1…` public key;
-- your sign-in email.
+They create:
+- the Cloudflare zone for `geltech.dev`, the `dishkept` tunnel, and its hostname `dishkept.geltech.dev` → `http://proxy:8080`;
+- the backup bucket, with a 30-day delete rule;
+- the `dishkept-backup` service account, which can add and read backups but **cannot delete or overwrite** them. So a compromised PC can't erase old backups.
 
-**Check:** in `~/dishkept`, `ls -l .env.production` shows `-rw-------`.
+**Check:** `tofu output nameservers` prints two Cloudflare nameservers.
 
-### 7. First deploy
+### 4. Point geltech.dev at Cloudflare
 
-```sh
-cd ~/dishkept && git pull
-pnpm prod:deploy
-```
+At Porkbun:
+1. Go to **Domain Management**, then `geltech.dev`, then **Details**, then **Authoritative Nameservers**.
+2. Replace Porkbun's nameservers with the two from step 3, and save.
 
-It builds and starts the stack, then lists your email and turns the sign-up gate on. It ends with `prod:status`.
+Porkbun stays the registrar; only DNS moves. If the subdomain has URL forwarding at Porkbun, remove it.
+
+**Check:** Cloudflare's overview page for `geltech.dev` says **Active**. This can take from minutes to a few hours.
+
+When you later set up email on geltech.dev, its MX and TXT records go in Cloudflare's DNS page, not Porkbun's.
+
+### 5. The Vault file
+
+Run `pnpm infra:secrets` (`infra/README.md` §4). It:
+- generates the database passwords and signing key;
+- takes the tunnel token, bucket and service-account key from OpenTofu;
+- asks for the rest.
+
+Commit `infra/ansible/group_vars/all/vault.yml` in its own pull request.
+
+**Check:** the file's first line is `$ANSIBLE_VAULT;1.1;AES256`.
+
+### 6. First deploy
+
+Run `ansible-playbook site.yml -l pc --check --diff --ask-vault-pass` (`infra/README.md` §5), read it, then run it without `--check`. It:
+- clones `~/dishkept`;
+- writes `.env.production` and the GCS key (`0600`);
+- runs `pnpm prod:deploy`, which builds and starts the stack, lists your email, and turns the sign-up gate on.
 
 **Check:**
 1. The Cloudflare tunnel shows **Healthy**.
 2. On your phone, **over mobile data with Wi-Fi off**, open https://dishkept.geltech.dev. It loads.
 3. Sign in with your email. The code arrives from the Zoho address.
 4. Remove the old home-screen app (the LAN address). In Safari at the new address, choose **Share**, then **Add to Home Screen**.
+5. Run the playbook again: it reports `changed=0`.
 
-### 8. First backup and drill
+### 7. First backup and drill
 
 ```sh
 pnpm prod:backup-now
@@ -146,9 +103,9 @@ The drill asks for the path to a file holding your secret key. See "Restore" for
 
 **Run the drill again every month.**
 
-### 9. Keep the PC serving
+### 8. Keep the PC serving
 
-- **Docker Desktop:** in Settings, under General, turn on **Start Docker Desktop when you sign in to your computer**.
+- **Docker Desktop:** in Settings, under General, turn on **Start Docker Desktop when you sign in to your computer**. Ansible warns if it's off.
 - **Windows:** in Settings, under System, then Power, set **When plugged in, put my device to sleep after** to **Never**.
 - **Windows sign-in:** Docker Desktop starts at *sign-in*, so after a reboot the stack comes back only once you've signed in to Windows.
 
@@ -187,23 +144,42 @@ A wrong key or a damaged file stops the restore **before** anything is replaced.
 
 ## Rotating secrets
 
-- **Zoho password:** generate a new app password, put it in `SMTP_PASS` in `.env.production`, then `pnpm prod:deploy`.
-- **Token signing key:** run `pnpm prod:new-signing-key`. It prints a `JWT_KEYS='…'` line; put it in `.env.production` in place of the old `JWT_KEYS=` line. Then `pnpm prod:deploy`. People stay signed in: tokens signed with the old key are refused from then on, and each app renews its session with the new key and retries. (`pnpm test:jwt-rotation` tries these steps on a throwaway project.)
-- **Backup key:** make a new pair (step 5), set `BACKUP_AGE_RECIPIENT`, `pnpm prod:deploy`, then `pnpm prod:backup-now`. **Keep the old secret key for 30 days**, until the last backup made with it has expired.
-- **GCS key:** `gcloud iam service-accounts keys create` a new key, replace `.local/gcs-backup-key.json`, then `pnpm prod:recreate backup` (a deploy doesn't restart the backup loop for a changed key file). Run `pnpm prod:backup-now` to check it uploads, then delete the old key in the Cloud Console.
+Every secret is in the Vault file. To change one, run `pnpm infra:secrets --edit`, change the line, and save. Then run `ansible-playbook site.yml -l <host> --ask-vault-pass`, which rewrites `.env.production` and redeploys. Commit the updated Vault file.
+
+`<host>` is wherever production runs: `pc`, or `vm` after a move. **Never run it against a host production has moved away from:** it would start a second copy, with its own database, on the same tunnel.
+
+- **Zoho password:** generate a new app password, then put it in `SMTP_PASS`.
+- **Token signing key:** run `pnpm prod:new-signing-key` in `~/dishkept`. It prints a `JWT_KEYS='…'` line; put it in place of the old `JWT_KEYS=` line. People stay signed in: tokens signed with the old key are refused from then on, and each app renews its session with the new key and retries. (`pnpm test:jwt-rotation` tries these steps on a throwaway project.)
+- **Backup key:** make a new pair (step 2), set `BACKUP_AGE_RECIPIENT`, run Ansible, then `pnpm prod:backup-now`. **Keep the old secret key for 30 days**, until the last backup made with it has expired.
+- **GCS key:**
+  1. `tofu apply -replace=google_service_account_key.backup`;
+  2. `pnpm infra:secrets --refresh`;
+  3. run Ansible;
+  4. in `~/dishkept`, `pnpm prod:recreate backup` (a deploy doesn't restart the backup loop for a changed key file);
+  5. `pnpm prod:backup-now` to check it uploads.
+
+  OpenTofu has already deleted the old key.
+- **Tunnel token:** `tofu apply -replace=random_id.tunnel_secret`, then `pnpm infra:secrets --refresh`, then Ansible.
+- **GitHub read token** (yearly, before it expires): make a new one, put it in `vault_github_read_token` with `--edit`, then run Ansible on the VM if there is one.
 
 ## Switching the sender to a geltech.dev mailbox
 
 Once the mailbox exists and its DNS records are in Cloudflare:
-1. Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` and `BACKUP_ALERT_TO` in `.env.production`.
-2. Run `pnpm prod:deploy`.
+1. Run `pnpm infra:secrets --edit` and set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` and `BACKUP_ALERT_TO`.
+2. Run `ansible-playbook site.yml -l <host> --ask-vault-pass` (`pc`, or `vm` after a move), and commit the Vault file.
 
 Nothing else changes.
 
 ## Moving to a VM later
 
-1. Install Docker on the VM and clone the repo.
-2. Copy `.env.production` and `.local/gcs-backup-key.json` across.
-3. `pnpm prod:stop` on the PC. Two connectors with the same tunnel token would split the traffic.
-4. On the VM, run `pnpm prod:deploy`, then `pnpm prod:restore`.
-5. The tunnel follows the token, so no DNS changes.
+The commands are in `infra/README.md` §2, §5 and §6.
+
+1. `tofu apply -var vm=true`. This creates `dishkept-vm`, with no external IP and SSH through IAP.
+2. `ansible-playbook site.yml -l vm -e tunnel=false --ask-vault-pass`. The VM runs the stack, but takes no traffic yet.
+3. On the PC, in `~/dishkept`, run `pnpm prod:backup-now`, then `pnpm prod:stop`. The backup holds the last changes, and two connectors with the same tunnel token would split the traffic.
+4. On the VM (`gcloud compute ssh dishkept-vm --tunnel-through-iap`), run `cd ~/dishkept && corepack pnpm prod:restore`.
+5. `ansible-playbook site.yml -l vm -e force_deploy=true --ask-vault-pass`. Now the tunnel is on.
+6. The tunnel follows the token, so no DNS changes.
+7. **Retire the PC copy** once the VM has served for a few days. In `~/dishkept` on the PC, run `docker compose -p dishkept down`, so a reboot can't start it again. From then on, every Ansible run uses `-l vm`.
+
+To try the move without changing anything live, run the trial in `infra/README.md` §6. It restores the newest backup on a VM with no tunnel, prints `DRILL PASSED`, and is then destroyed.

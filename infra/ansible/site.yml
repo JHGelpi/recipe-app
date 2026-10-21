@@ -1,0 +1,24 @@
+# The whole setup for one host (infrastructure spec §4): ansible-playbook site.yml -l pc|vm
+# Its own play, with no facts gathered, so nothing is contacted before the check.
+- name: Check the run names one host
+  hosts: all
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Run against exactly one host (Review Focus 1)
+      ansible.builtin.assert:
+        that: ansible_play_hosts_all | length == 1
+        fail_msg: name one host with -l pc or -l vm
+
+- name: Set up and deploy Dishkept production
+  hosts: all
+  gather_facts: true
+  roles:
+    - role: docker
+      when: inventory_hostname == 'vm'
+    - role: node
+      when: inventory_hostname == 'vm'
+    - role: app
+    - role: deploy
+    - role: serve
+      when: inventory_hostname == 'pc'

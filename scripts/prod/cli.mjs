@@ -1,12 +1,12 @@
 // The prod:* commands (production spec §2–§5). Never reads .env.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import {
   backupAge,
   drillCounts,
+  generatedSecrets,
   DRILL_PROFILES,
   buildProdEnv,
   checkoutBlockers,
@@ -17,10 +17,13 @@ import {
   LIST_BACKUPS_SH,
   newSigningKeys,
   normalizeEmail,
+  argsFor,
   PHOTO_PATH,
   photoCheckProblem,
   pickBackup,
   PROD_PROFILES,
+  PROMPTED,
+  promptValue,
   RECREATABLE,
 } from './lib.mjs';
 
@@ -75,7 +78,15 @@ function deployedBuild() {
   return build.stdout?.trim() || 'unknown';
 }
 
-const [command, ...rest] = process.argv.slice(2);
+const [command, ...args] = process.argv.slice(2);
+let flags;
+try {
+  flags = argsFor(command, args);
+} catch (error) {
+  console.error(error.message);
+  process.exit(1);
+}
+const rest = flags.positional;
 
 /** Clean, current main: what the stack reads its sync rules and migrations from. */
 function requireCurrentMain(action) {
@@ -87,6 +98,21 @@ function requireCurrentMain(action) {
     originMain: git('rev-parse', 'origin/main'),
   });
   if (blockers.length) fail(`Not ${action}:\n- ${blockers.join('\n- ')}`);
+}
+
+/** --key-file, for runs with no one at the prompt (the VM trial), or the question. */
+async function keyPathFromFlagOrAsk() {
+  if (flags.keyFile) {
+    const keyPath = resolve(flags.keyFile);
+    if (!existsSync(keyPath) || !statSync(keyPath).isFile()) fail(`No key file at ${keyPath}`);
+    return keyPath;
+  }
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    return await askKeyPath(rl);
+  } finally {
+    rl.close();
+  }
 }
 
 /** The private key file, as an absolute path (a bare name would be a Compose volume). */
@@ -127,30 +153,17 @@ const commands = {
     const rl = createInterface({ input: process.stdin, output: process.stdout });
     const ask = async (name, hint) => {
       for (;;) {
-        const value = (await rl.question(`${name} (${hint}): `)).trim();
-        if (value && !value.includes("'")) return value;
+        const value = promptValue(await rl.question(`${name} (${hint}): `));
+        if (value) return value;
         console.log("Required, and may not contain a single quote ('). Try again.");
       }
     };
-    const hex = () => randomBytes(24).toString('hex');
     const values = {
-      POSTGRES_PASSWORD: hex(),
-      APP_OWNER_PASSWORD: hex(),
-      API_LOGIN_PASSWORD: hex(),
-      AUTH_DB_PASSWORD: hex(),
-      POWERSYNC_REPL_PASSWORD: hex(),
-      POWERSYNC_STORAGE_PASSWORD: hex(),
-      JWT_SECRET: randomBytes(32).toString('hex'),
-      JWT_KEYS: newSigningKeys(),
+      ...generatedSecrets(),
       TUNNEL_TOKEN: await ask('TUNNEL_TOKEN', 'Cloudflare tunnel token'),
-      SMTP_USER: await ask('SMTP_USER', 'Zoho login, e.g. wes@data2insightsllc.com'),
-      SMTP_PASS: await ask('SMTP_PASS', 'Zoho app-specific password'),
-      SMTP_FROM: await ask('SMTP_FROM', 'must equal SMTP_USER for Zoho'),
-      ANTHROPIC_API_KEY: await ask('ANTHROPIC_API_KEY', 'sk-ant-...'),
       BACKUP_BUCKET: await ask('BACKUP_BUCKET', 'GCS bucket name'),
-      BACKUP_AGE_RECIPIENT: await ask('BACKUP_AGE_RECIPIENT', 'age1... public key'),
-      OWNER_EMAIL: await ask('OWNER_EMAIL', 'your sign-in address, added to the allowed list'),
     };
+    for (const { name, hint } of PROMPTED) values[name] = await ask(name, hint);
     rl.close();
     values.BACKUP_ALERT_TO = values.SMTP_FROM;
     writeFileSync(ENV_FILE, buildProdEnv(readFileSync('.env.production.example', 'utf8'), values), {
@@ -162,7 +175,7 @@ const commands = {
   deploy() {
     requireCurrentMain('deploying');
     // The site goes public only once the gate is on (deploySequence).
-    for (const step of deploySequence()) {
+    for (const step of deploySequence({ tunnel: flags.tunnel })) {
       if (step.args) {
         if (compose(step.args, {}, step.profiles).status !== 0)
           fail('Deploy failed: pnpm prod:logs');
@@ -176,6 +189,10 @@ const commands = {
         ensureGate();
       }
     }
+    if (!flags.tunnel)
+      console.log(
+        'Started without the tunnel or the backup loop: the site is not reachable from outside.',
+      );
     commands.status();
   },
 
@@ -289,9 +306,7 @@ const commands = {
   async 'restore-test'() {
     // The drill builds its images from this checkout.
     requireCurrentMain('running the drill');
-    const rl = createInterface({ input: process.stdin, output: process.stdout });
-    const keyPath = await askKeyPath(rl);
-    rl.close();
+    const keyPath = await keyPathFromFlagOrAsk();
     const file = await fetchBackup();
     const drill = (args, opts = {}) =>
       spawnSync(

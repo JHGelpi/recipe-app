@@ -1,5 +1,5 @@
 // Decisions behind the prod:* commands and the guard, kept pure for tests.
-import { generateKeyPairSync, randomUUID } from 'node:crypto';
+import { generateKeyPairSync, randomBytes, randomUUID } from 'node:crypto';
 
 export const PROJECT = 'dishkept';
 export const ENV_FILE = '.env.production';
@@ -125,7 +125,16 @@ export function checkoutBlockers({ cwd, hasDevEnv }) {
 export const RECREATABLE = ['backup'];
 
 /** First deploy order: services, then the gate, and only then the public tunnel. */
-export function deploySequence() {
+export function deploySequence({ tunnel = true } = {}) {
+  // --no-tunnel is a stack that must take no traffic, such as the VM trial (infrastructure
+  // spec §5): no cloudflared, since two connectors on one token split it, and no backup loop,
+  // whose first run would upload this stack's empty database as the bucket's newest backup.
+  if (!tunnel)
+    return [
+      { profiles: [], args: ['up', '-d', '--build', '--wait', '--remove-orphans'] },
+      { restartSync: true },
+      { gate: true },
+    ];
   return [
     { profiles: ['backup'], args: ['up', '-d', '--build', '--wait', '--remove-orphans'] },
     // The nightly loop records the build the proxy now serves (bug batch §5).
@@ -134,6 +143,27 @@ export function deploySequence() {
     { gate: true },
     { profiles: PROD_PROFILES, args: ['up', '-d', '--wait', 'cloudflared'] },
   ];
+}
+
+/** prod:logs hands its arguments to Compose (--follow, --since); the rest are parsed strictly. */
+export function argsFor(command, args) {
+  return command === 'logs' ? { tunnel: true, keyFile: null, positional: args } : parseFlags(args);
+}
+
+/** The flags prod:* commands take (infrastructure spec §5); the rest stay positional. */
+export function parseFlags(args) {
+  const flags = { tunnel: true, keyFile: null, positional: [] };
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === '--no-tunnel') flags.tunnel = false;
+    else if (arg === '--key-file') {
+      const path = args[++i];
+      if (!path || path.startsWith('--')) throw new Error('--key-file needs a path');
+      flags.keyFile = path;
+    } else if (arg.startsWith('--')) throw new Error(`Unknown flag: ${arg}`);
+    else flags.positional.push(arg);
+  }
+  return flags;
 }
 
 const BACKUP_NAME = /^dishkept-\d{4}-\d{2}-\d{2}(T\d{4}Z)?\.tar\.age$/;
@@ -180,4 +210,35 @@ export function newSigningKeys() {
       key_ops: ['sign', 'verify'],
     },
   ]);
+}
+
+/** Every secret production generates itself (prod:init and infra:secrets share these). */
+export function generatedSecrets() {
+  const hex = () => randomBytes(24).toString('hex');
+  return {
+    POSTGRES_PASSWORD: hex(),
+    APP_OWNER_PASSWORD: hex(),
+    API_LOGIN_PASSWORD: hex(),
+    AUTH_DB_PASSWORD: hex(),
+    POWERSYNC_REPL_PASSWORD: hex(),
+    POWERSYNC_STORAGE_PASSWORD: hex(),
+    JWT_SECRET: randomBytes(32).toString('hex'),
+    JWT_KEYS: newSigningKeys(),
+  };
+}
+
+/** The values only the owner has; the tunnel token and bucket come from OpenTofu. */
+export const PROMPTED = [
+  { name: 'SMTP_USER', hint: 'Zoho login, e.g. wes@data2insightsllc.com' },
+  { name: 'SMTP_PASS', hint: 'Zoho app-specific password' },
+  { name: 'SMTP_FROM', hint: 'must equal SMTP_USER for Zoho' },
+  { name: 'ANTHROPIC_API_KEY', hint: 'sk-ant-...' },
+  { name: 'BACKUP_AGE_RECIPIENT', hint: 'age1... public key' },
+  { name: 'OWNER_EMAIL', hint: 'your sign-in address, added to the allowed list' },
+];
+
+/** An answer as stored, or null to ask again: Compose has no escape inside '…'. */
+export function promptValue(answer) {
+  const value = answer.trim();
+  return value && !value.includes("'") ? value : null;
 }

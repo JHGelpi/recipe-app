@@ -1,0 +1,50 @@
+# The VM trial (infrastructure spec §6 step 8): deploy without the tunnel, then the
+# restore drill against the newest backup in the bucket.
+# Its own play, with no facts gathered, so the PC is never touched (final review 6).
+- name: Check the trial runs on the VM
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Only on the VM
+      ansible.builtin.assert:
+        that: inventory_hostname == 'vm'
+        fail_msg: the trial runs on the VM only; use -l vm
+
+- name: Set up the VM without the tunnel
+  ansible.builtin.import_playbook: site.yml
+  vars:
+    tunnel: false
+
+- name: Run the restore drill on the VM
+  hosts: vm
+  gather_facts: false
+  vars_prompt:
+    - name: age_secret_key
+      prompt: Your AGE-SECRET-KEY-1... line (hidden)
+      private: true
+  tasks:
+    - name: Drill with the key, then remove it
+      block:
+        - name: Write the key for the drill
+          ansible.builtin.copy:
+            content: "{{ age_secret_key }}\n"
+            dest: /tmp/dishkept-age.key
+            mode: '0600'
+          no_log: true
+        - name: Restore the newest backup into a throwaway stack
+          ansible.builtin.command: corepack pnpm prod:restore-test --key-file /tmp/dishkept-age.key
+          args:
+            chdir: '{{ app_dir }}'
+          register: drill
+          changed_when: false
+        - name: Show the drill's result
+          ansible.builtin.debug:
+            msg: "{{ drill.stdout_lines | select('search', 'DRILL') | list }}"
+        - name: Require DRILL PASSED
+          ansible.builtin.assert:
+            that: "'DRILL PASSED' in drill.stdout"
+      always:
+        - name: Remove the key
+          ansible.builtin.file:
+            path: /tmp/dishkept-age.key
+            state: absent

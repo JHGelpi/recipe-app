@@ -14,6 +14,11 @@ import {
   PHOTO_PATH,
   pickBackup,
   productionSignals,
+  generatedSecrets,
+  argsFor,
+  parseFlags,
+  PROMPTED,
+  promptValue,
   RECREATABLE,
 } from './lib.mjs';
 
@@ -181,4 +186,92 @@ it('a new signing key is one ES256 private JWK with its own id', () => {
 
 it('only the backup loop can be recreated: other services reread files from the checkout', () => {
   expect(RECREATABLE).toEqual(['backup']);
+});
+
+describe('the prod flags (infrastructure spec §5)', () => {
+  it('deploys the tunnel last by default', () => {
+    const steps = deploySequence();
+    expect(steps.at(-1).args).toEqual(['up', '-d', '--wait', 'cloudflared']);
+  });
+
+  it('with --no-tunnel, starts neither the tunnel nor the backup loop (final review 2)', () => {
+    // A stack that takes no traffic must not upload its own empty backup to the shared bucket.
+    const steps = deploySequence({ tunnel: false });
+    expect(steps.some((step) => step.args?.includes('cloudflared'))).toBe(false);
+    expect(steps.some((step) => step.stampBackup)).toBe(false);
+    expect(steps.some((step) => step.profiles?.includes('backup'))).toBe(false);
+    expect(steps.map((step) => Object.keys(step)[0])).toEqual(['profiles', 'restartSync', 'gate']);
+  });
+
+  it('reads --no-tunnel and --key-file, and keeps the rest as positional', () => {
+    expect(parseFlags([])).toEqual({ tunnel: true, keyFile: null, positional: [] });
+    expect(parseFlags(['--no-tunnel'])).toEqual({ tunnel: false, keyFile: null, positional: [] });
+    expect(parseFlags(['--key-file', '/tmp/k', '2026-10-19'])).toEqual({
+      tunnel: true,
+      keyFile: '/tmp/k',
+      positional: ['2026-10-19'],
+    });
+  });
+
+  it('refuses --key-file without a path, and unknown flags', () => {
+    expect(() => parseFlags(['--key-file'])).toThrow('--key-file needs a path');
+    expect(() => parseFlags(['--tunnel=no'])).toThrow('Unknown flag: --tunnel=no');
+  });
+});
+
+describe('production secrets (infrastructure spec §4)', () => {
+  it('generates every password as hex, and fresh signing keys', () => {
+    const a = generatedSecrets();
+    const b = generatedSecrets();
+    expect(Object.keys(a).sort()).toEqual(
+      [
+        'API_LOGIN_PASSWORD',
+        'APP_OWNER_PASSWORD',
+        'AUTH_DB_PASSWORD',
+        'JWT_KEYS',
+        'JWT_SECRET',
+        'POSTGRES_PASSWORD',
+        'POWERSYNC_REPL_PASSWORD',
+        'POWERSYNC_STORAGE_PASSWORD',
+      ].sort(),
+    );
+    for (const [name, value] of Object.entries(a)) {
+      if (name !== 'JWT_KEYS') expect(value, name).toMatch(/^[0-9a-f]{48,64}$/);
+      expect(value, name).not.toBe(b[name]);
+    }
+    expect(JSON.parse(a.JWT_KEYS)[0]).toMatchObject({ alg: 'ES256', kty: 'EC' });
+  });
+
+  it('asks the owner for the values only they have', () => {
+    expect(PROMPTED.map((p) => p.name)).toEqual([
+      'SMTP_USER',
+      'SMTP_PASS',
+      'SMTP_FROM',
+      'ANTHROPIC_API_KEY',
+      'BACKUP_AGE_RECIPIENT',
+      'OWNER_EMAIL',
+    ]);
+  });
+
+  it('re-asks an empty answer or one with a single quote (Review Focus 4)', () => {
+    expect(promptValue('  sk-ant-x  ')).toBe('sk-ant-x');
+    expect(promptValue('')).toBeNull();
+    expect(promptValue('   ')).toBeNull();
+    expect(promptValue("it's")).toBeNull();
+  });
+});
+
+describe('argsFor (final review: prod:logs flags)', () => {
+  it('passes prod:logs flags straight to Compose', () => {
+    expect(argsFor('logs', ['api', '--follow', '--since', '10m'])).toEqual({
+      tunnel: true,
+      keyFile: null,
+      positional: ['api', '--follow', '--since', '10m'],
+    });
+  });
+
+  it('stays strict for every other command, so a typo never deploys the tunnel', () => {
+    expect(() => argsFor('deploy', ['--no-tunel'])).toThrow('Unknown flag: --no-tunel');
+    expect(argsFor('deploy', ['--no-tunnel']).tunnel).toBe(false);
+  });
 });

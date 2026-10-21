@@ -1,0 +1,8 @@
+# Runs before the deploy role's handler: handlers run in the order roles define them.
+- name: Install dependencies
+  ansible.builtin.command: corepack pnpm install --frozen-lockfile
+  args:
+    chdir: '{{ app_dir }}'
+  changed_when: true
+  # A dry run has no clone to run in yet.
+  when: not ansible_check_mode

@@ -1,0 +1,24 @@
+- name: Add NodeSource's signing key
+  ansible.builtin.get_url:
+    url: https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key
+    dest: /etc/apt/keyrings/nodesource.asc
+    mode: '0644'
+  become: true
+
+- name: Add Node 22's apt repository
+  ansible.builtin.apt_repository:
+    repo: deb [signed-by=/etc/apt/keyrings/nodesource.asc] https://deb.nodesource.com/node_22.x nodistro main
+    filename: nodesource
+  become: true
+
+- name: Install Node 22
+  ansible.builtin.apt:
+    name: nodejs
+    update_cache: true
+  become: true
+
+- name: Enable pnpm through corepack
+  ansible.builtin.command: corepack enable
+  args:
+    creates: /usr/bin/pnpm
+  become: true
