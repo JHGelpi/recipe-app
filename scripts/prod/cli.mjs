@@ -24,6 +24,7 @@ import {
   PROD_PROFILES,
   PROMPTED,
   promptValue,
+  withAlertAddress,
   RECREATABLE,
 } from './lib.mjs';
 
@@ -165,10 +166,13 @@ const commands = {
     };
     for (const { name, hint } of PROMPTED) values[name] = await ask(name, hint);
     rl.close();
-    values.BACKUP_ALERT_TO = values.SMTP_FROM;
-    writeFileSync(ENV_FILE, buildProdEnv(readFileSync('.env.production.example', 'utf8'), values), {
-      mode: 0o600,
-    });
+    writeFileSync(
+      ENV_FILE,
+      buildProdEnv(readFileSync('.env.production.example', 'utf8'), withAlertAddress(values)),
+      {
+        mode: 0o600,
+      },
+    );
     console.log(`Wrote ${ENV_FILE}. Next: pnpm prod:deploy`);
   },
 

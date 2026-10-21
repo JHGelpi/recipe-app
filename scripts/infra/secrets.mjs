@@ -5,7 +5,13 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline';
 import { Writable } from 'node:stream';
-import { buildProdEnv, generatedSecrets, PROMPTED, promptValue } from '../prod/lib.mjs';
+import {
+  buildProdEnv,
+  generatedSecrets,
+  PROMPTED,
+  promptValue,
+  withAlertAddress,
+} from '../prod/lib.mjs';
 import {
   parseVaultYaml,
   planSecretsRun,
@@ -136,7 +142,6 @@ for (const { name, hint } of PROMPTED) {
     console.log("Required, and may not contain a single quote ('). Try again.");
   }
 }
-values.BACKUP_ALERT_TO = values.SMTP_FROM;
 let githubToken;
 for (;;) {
   githubToken = (await ask('GitHub read-only token for the VM (github_pat_...): ')).trim();
@@ -148,7 +153,7 @@ if ((await askHidden('Again: ')) !== password || !password) {
   console.error('The passwords differ or are empty; nothing was written.');
   process.exit(1);
 }
-const env = buildProdEnv(readFileSync('.env.production.example', 'utf8'), values);
+const env = buildProdEnv(readFileSync('.env.production.example', 'utf8'), withAlertAddress(values));
 encrypt(password, vaultYaml({ env, keyJson, githubToken }));
 rl.close();
 console.log(`Wrote ${VAULT_FILE} (encrypted). Commit it, then run Ansible.`);
