@@ -1,11 +1,17 @@
 // Behaviour checks of the Ansible roles in --check mode, on scratch git repos (final review
 // 4–6). Part of pnpm test:infra; touches no real host or clone.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 
-const ansibleDir = resolve('infra/ansible');
+// A copy without the encrypted vault.yml: these checks have no Vault password, and the
+// dummies below stand in for its values.
+const ansibleDir = join(mkdtempSync(join(tmpdir(), 'infra-ansible-dir-')), 'ansible');
+cpSync(resolve('infra/ansible'), ansibleDir, {
+  recursive: true,
+  filter: (src) => basename(src) !== 'vault.yml',
+});
 const env = { ...process.env, ANSIBLE_CONFIG: join(ansibleDir, 'ansible.cfg') };
 const dummies = ['vault_prod_env=x', 'vault_gcs_backup_key=x', 'vault_github_read_token=x'];
 const git = (cwd, ...args) => execFileSync('git', args, { cwd, stdio: 'pipe' });
