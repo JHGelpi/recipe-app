@@ -49,9 +49,13 @@ They create:
 - the backup bucket, with a 30-day delete rule;
 - the `dishkept-backup` service account, which can add and read backups but **cannot delete or overwrite** them. So a compromised PC can't erase old backups.
 
+If `geltech.dev` is already a zone in your Cloudflare account (`tofu plan` would otherwise fail creating it), import it before the plan, from `infra/tofu`: `tofu import cloudflare_zone.site <zone id>`. The zone id is on the zone's overview page. Importing changes nothing at Cloudflare; the next plan should list no change to the zone. The zone's other records (mail, `www`) aren't managed by OpenTofu and stay as they are.
+
 **Check:** `tofu output nameservers` prints two Cloudflare nameservers.
 
 ### 4. Point geltech.dev at Cloudflare
+
+If the zone was imported and already says **Active**, skip this step.
 
 At Porkbun:
 1. Go to **Domain Management**, then `geltech.dev`, then **Details**, then **Authoritative Nameservers**.

@@ -47,9 +47,10 @@ export DISHKEPT_VM_USER=...           # your OS Login user, e.g. you_example_com
 infra/bootstrap.sh                    # the state bucket; safe to re-run
 cd infra/tofu
 tofu init -backend-config=bucket=$TF_VAR_project-dishkept-tofu-state
+tofu import cloudflare_zone.site <zone id>   # only if the zone already exists in Cloudflare
 tofu plan                              # read it
 tofu apply
-tofu output nameservers               # paste these at Porkbun (RUNBOOK)
+tofu output nameservers               # paste these at Porkbun (RUNBOOK), unless the zone is already Active
 cd ../..
 ```
 
