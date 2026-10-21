@@ -88,6 +88,8 @@ A second run with nothing new reports `changed=0`.
 
 ## 6. The VM trial
 
+The VM is an `e2-micro` (Google's free tier) with a 30 GB standard disk and a 2 GB swap file. Its first build of the web image is slow, about 15 to 30 minutes. If it runs out of memory, add `-var machine_type=e2-small` (2 GB, a few cents for the trial) to both `tofu apply` lines.
+
 ```sh
 cd infra/tofu && tofu apply -var vm=true && cd ../ansible
 ansible-playbook trial.yml -l vm --ask-vault-pass     # asks for your AGE-SECRET-KEY line; ends with DRILL PASSED

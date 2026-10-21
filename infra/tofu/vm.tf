@@ -74,14 +74,15 @@ resource "google_project_iam_member" "iap_tunnel" {
 resource "google_compute_instance" "dishkept" {
   count        = var.vm ? 1 : 0
   name         = "dishkept-vm"
-  machine_type = "e2-small"
+  machine_type = var.machine_type
   zone         = var.zone
   tags         = ["dishkept"]
   boot_disk {
     initialize_params {
       image = "debian-cloud/debian-12"
-      size  = 20
-      type  = "pd-balanced"
+      # The free tier's disk: 30 GB of standard persistent disk.
+      size = 30
+      type = "pd-standard"
     }
   }
   network_interface {

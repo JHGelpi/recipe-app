@@ -124,6 +124,34 @@ const check = (name, ok, output) => {
   );
 }
 
+{
+  // Free-tier change: the VM gets a swap file; the PC never does.
+  const list = (host) =>
+    spawnSync(
+      'ansible-playbook',
+      ['site.yml', '-l', host, '--list-tasks', ...dummies.flatMap((d) => ['-e', d])],
+      {
+        cwd: ansibleDir,
+        env,
+        encoding: 'utf8',
+      },
+    ).stdout;
+  check('the VM gets a swap file', list('vm').includes('swap : '), list('vm'));
+  // On the PC, a dry run of just the swap tasks must skip them all.
+  const pc = spawnSync(
+    'ansible-playbook',
+    ['site.yml', '-l', 'pc', '--check', '--tags', 'swap', ...dummies.flatMap((d) => ['-e', d])],
+    { cwd: ansibleDir, env, encoding: 'utf8' },
+  );
+  // Only fact-gathering runs: every swap task is skipped, and nothing changes.
+  const recap = /pc\s*:\s*ok=(\d+)\s+changed=(\d+).*skipped=(\d+)/.exec(pc.stdout);
+  check(
+    'the PC gets no swap file',
+    pc.status === 0 && recap?.[1] === '1' && recap?.[2] === '0' && Number(recap?.[3]) >= 3,
+    pc.stdout + pc.stderr,
+  );
+}
+
 if (failures.length) {
   console.error(`\n${failures.join('\n\n')}`);
   process.exit(1);

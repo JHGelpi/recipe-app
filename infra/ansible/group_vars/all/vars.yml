@@ -4,3 +4,5 @@ vm_zone: us-east1-b
 # false starts the stack without cloudflared (prod:deploy --no-tunnel): the VM trial.
 tunnel: true
 force_deploy: false
+# The VM's swap file (roles/swap): the e2-micro has 1 GB.
+swap_size: 2G

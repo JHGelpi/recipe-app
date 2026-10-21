@@ -27,3 +27,18 @@ describe('infra files (final review)', () => {
     },
   );
 });
+
+describe('the VM fits the free tier (free-tier change)', () => {
+  const vm = () => readFileSync('infra/tofu/vm.tf', 'utf8');
+  const main = () => readFileSync('infra/tofu/main.tf', 'utf8');
+
+  it('defaults to an e2-micro, overridable with -var machine_type', () => {
+    expect(main()).toMatch(/variable "machine_type" \{[^}]*default\s*=\s*"e2-micro"/);
+    expect(vm()).toMatch(/machine_type\s*=\s*var\.machine_type/);
+  });
+
+  it('uses the free 30 GB standard disk', () => {
+    expect(vm()).toMatch(/size\s*=\s*30\b/);
+    expect(vm()).toMatch(/type\s*=\s*"pd-standard"/);
+  });
+});

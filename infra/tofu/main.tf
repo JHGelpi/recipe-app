@@ -61,6 +61,12 @@ variable "owner_member" {
   description = "Who may SSH to the VM, as an IAM member: user:you@example.com"
 }
 
+variable "machine_type" {
+  type        = string
+  default     = "e2-micro"
+  description = "The VM's size; e2-micro is in the free tier (1 GB, with a swap file)"
+}
+
 variable "vm" {
   type        = bool
   default     = false
