@@ -229,13 +229,18 @@ export function generatedSecrets() {
 
 /** The values only the owner has; the tunnel token and bucket come from OpenTofu. */
 export const PROMPTED = [
-  { name: 'SMTP_USER', hint: 'Zoho login, e.g. wes@data2insightsllc.com' },
+  { name: 'SMTP_USER', hint: 'Zoho login, e.g. noreply@geltech.dev' },
   { name: 'SMTP_PASS', hint: 'Zoho app-specific password' },
   { name: 'SMTP_FROM', hint: 'must equal SMTP_USER for Zoho' },
   { name: 'ANTHROPIC_API_KEY', hint: 'sk-ant-...' },
   { name: 'BACKUP_AGE_RECIPIENT', hint: 'age1... public key' },
   { name: 'OWNER_EMAIL', hint: 'your sign-in address, added to the allowed list' },
 ];
+
+/** Backup alerts go to the owner: the sender may be a no-reply mailbox nobody reads. */
+export function withAlertAddress(values) {
+  return { ...values, BACKUP_ALERT_TO: values.OWNER_EMAIL };
+}
 
 /** An answer as stored, or null to ask again: Compose has no escape inside '…'. */
 export function promptValue(answer) {

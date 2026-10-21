@@ -18,7 +18,7 @@ Do these steps in order. Each ends with a **Check:**; don't go on until it holds
 ### 1. What you need first
 
 1. **A Cloudflare account and an API token:** in the Cloudflare dashboard, under My Profile, then API Tokens, create a token with **Zone: Edit**, **DNS: Edit** and **Cloudflare Tunnel: Edit** for your account. Note your account id (the dashboard's sidebar).
-2. **A Zoho app password:** at accounts.zoho.com, signed in as `wes@data2insightsllc.com`, go to **Security**, then **App Passwords**, then **Generate New Password**, named `Dishkept`. The SMTP settings are `smtp.zoho.com`, port `465` (SSL), and the login and From address are the same. Zoho's free plan doesn't include SMTP.
+2. **A Zoho app password:** at accounts.zoho.com, signed in as the sending mailbox, `noreply@geltech.dev`, go to **Security**, then **App Passwords**, then **Generate New Password**, named `Dishkept`. The SMTP settings are `smtp.zoho.com`, port `465` (SSL), and the login and From address are the same. Backup alerts go to your sign-in address (`OWNER_EMAIL`), not to the sender. Zoho's free plan doesn't include SMTP.
 3. **The Claude API key.**
 4. **A GitHub fine-grained token:** Contents: Read, on this repo only, valid for a year. The VM clones the private repo with it.
 5. **A backup bucket name,** for example `dishkept-backups-<something>` (names are global), and a **Vault password**. Put both in your password manager.

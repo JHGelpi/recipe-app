@@ -43,9 +43,9 @@ cat > "$out"
 }
 
 const answers = [
-  'me@example.com', // SMTP_USER
+  'noreply@example.com', // SMTP_USER
   'app-pass', // SMTP_PASS
-  'me@example.com', // SMTP_FROM
+  'noreply@example.com', // SMTP_FROM
   'sk-ant-x', // ANTHROPIC_API_KEY
   'age1public', // BACKUP_AGE_RECIPIENT
   'me@example.com', // OWNER_EMAIL
@@ -71,6 +71,8 @@ describe('pnpm infra:secrets (final review 1)', () => {
     );
     expect(vault.env).toMatch(/^SMTP_PASS=app-pass$/m);
     expect(vault.env).toMatch(/^TUNNEL_TOKEN=eyJtunnel$/m);
+    // Backup alerts go to someone who reads mail, not to the no-reply sender.
+    expect(vault.env).toMatch(/^BACKUP_ALERT_TO=me@example.com$/m);
     expect(vault.githubToken).toBe('github_pat_abc_123');
     // Nothing else written: no plaintext env file beside the "encrypted" one.
     expect(readdirSync(dir).sort()).toEqual(

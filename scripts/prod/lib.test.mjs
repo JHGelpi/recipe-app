@@ -20,6 +20,7 @@ import {
   PROMPTED,
   promptValue,
   RECREATABLE,
+  withAlertAddress,
 } from './lib.mjs';
 
 describe('the production guard', () => {
@@ -273,5 +274,12 @@ describe('argsFor (final review: prod:logs flags)', () => {
   it('stays strict for every other command, so a typo never deploys the tunnel', () => {
     expect(() => argsFor('deploy', ['--no-tunel'])).toThrow('Unknown flag: --no-tunel');
     expect(argsFor('deploy', ['--no-tunnel']).tunnel).toBe(false);
+  });
+});
+
+describe('withAlertAddress (a no-reply sender)', () => {
+  it('sends backup alerts to the owner, not to the sender', () => {
+    const values = { SMTP_FROM: 'noreply@geltech.dev', OWNER_EMAIL: 'me@example.com' };
+    expect(withAlertAddress(values)).toEqual({ ...values, BACKUP_ALERT_TO: 'me@example.com' });
   });
 });
