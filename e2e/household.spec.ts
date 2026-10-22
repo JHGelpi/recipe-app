@@ -66,17 +66,26 @@ test('a person with recipes brings them, then leaves (FR-3, FR-5)', async ({ pag
   await joiner.context().close();
 });
 
-test('a used link says so (FR-3)', async ({ page, browser }) => {
+test('a used link says so, and leaves Pending for Accepted (FR-3, FR-42)', async ({
+  page,
+  browser,
+}) => {
   await signIn(page, freshEmail('hh-once'));
   const link = await inviteLink(page);
-  const first = await session(browser, freshEmail('hh-first'));
+  const firstEmail = freshEmail('hh-first');
+  const first = await session(browser, firstEmail);
   await first.goto(link);
   await first.getByRole('button', { name: 'Join' }).click();
   await expect(first.getByText(/^You've joined the /)).toBeVisible({ timeout: 30_000 });
   const second = await session(browser, freshEmail('hh-second'));
   await second.goto(link);
-  await expect(second.getByText('This invite has already been used')).toBeVisible();
+  await expect(
+    second.getByText('This invitation has already been used. Ask the sender for a new one.'),
+  ).toBeVisible();
   await expect(second.getByRole('button', { name: 'Join' })).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByText(new RegExp(`^Accepted by ${firstEmail} · `))).toBeVisible();
+  await expect(page.getByText('Pending invites')).toHaveCount(0);
   await first.context().close();
   await second.context().close();
 });

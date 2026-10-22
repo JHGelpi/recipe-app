@@ -197,6 +197,64 @@ describe('friend links', () => {
     expect(await revoke(viewer)).toBe('link_unknown');
   });
 
+  it('works once: the first address holds it, and its new account uses it up (FR-42)', async () => {
+    const admin = await signInFresh(address('single-admin'));
+    const code = await friendCode(admin);
+    const first = address('first-friend');
+    const second = address('second-friend');
+    used.push(first, second);
+    expect(await grant('friend', code, first)).toBe(true);
+    expect(await grant('friend', code, second)).toBe(false);
+    // Asking again (a second code email) keeps the hold.
+    expect(await grant('friend', code, first)).toBe(true);
+    expect(await linkStatus(code)).toBe('live');
+
+    const friend = await signInFresh(first);
+    const [link] = await adminSql<
+      { accepted_by: string; accepted_email: string; accepted: boolean }[]
+    >`select accepted_by, accepted_email, accepted_at is not null as accepted
+      from public.friend_links where token_hash = sha256(convert_to(${code}, 'UTF8'))`;
+    expect(link).toEqual({ accepted_by: friend.userId, accepted_email: first, accepted: true });
+    expect(await linkStatus(code)).toBe('used');
+    expect(await grant('friend', code, second)).toBe(false);
+    expect(await grant('friend', code, first)).toBe(false);
+    const id = await linkId(code);
+    expect(
+      await outcome(as(admin, (tx) => tx`select public.revoke_friend_link(${id}::uuid)`)),
+    ).toBe('link_unknown');
+  });
+
+  it('two addresses asking at once: exactly one gets the pass', async () => {
+    const admin = await signInFresh(address('race-admin'));
+    const code = await friendCode(admin);
+    const a = address('race-a');
+    const b = address('race-b');
+    used.push(a, b);
+    const results = await Promise.all([grant('friend', code, a), grant('friend', code, b)]);
+    expect(results.filter(Boolean)).toHaveLength(1);
+  });
+
+  it('a hold lapses with its pass, so an address that never signed up does not use the link', async () => {
+    const admin = await signInFresh(address('lapse-admin'));
+    const code = await friendCode(admin);
+    const typo = address('typo-friend');
+    const real = address('real-friend');
+    used.push(typo, real);
+    expect(await grant('friend', code, typo)).toBe(true);
+    await adminSql`update public.signup_passes set expires_at = now() - interval '1 second'
+      where email = ${typo}`;
+    expect(await grant('friend', code, real)).toBe(true);
+  });
+
+  it('someone who already has an account signs in through it without holding it', async () => {
+    const admin = await signInFresh(address('existing-admin'));
+    const code = await friendCode(admin);
+    const fresh = address('fresh-friend');
+    used.push(SEED.memberA, fresh);
+    expect(await grant('friend', code, SEED.memberA)).toBe(true);
+    expect(await grant('friend', code, fresh)).toBe(true);
+  });
+
   it('signed out, a link reads as live, ended once expired, or unknown', async () => {
     const admin = await signInFresh(address('status-admin'));
     const code = await friendCode(admin);

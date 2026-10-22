@@ -28,7 +28,7 @@ describe('household api', () => {
 
   it.each([
     ['last_admin', 'Make someone else an Admin first'],
-    ['invite_used', 'This invite has already been used'],
+    ['invite_used', 'This invitation has already been used. Ask the sender for a new one.'],
     ['only_admin', 'Make someone else an Admin of your household first'],
     ['forbidden', 'Only an Admin can do that'],
   ])('turns the %s refusal into its message', async (key, message) => {

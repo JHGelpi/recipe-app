@@ -75,6 +75,7 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 | FR-4 | Roles: Admin, Member, Viewer with permissions per §2 | M |
 | FR-5 | Admin can change roles and remove members *(built in sub-project 6)* | M |
 | FR-6 | Any user can invite someone to create their own household; the household's friend links are listed on the Household screen, and anyone who can make one can revoke it *(built in sub-project 6; friend links in the production sub-project; revoking in the bug batch)* | S |
+| FR-42 | Invitation links work once: a household invite once accepted, a friend link once an account is made with it (the first address to ask holds it for 24 hours). Used links leave the pending list for a short history ("Accepted by Sam · Oct 22"); a used, revoked or expired link says so and asks for a new one *(built)* | S |
 
 ### Capture & import
 | ID | Requirement | Pri |

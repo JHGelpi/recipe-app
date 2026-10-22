@@ -54,6 +54,10 @@ export function registerHouseholdRoutes(app: Hono, deps: { household: HouseholdS
   app.get('/api/friend-links', (c) =>
     handle(c, async (token) => c.json(await household.listFriendLinks(token))),
   );
+  // FR-42: used links, so the sender sees they worked.
+  app.get('/api/friend-links/accepted', (c) =>
+    handle(c, async (token) => c.json(await household.listAcceptedFriendLinks(token))),
+  );
   app.delete('/api/friend-links/:id', (c) =>
     handle(
       c,
@@ -67,6 +71,9 @@ export function registerHouseholdRoutes(app: Hono, deps: { household: HouseholdS
   );
   app.get('/api/invites', (c) =>
     handle(c, async (token) => c.json(await household.listInvites(token))),
+  );
+  app.get('/api/invites/accepted', (c) =>
+    handle(c, async (token) => c.json(await household.listAcceptedInvites(token))),
   );
   app.delete('/api/invites/:id', (c) =>
     handle(

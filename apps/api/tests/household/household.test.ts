@@ -128,4 +128,46 @@ describe('household endpoints', () => {
     });
     expect(await status.json()).toEqual({ status: 'ended' });
   });
+
+  it('a used invite leaves the pending list for the history, and a second use is refused (FR-42)', async () => {
+    const admin = await fresh();
+    const joiner = await fresh();
+    const late = await fresh();
+    const code = await invite(admin);
+    expect((await call(joiner, 'POST', '/invites/accept', { token: code })).status).toBe(200);
+    const second = await call(late, 'POST', '/invites/accept', { token: code });
+    expect([second.status, await second.json()]).toEqual([409, { error: 'invite_used' }]);
+    expect(await (await call(admin, 'GET', '/invites')).json()).toEqual([]);
+    const history = (await (await call(admin, 'GET', '/invites/accepted')).json()) as {
+      email: string | null;
+    }[];
+    expect(history.map((row) => row.email)).toEqual([joiner.email]);
+    expect((await call(joiner, 'GET', '/invites/accepted')).status).toBe(403);
+  });
+
+  it('a friend link used to make an account leaves the list for the history and reads as used (FR-42)', async () => {
+    const sender = await fresh();
+    const made = (await (await call(sender, 'POST', '/friend-links', {})).json()) as {
+      code: string;
+    };
+    const email = `friend-${randomUUID()}@example.test`;
+    const pass = await fetch(`${env.apiUrl}/signup-pass`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kind: 'friend', code: made.code, email }),
+    });
+    expect(pass.status).toBe(204);
+    await signInFresh(email);
+    expect(await (await call(sender, 'GET', '/friend-links')).json()).toEqual([]);
+    const history = (await (await call(sender, 'GET', '/friend-links/accepted')).json()) as {
+      email: string;
+    }[];
+    expect(history.map((row) => row.email)).toEqual([email]);
+    const status = await fetch(`${env.apiUrl}/friend-links/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: made.code }),
+    });
+    expect(await status.json()).toEqual({ status: 'used' });
+  });
 });

@@ -99,7 +99,11 @@ test('an existing account signs in through a dead friend link; a new one is told
   await setGate(true);
   await page.goto(`/welcome/${'d'.repeat(43)}`);
   await enterEmail(page, freshEmail('late-friend'));
-  await expect(page.getByText('This link has expired. Ask for a new one.')).toBeVisible();
+  await expect(
+    page.getByText(
+      'This invitation has expired or has already been used. Ask the sender for a new one.',
+    ),
+  ).toBeVisible();
   const code = await requestCode(page, SEED.adminA);
   expect(code).toMatch(/^\d{6}$/);
 });
@@ -122,7 +126,9 @@ test('a friend link is listed on Household; once revoked, its page says it has e
 
   const friend = await (await browser.newContext()).newPage();
   await friend.goto(url);
-  await expect(friend.getByText('This link has ended. Ask for a new one.')).toBeVisible();
+  await expect(
+    friend.getByText('This invitation has ended. Ask the sender for a new one.'),
+  ).toBeVisible();
   await friend.context().close();
 });
 
@@ -146,4 +152,42 @@ test('a live friend link works even when its status check never answers (final r
   await enterEmail(friend, freshEmail('friend-slow-new'));
   await expect(friend.getByText(/^We sent a 6-digit code/)).toBeVisible();
   await friend.context().close();
+});
+
+test('a friend link works once: the next person is told it was used, and the sender sees who used it (FR-42)', async ({
+  page,
+  browser,
+  context,
+}) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await signIn(page, freshEmail('friend-once'));
+  await page.getByRole('link', { name: 'Household', exact: true }).click();
+  await page.getByRole('button', { name: 'Invite a friend to Dishkept' }).click();
+  await expect(page.getByText('Link copied')).toBeVisible();
+  const url = await page.evaluate(() => navigator.clipboard.readText());
+
+  await setGate(true);
+  const firstEmail = freshEmail('friend-once-first');
+  const first = await (await browser.newContext()).newPage();
+  await first.goto(url);
+  await finishSignIn(first, firstEmail);
+  await expect(first.getByRole('heading', { name: 'Recipes' })).toBeVisible();
+  await first.context().close();
+
+  const second = await (await browser.newContext()).newPage();
+  await second.goto(url);
+  await expect(
+    second.getByText('This invitation has already been used. Ask the sender for a new one.'),
+  ).toBeVisible();
+  await enterEmail(second, freshEmail('friend-once-second'));
+  await expect(
+    second.getByText(
+      'This invitation has expired or has already been used. Ask the sender for a new one.',
+    ),
+  ).toBeVisible();
+  await second.context().close();
+
+  await page.reload();
+  await expect(page.getByText(new RegExp(`^Accepted by ${firstEmail} · `))).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Revoke link/ })).toHaveCount(0);
 });

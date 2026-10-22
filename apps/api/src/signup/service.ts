@@ -4,7 +4,7 @@ export type PassKind = 'invite' | 'share' | 'friend';
 export type SignupService = {
   grant(kind: PassKind, code: string, email: string): Promise<boolean>;
   /** FR-6: whether a friend link still works, asked signed out. */
-  friendLinkStatus(code: string): Promise<'live' | 'ended' | 'unknown'>;
+  friendLinkStatus(code: string): Promise<'live' | 'ended' | 'used' | 'unknown'>;
 };
 
 type Anonymous = <T>(fn: (tx: UserTx) => Promise<T>) => Promise<T>;
@@ -23,7 +23,8 @@ export function createSignupService(deps: { asAnonymous: Anonymous }): SignupSer
       const [row] = await deps.asAnonymous(
         (tx) => tx<{ status: string }[]>`select public.friend_link_status(${code}) as status`,
       );
-      return row?.status === 'live' || row?.status === 'ended' ? row.status : 'unknown';
+      const status = row?.status;
+      return status === 'live' || status === 'ended' || status === 'used' ? status : 'unknown';
     },
   };
 }

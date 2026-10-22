@@ -3,13 +3,13 @@ import { useEffect, useState } from 'react';
 import { config } from '../config';
 import { setPendingFriend } from '../session/pendingFriend';
 import { useSession } from '../session/SessionProvider';
-import { FRIEND_LINK_ENDED, friendLinkStatus } from '../session/signupPass';
+import { FRIEND_LINK_ENDED, FRIEND_LINK_USED, friendLinkStatus } from '../session/signupPass';
 import { SignInScreen } from './SignInScreen';
 
 /** FR-6: a friend link. Signed out, it is sign-in with a pass to make an account. */
 export function WelcomeScreen({ code }: { code: string }) {
   const { state } = useSession();
-  const [ended, setEnded] = useState(false);
+  const [ended, setEnded] = useState<'ended' | 'used' | null>(null);
   useEffect(() => {
     if (state.status !== 'signedOut') return;
     // Kept at once, ended or not: a slow check must not leave an email
@@ -21,7 +21,7 @@ export function WelcomeScreen({ code }: { code: string }) {
       fetch: (input, init) => fetch(input, init),
       apiUrl: config.apiUrl,
     }).then((status) => {
-      if (live && status === 'ended') setEnded(true);
+      if (live && status !== 'live') setEnded(status);
     });
     return () => {
       live = false;
@@ -31,7 +31,13 @@ export function WelcomeScreen({ code }: { code: string }) {
   if (state.status === 'signedIn') return <Redirect href="/" />;
   return (
     <SignInScreen
-      intro={ended ? FRIEND_LINK_ENDED : 'Someone invited you to make your own recipe collection.'}
+      intro={
+        ended === 'used'
+          ? FRIEND_LINK_USED
+          : ended === 'ended'
+            ? FRIEND_LINK_ENDED
+            : 'Someone invited you to make your own recipe collection.'
+      }
     />
   );
 }
