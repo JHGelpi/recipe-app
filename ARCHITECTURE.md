@@ -1,6 +1,7 @@
 # Architecture
 
-> Status: **Proposed v0.2** · Last updated: 2026-10-17
+> Status: **Current: v1 in production** · Last updated: 2026-10-22
+> Dishkept runs at `https://dishkept.geltech.dev` on the owner's PC, behind Cloudflare Tunnel (ADR-0018).
 > Structured per the [C4 model](https://c4model.com): System Context → Containers → Components, plus Dynamic and Deployment diagrams. Level 4 (Code) diagrams are intentionally omitted; the code is the source of truth at that level.
 >
 > Requirements live in [`docs/SPEC.md`](docs/SPEC.md). Decisions and their trade-offs live in [`docs/adr/`](docs/adr/). Requirement IDs (FR-x, NFR-x) are referenced throughout.
@@ -28,49 +29,53 @@ Who uses the system, and what external systems it depends on.
 
 ```mermaid
 C4Context
-  title System Context — Recipe App
+  title System Context — Dishkept
 
   Person(admin, "Household Admin", "Manages household members and roles; full recipe access")
   Person(member, "Household Member", "Imports, edits, searches, cooks")
   Person(viewer, "Household Viewer", "Browses, searches, cooks; read-only")
   Person_Ext(recipient, "Recipient", "Receives a shared recipe; may or may not have an account")
 
-  System(recipeApp, "Recipe App", "Stores, imports, searches, and helps cook a household's recipes; AI-assisted")
+  System(dishkept, "Dishkept", "Stores, imports, searches, and helps cook a household's recipes; AI-assisted")
 
   System_Ext(llm, "LLM Provider (Anthropic Claude API)", "Parses recipes from images/text/HTML; suggests substitutions")
   System_Ext(recipeSites, "Recipe Websites", "Third-party pages imported by URL")
-  System_Ext(email, "Email Delivery", "Sends sign-in and invite emails")
-  System_Ext(stores, "App Stores", "Apple App Store / Google Play distribution")
+  System_Ext(email, "Email Delivery (Zoho SMTP)", "Sends sign-in codes and backup-failure alerts")
+  System_Ext(stores, "App Stores (later)", "Apple App Store / Google Play, for the native builds (ADR-0007)")
+  System_Ext(cloudflare, "Cloudflare", "DNS for geltech.dev; the tunnel's public edge")
+  System_Ext(gcs, "Google Cloud Storage", "Encrypted off-site backups")
   System_Ext(osShare, "Phone OS Share Sheet", "Messages, Mail, etc. for sending PDF/text")
 
-  Rel(admin, recipeApp, "Manages household, recipes")
-  Rel(member, recipeApp, "Imports, edits, cooks")
-  Rel(viewer, recipeApp, "Searches, cooks")
-  Rel(recipeApp, osShare, "Hands off PDF / text / import link")
+  Rel(admin, dishkept, "Manages household, recipes")
+  Rel(member, dishkept, "Imports, edits, cooks")
+  Rel(viewer, dishkept, "Searches, cooks")
+  Rel(dishkept, osShare, "Hands off PDF / text / import link")
   Rel(osShare, recipient, "Delivers via text or email")
-  Rel(recipient, recipeApp, "Opens import link; saves copy")
-  Rel(recipeApp, llm, "Parse & substitution requests", "HTTPS")
-  Rel(recipeApp, recipeSites, "Fetches recipe pages", "HTTPS")
-  Rel(recipeApp, email, "Sends invites / magic links")
-  Rel(stores, admin, "Installs app")
+  Rel(recipient, dishkept, "Opens import link; saves copy")
+  Rel(dishkept, llm, "Parse & substitution requests", "HTTPS")
+  Rel(dishkept, recipeSites, "Fetches recipe pages", "HTTPS")
+  Rel(dishkept, email, "Sign-in codes; backup alerts")
+  Rel(dishkept, cloudflare, "Served through an outbound tunnel")
+  Rel(dishkept, gcs, "Nightly encrypted backups")
+  Rel(stores, admin, "Installs the native app (later); today the web app installs from the browser")
 ```
 
 ## 2. Level 2 — Containers
 
-The deployable/runnable units inside the Recipe App boundary.
+The deployable/runnable units inside the Dishkept boundary.
 
 ```mermaid
 C4Container
-  title Container Diagram — Recipe App
+  title Container Diagram — Dishkept
 
   Person(user, "Household User", "Admin / Member / Viewer")
 
-  System_Boundary(sys, "Recipe App") {
+  System_Boundary(sys, "Dishkept") {
     Container(mobile, "Web App", "Expo / React Native Web, TypeScript; Workbox service worker", "UI, cook mode, local search, PDF generation, offline queue; installable, opens offline (ADR-0009)")
     ContainerDb(localDb, "On-device Database", "SQLite in the browser (OPFS, via PowerSync web SDK)", "Household's recipes; full-text index; pending-upload queue")
     Container(proxy, "Proxy", "Caddy", "Single entry point; serves the built web app; routes /auth, /api, /sync")
     Container(syncSvc, "Sync Service", "PowerSync service (self-hosted container)", "Streams household-scoped changes between Postgres and devices")
-    Container(api, "API", "Node / TypeScript (Hono)", "Upload of local writes; import pipeline and AI calls (ADR-0012); invites and share links later")
+    Container(api, "API", "Node / TypeScript (Hono)", "Upload of local writes; import pipeline and AI calls (ADR-0012); photos; households, invites and friend links (ADR-0015); share links (ADR-0016); sign-up passes (ADR-0018)")
     Container(auth, "Auth", "GoTrue (self-hosted container)", "Sign-in (email one-time code); issues JWTs with household_id and household_role claims")
     ContainerDb(db, "Database", "PostgreSQL 17 with RLS", "System of record: households, users, recipes; also holds the sync service's storage database")
     Container(tunnel, "Tunnel", "cloudflared (production only)", "Dials out to Cloudflare; the public address reaches the proxy without open ports (ADR-0018)")
@@ -79,36 +84,37 @@ C4Container
 
   System_Ext(llm, "Claude API")
   System_Ext(sites, "Recipe Websites")
-  System_Ext(email, "Email Delivery")
+  System_Ext(email, "Email Delivery (Zoho SMTP)")
+  System_Ext(gcs, "Google Cloud Storage")
 
   Rel(user, mobile, "Uses")
   Rel(mobile, localDb, "Reads/writes (always local-first)")
   Rel(mobile, proxy, "All network traffic", "HTTPS (through the tunnel in production)")
   Rel(tunnel, proxy, "Forwards dishkept.geltech.dev")
   Rel(backup, db, "Nightly dump")
+  Rel(backup, gcs, "Encrypted upload", "HTTPS")
+  Rel(backup, email, "Failure alerts", "SMTP")
   Rel(proxy, auth, "/auth")
   Rel(proxy, api, "/api")
   Rel(proxy, syncSvc, "/sync", "HTTP streaming / WebSocket")
   Rel(syncSvc, db, "Replicates household-scoped data", "Postgres logical replication")
   Rel(api, db, "Reads/writes as the user (RLS applies)")
   Rel(auth, db, "Users, sessions; reads memberships for claims")
-  Rel(api, llm, "Parse (substitute later)", "HTTPS")
+  Rel(api, llm, "Parse imports; suggest substitutions", "HTTPS")
   Rel(api, sites, "Fetch page HTML", "HTTPS")
-  Rel(auth, email, "Sign-in codes, invites", "SMTP")
+  Rel(auth, email, "Sign-in codes", "SMTP")
 ```
 
 Photo files live on the API's `photos` volume, served only after an RLS check on their row (ADR-0013); the share landing page (`/s/<code>`) reads a snapshot through `read_share` (ADR-0016).
-
-### Container responsibilities```
 
 ### Container responsibilities
 
 | Container | Owns | Notes |
 |---|---|---|
-| **Mobile App** | All UI; cook mode; scaling & unit conversion (pure functions, offline); PDF/text rendering for sharing (FR-26); offline import queue (FR-29) | Never holds AI or service-role keys (NFR-3); a service worker precaches the app's files so it opens offline (ADR-0009) |
+| **Web App** (`apps/mobile`) | All UI; cook mode; scaling & unit conversion (pure functions, offline); PDF/text rendering for sharing (FR-26); offline import queue (FR-29) | Never holds AI or service-role keys (NFR-3); a service worker precaches the app's files so it opens offline (ADR-0009) |
 | **On-device DB** | Local copy of the household's data; source for the in-memory search index (FR-19/20, ADR-0011) | Writes go here first, then upload queue → API |
 | **Sync Service** | Change streaming, per-household sync rules | Sync rules mirror RLS; a device only receives its household's rows |
-| **API** | Business logic that must be server-side: import pipeline, AI, invites, share tokens, write validation | Stateless; verifies the JWT, then runs every statement as the user through asUser |
+| **API** | Business logic that must be server-side: import pipeline, AI and its monthly cap, photo files, invites and friend links, share links, sign-up passes, write validation, the trash purge | Stateless; verifies the JWT, then runs every statement as the user through asUser |
 | **Auth** | Identity; JWT custom claims `household_id`, `household_role` (added by an access-token hook); the sign-up gate (`before_user_created` hook: allowed emails and 24-hour passes from live links, ADR-0018) | Sign in with Apple required on iOS (NFR-12) |
 | **Database** | System of record; RLS on every tenant table | Backed up nightly by the Backup container (NFR-9, ADR-0018) |
 | **Proxy** | Routing, static web app; TLS locally (Cloudflare terminates it in production) | Only container with a published port in dev; none in production, where the tunnel reaches it |
@@ -132,7 +138,9 @@ C4Component
     Component(importQ, "Import Queue", "imports table + kicker", "The synced imports table; the kicker asks the server to read waiting imports when online (FR-29, ADR-0012)")
     Component(repo, "Recipe Repository", "TypeScript over PowerSync", "CRUD on local DB; soft delete/trash; role checks for UI")
     Component(search, "Search", "In-memory index over the local DB (ADR-0011)", "Title/ingredient/tag search + tag filters, offline (FR-19/20)")
-    Component(cook, "Cook Engine", "Pure TS", "Scaling, unit conversion, step state, keep-awake (FR-21–23)")
+    Component(cookEngine, "Cook Engine", "Pure TS (packages/domain)", "Scaling, unit conversion, step state (FR-21–23)")
+    Component(shopping, "Shopping List", "Screen + shoppingLines", "Adds a recipe's ingredients at the viewed servings; merges lines; aisles (FR-31–35, ADR-0019)")
+    Component(theme, "Appearance", "CSS variables + useAppearance", "System, light or dark, per device (ADR-0020)")
     Component(sharing, "Sharing", "Share menu, PDF, /s page", "Text and PDF on the phone; links read snapshots anonymously (FR-26, FR-27)")
     Component(apiClient, "API Client", "fetch", "Typed calls to the API; attaches JWT")
     Component(authC, "Session", "@supabase/auth-js against GoTrue", "Sign-in, token refresh, household/role claims")
@@ -148,16 +156,18 @@ C4Component
   Rel(nav, repo, "Reads/writes recipes")
   Rel(nav, search, "Queries")
   Rel(nav, cook, "Cook mode")
+  Rel(cook, cookEngine, "Scales and converts")
+  Rel(nav, shopping, "Shopping list")
+  Rel(shopping, repo, "Reads recipes; writes shopping rows")
+  Rel(ui, theme, "Colors from")
   Rel(nav, sharing, "Share")
   Rel(repo, localDb, "SQL")
-  Rel(search, localDb, "FTS queries")
+  Rel(search, localDb, "Reads rows to build the index")
   Rel(apiClient, api, "HTTPS + JWT")
   Rel(sharing, apiClient, "Create, stop, read and save share links")
 ```
 
 ### 3b. API
-
-Only the Auth Guard and Write Upload Handler exist after the walking skeleton.
 
 ```mermaid
 C4Component
@@ -169,12 +179,13 @@ C4Component
     Component(urlX, "URL Extractor", "Module", "Fetches HTML with address checks after DNS and on redirects; schema.org Recipe JSON-LD when present; else cleaned text → LLM")
     Component(parser, "AI Parser", "Module", "Prompts LLM with image(s)/text; validates against Recipe JSON schema; flags low-confidence fields (FR-10/11)")
     Component(subs, "Substitutions", "POST /api/substitutions", "Asks Claude per ingredient; remembers answers in substitutions (FR-24)")
-    Component(invites, "Household API", "/api/invites, /api/members, /api/household, /api/friend-links", "Calls the household definer functions (ADR-0015)")
-    Component(subFn, "Substitution Service", "Function: /substitute", "Ingredient + recipe context → options with amounts & effects (FR-24)")
+    Component(invites, "Household API", "/api/invites, /api/members, /api/household, /api/friend-links", "Invites (create, preview, accept, cancel), friend links, removing members, leaving; calls the household definer functions (ADR-0015) (FR-3–6)")
     Component(quota, "AI Usage Meter", "ai_usage table", "Records spend per household per month; enforces the cap (NFR-7)")
     Component(llmGw, "LLM Gateway", "Module", "Single place for model choice, retries, timeouts, prompt versions")
     Component(writeFn, "Write Upload Handler", "Route: /api/upload", "Applies queued local writes; last-write-wins on updated_at (FR-30)")
-    Component(inviteFn, "Invite Service", "Function: /invites", "Household invites & new-household invites (FR-3, FR-6)")
+    Component(photosFn, "Photos", "PUT/GET /api/photos/:id", "Stores page and dish photos on the volume; serves them after an RLS check on the row (ADR-0013)")
+    Component(signupFn, "Sign-up passes", "/api/signup-pass, /api/friend-links/status", "Turns a live invite, friend or share link into a 24-hour pass for the sign-up gate (ADR-0018)")
+    Component(purgeFn, "Trash purge", "POST /api/trash/purge", "Hard-deletes rows 30 days in the trash, and their photo files (FR-18)")
     Component(shareFn, "Share Service", "/api/shares", "Creates and stops links; serves snapshots to signed-out visitors through asAnonymous; saves a copy into the recipient household (FR-27, ADR-0016)")
   }
 
@@ -184,19 +195,24 @@ C4Component
   System_Ext(sites, "Recipe Websites")
 
   Rel(guard, importFn, "")
-  Rel(guard, subFn, "")
+  Rel(guard, subs, "")
   Rel(guard, writeFn, "")
-  Rel(guard, inviteFn, "")
+  Rel(guard, invites, "")
+  Rel(guard, photosFn, "")
+  Rel(guard, purgeFn, "")
   Rel(guard, shareFn, "")
   Rel(importFn, urlX, "URL source")
   Rel(importFn, parser, "Photo/text source")
   Rel(urlX, parser, "Fallback")
   Rel(urlX, sites, "GET")
   Rel(parser, llmGw, "")
-  Rel(subFn, llmGw, "")
+  Rel(subs, llmGw, "")
   Rel(llmGw, quota, "Check & record")
   Rel(llmGw, llm, "HTTPS")
-  Rel(importFn, blob, "Store original")
+  Rel(importFn, blob, "Reads the pages")
+  Rel(photosFn, blob, "Files")
+  Rel(invites, db, "Definer functions")
+  Rel(signupFn, db, "Pass rows")
   Rel(writeFn, db, "Upsert as user")
   Rel(shareFn, db, "Snapshot / copy")
   Rel(quota, db, "Usage rows")
@@ -243,9 +259,9 @@ URL import follows the same flow, with the URL Extractor trying schema.org `Reci
 C4Deployment
   title Deployment — Production
 
-  Deployment_Node(phone, "User's phone", "iOS 17+ / Android 10+") {
-    Container(mobile, "Mobile App", "Expo build via EAS")
-    ContainerDb(localDb, "SQLite", "On-device")
+  Deployment_Node(phone, "User's browser or installed web app", "Phone or computer; any current browser") {
+    Container(mobile, "Web App", "Expo web build + Workbox service worker")
+    ContainerDb(localDb, "SQLite", "On the device (OPFS or IndexedDB)")
   }
 
   Deployment_Node(host, "Owner's Windows PC", "Docker Desktop on WSL; Compose project dishkept") {
@@ -270,6 +286,10 @@ C4Deployment
     Container(llm, "Claude API", "")
   }
 
+  Deployment_Node(zoho, "Zoho Mail", "") {
+    Container(smtp, "smtp.zoho.com", "Sender noreply@geltech.dev")
+  }
+
   Rel(mobile, edge, "HTTPS")
   Rel(tunnel, edge, "Outbound tunnel")
   Rel(tunnel, proxy, "HTTP")
@@ -280,12 +300,14 @@ C4Deployment
   Rel(sync, db, "Logical replication")
   Rel(api, db, "")
   Rel(api, llm, "HTTPS")
+  Rel(auth, smtp, "Sign-in codes")
+  Rel(backupSvc, smtp, "Failure alerts")
 ```
 
 **Environments:**
 - **Local:** Compose project `recipe-app` with `.env` and the dev profile, which adds a mail catcher; the Expo web dev server, or the built app from the proxy.
 - **Production:** project `dishkept` on the owner's PC, using the same Compose file plus `docker-compose.prod.yml` and `.env.production`, run only through `pnpm prod:*`, from a dedicated clone on the Linux disk (`~/dishkept`), never the development checkout. It is reached at `https://dishkept.geltech.dev` through Cloudflare Tunnel (ADR-0018). `scripts/guard.mjs` keeps dev and test commands away from it.
-- **Fallback:** a single GCP VM running the same files (ADR-0008); moving is a restore. The steps are in `docs/RUNBOOK.md`.
+- **Fallback:** a single GCP VM running the same files (ADR-0008); moving is a restore. The steps are in `docs/RUNBOOK.md`. The VM is off by default (`-var vm=true` creates it). An e2-micro (free tier) runs the stack, but not a restore drill beside it, which needs an e2-small; a trial on 2026-10-21 passed on an e2-small, and the VM was then removed.
 - **How it is built:**
   - OpenTofu (`infra/tofu`) creates the Cloudflare zone, tunnel and DNS record, the backup bucket and its service account, and the optional VM;
   - Ansible (`infra/ansible`) sets up the PC or the VM, writes the secrets from an Ansible Vault file, and runs `pnpm prod:*` (ADR-0021).
@@ -334,21 +356,26 @@ Conventions for every tenant table:
 | Concern | Approach | NFR |
 |---|---|---|
 | **Tenant isolation** | RLS on every table; the API reaches the database only through asUser, as a role that cannot bypass RLS; sync config scoped by `household_id`; an automated suite tries cross-household reads and writes and checks the roles themselves | NFR-1 |
-| **Roles** | `household_role` claim in the JWT; RLS write policies require admin or member; UI hides edit affordances | FR-4 |
-| **Conflicts** | Row-level LWW on `updated_at` (server clock on upload). Ingredients and steps are child rows, saved as a set with the recipe | FR-30 |
+| **Roles** | Checked live from `memberships` (ADR-0015), which syncs to the device; the JWT also carries a `household_role` claim. RLS write policies require admin or member; the UI hides edit controls from Viewers | FR-4 |
+| **Conflicts** | Row-level LWW on `updated_at` (server clock on upload). Ingredients and steps are JSON arrays on the recipe row (ADR-0010), so a recipe saves as one unit | FR-30 |
 | **AI** | All prompts versioned in `apps/api/src/llm/prompts/`; output validated against a JSON schema; usage metered per household | NFR-3, NFR-7 |
 | **Secrets** | The web app ships no keys. Database passwords, the token signing key, and the Claude API key live in .env on the server | NFR-3 |
-| **Observability** | Structured logs in the API; Sentry for app crashes; AI latency/cost dashboard from `ai_usage` | NFR-6, NFR-7 |
+| **Observability** | Structured JSON logs from the API and the services, read with `pnpm prod:logs`; `pnpm prod:status` shows health, the deployed build and the last backup; the backup container emails `OWNER_EMAIL` when a backup fails; AI spend per household in `ai_usage`. No crash reporting yet | NFR-6, NFR-7 |
 | **Backups** | Nightly `age`-encrypted dumps of the database and the `photos` volume to GCS, kept 30 days, by a service account that cannot delete; a monthly restore drill (ADR-0018). Household JSON export later | NFR-9, NFR-10 |
 | **Accessibility** | Dynamic type, screen-reader labels, contrast checks in review | NFR-11 |
 
 ## 8. Future evolution
 
-- **Phase 2 shopping list (built, ADR-0019):** `shopping_items` and `aisle_choices`, synced like recipes; added rows are merged on screen by item, reusing the structured ingredient model and the unit converter.
+- **Phase 2 shopping list (built, ADR-0019; listed here for history):** `shopping_items` and `aisle_choices`, synced like recipes; added rows are merged on screen by item, reusing the structured ingredient model and the unit converter.
 - **Phase 3 meal planning:** `meal_plan`, `meal_plan_entry` referencing recipes; generates shopping items.
 - **Desktop:** Expo/React Native for web or Tauri reusing the TS domain packages; PowerSync has a web SDK.
 - **Semantic search:** `pgvector` embeddings server-side, with keyword search kept as the offline fallback.
 
 ## 9. Decision log
 
-See [`docs/adr/`](docs/adr/). Current: ADR-0001 through ADR-0012.
+See [`docs/adr/`](docs/adr/README.md). Current: ADR-0001 through ADR-0021. The most recent:
+
+- ADR-0018: production on a home PC, behind Cloudflare Tunnel, with GCS backups
+- ADR-0019: the shopping list
+- ADR-0020: light mode with CSS variables
+- ADR-0021: infrastructure as code (OpenTofu and Ansible)

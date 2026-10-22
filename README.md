@@ -31,8 +31,8 @@ Recipes end up scattered across Google Drive, iCloud, the Notes app, bookmarks a
 
 **Cooking**
 - Cook mode keeps the screen awake and shows large text, one step at a time, with ingredients to tick off.
-- Scale the servings.
-- AI substitutions for any ingredient, with amounts and how they change the dish.
+- Scale the servings, and show amounts in US or metric units.
+- AI substitutions for any ingredient, with amounts and how they change the dish. Add the one you pick to the recipe's notes.
 
 **Sharing and shopping**
 - Share a recipe as a formatted PDF or as text, or send a link that lets the recipient save a copy to their own household.
