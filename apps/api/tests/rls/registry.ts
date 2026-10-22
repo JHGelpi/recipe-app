@@ -16,6 +16,7 @@ export const TENANT_TABLES = [
   'friend_links',
   'shopping_items',
   'aisle_choices',
+  'cook_logs',
 ] as const;
 
 /** The column that holds the tenant id in each table. */
@@ -33,6 +34,7 @@ export const TENANT_COLUMN: Record<(typeof TENANT_TABLES)[number], string> = {
   friend_links: 'household_id',
   shopping_items: 'household_id',
   aisle_choices: 'household_id',
+  cook_logs: 'household_id',
 };
 
 /**

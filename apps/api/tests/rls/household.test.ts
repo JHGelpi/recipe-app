@@ -91,11 +91,12 @@ describe('invites', () => {
 });
 
 describe('joining', () => {
-  it('a person alone brings recipes, photos, imports, substitutions and favorites, and their old household closes', async () => {
+  it('a person alone brings recipes, photos, imports, substitutions, favorites and cook logs, and their old household closes', async () => {
     const admin = await fresh();
     const joiner = await fresh();
     const recipe = randomUUID();
     const importId = randomUUID();
+    const cookLog = randomUUID();
     await as(joiner, async (tx) => {
       await tx`insert into public.recipes (id, household_id, title) values (${recipe}, ${joiner.householdId}, 'My soup')`;
       await tx`insert into public.imports (id, household_id, source_type) values (${importId}, ${joiner.householdId}, 'photo')`;
@@ -104,6 +105,10 @@ describe('joining', () => {
       await tx`insert into public.substitutions (id, household_id, recipe_id, ingredient_id, ingredient_raw, options)
         values (${randomUUID()}, ${joiner.householdId}, ${recipe}, ${randomUUID()}, '1 egg', ${tx.json([])})`;
       await tx`insert into public.favorites (id, household_id, user_id, recipe_id) values (${randomUUID()}, ${joiner.householdId}, ${joiner.userId}, ${recipe})`;
+      await tx`insert into public.cook_logs (id, household_id, recipe_id, recipe_title, cooked_on)
+        values (${cookLog}, ${joiner.householdId}, ${recipe}, 'My soup', '2026-10-20')`;
+      await tx`insert into public.photos (id, household_id, kind, cook_log_id, position, media_type, bytes, width, height)
+        values (${randomUUID()}, ${joiner.householdId}, 'cook', ${cookLog}, 1, 'image/jpeg', 10, 1, 1)`;
     });
     const token = await invite(admin);
     expect(await preview(joiner, token)).toMatchObject({
@@ -117,11 +122,19 @@ describe('joining', () => {
       select * from public.accept_invite(${token})`,
     );
     expect(result?.moved_recipes).toBe(1);
-    expect(result?.moved_photos).toHaveLength(1);
-    for (const table of ['recipes', 'imports', 'photos', 'substitutions', 'favorites']) {
+    expect(result?.moved_photos).toHaveLength(2);
+    const expected = {
+      recipes: 1,
+      imports: 1,
+      photos: 2,
+      substitutions: 1,
+      favorites: 1,
+      cook_logs: 1,
+    };
+    for (const [table, n] of Object.entries(expected)) {
       const rows = await adminSql<{ n: number }[]>`
         select count(*)::int as n from public.${adminSql(table)} where household_id = ${admin.householdId}`;
-      expect([table, rows[0]?.n]).toEqual([table, 1]);
+      expect([table, rows[0]?.n]).toEqual([table, n]);
     }
     const [old] = await adminSql<
       { deleted_at: Date | null }[]

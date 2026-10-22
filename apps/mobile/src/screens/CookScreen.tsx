@@ -2,6 +2,7 @@ import { scaleFactor } from '@recipe-app/domain';
 import { router } from 'expo-router';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CookedButton } from '../components/CookedButton';
 import { IngredientList } from '../components/IngredientList';
 import { ServingsBar } from '../components/ServingsBar';
 import { shownStep, stepsNote } from '../cooking/steps';
@@ -137,6 +138,8 @@ function Cooking({ claims, recipe }: { claims: Claims; recipe: RecipeRecord }) {
             </View>
           </View>
         )}
+        {/* FR-37: at the end of cooking, log tonight's meal. */}
+        {at >= last ? <CookedButton claims={claims} recipe={recipe} large /> : null}
       </ScrollView>
       {
         // Within thumb reach at the bottom (UI spec §5); Done even with no steps.

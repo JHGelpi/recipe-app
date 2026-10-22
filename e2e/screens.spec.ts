@@ -38,7 +38,7 @@ test('main screens', async ({ page }) => {
   await page.keyboard.press('Escape');
   await page.getByRole('link', { name: /Weeknight chili/ }).click();
   await shot('04-recipe');
-  await page.getByRole('button', { name: 'Cook' }).click();
+  await page.getByRole('button', { name: 'Cook', exact: true }).click();
   await shot('05-cook');
   await page.goto('/household');
   await shot('06-household');

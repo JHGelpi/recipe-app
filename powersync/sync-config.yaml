@@ -41,7 +41,7 @@ streams:
   household_photos:
     auto_subscribe: true
     query: >-
-      SELECT id, household_id, kind, import_id, position, recipe_id, media_type,
+      SELECT id, household_id, kind, import_id, position, recipe_id, cook_log_id, media_type,
              bytes, width, height, uploaded_at,
              created_at, updated_at, updated_by, deleted_at
       FROM photos
@@ -107,3 +107,13 @@ streams:
       SELECT id, household_id, item_key, aisle, created_at, updated_at, updated_by, deleted_at
       FROM aisle_choices
       WHERE household_id = auth.parameter('household_id') AND deleted_at IS NULL
+
+  # Mirrors cook_logs_select: household_id = auth_household_id(). Trashed
+  # entries sync too, so the Trash can list and restore them (FR-37).
+  household_cook_logs:
+    auto_subscribe: true
+    query: >-
+      SELECT id, household_id, recipe_id, recipe_title, cooked_on, cooked_by, notes,
+             created_at, updated_at, updated_by, deleted_at
+      FROM cook_logs
+      WHERE household_id = auth.parameter('household_id')

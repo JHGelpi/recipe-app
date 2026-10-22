@@ -50,7 +50,7 @@ test('cook mode, sign-in and a signed-out shared page have no tab bar', async ({
 }) => {
   await signIn(page, freshEmail('nav-cook'));
   await createRecipe(page, { title: unique('Nav soup'), steps: 'Stir.' });
-  await page.getByRole('button', { name: 'Cook' }).click();
+  await page.getByRole('button', { name: 'Cook', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Done' })).toBeVisible();
   await expect(tabBar(page)).toHaveCount(0);
 

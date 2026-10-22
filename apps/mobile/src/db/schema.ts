@@ -70,6 +70,7 @@ const photos = new Table(
     import_id: column.text,
     position: column.integer,
     recipe_id: column.text,
+    cook_log_id: column.text,
     media_type: column.text,
     bytes: column.integer,
     width: column.integer,
@@ -80,7 +81,7 @@ const photos = new Table(
     updated_by: column.text,
     deleted_at: column.text,
   },
-  { indexes: { import: ['import_id'], recipe: ['recipe_id'] } },
+  { indexes: { import: ['import_id'], recipe: ['recipe_id'], cook_log: ['cook_log_id'] } },
 );
 
 // The household's remembered substitutions (household_substitutions stream).
@@ -161,6 +162,24 @@ const aisle_choices = new Table({
   deleted_at: column.text,
 });
 
+// The household's cook diary, trashed entries too (household_cook_logs).
+// cooked_by is stamped by the server; cooked_on is a YYYY-MM-DD day.
+const cook_logs = new Table(
+  {
+    household_id: column.text,
+    recipe_id: column.text,
+    recipe_title: column.text,
+    cooked_on: column.text,
+    cooked_by: column.text,
+    notes: column.text,
+    created_at: column.text,
+    updated_at: column.text,
+    updated_by: column.text,
+    deleted_at: column.text,
+  },
+  { indexes: { recipe: ['recipe_id'] } },
+);
+
 // attachments is PowerSync's local-only queue table: never uploaded.
 export const AppSchema = new Schema({
   recipes,
@@ -173,6 +192,7 @@ export const AppSchema = new Schema({
   shares,
   shopping_items,
   aisle_choices,
+  cook_logs,
   attachments: new AttachmentTable(),
 });
 
@@ -183,3 +203,4 @@ export type ImportRow = Database['imports'];
 export type PhotoRow = Database['photos'];
 export type ShoppingItemRow = Database['shopping_items'];
 export type AisleChoiceRow = Database['aisle_choices'];
+export type CookLogRow = Database['cook_logs'];

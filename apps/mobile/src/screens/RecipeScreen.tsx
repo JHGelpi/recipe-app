@@ -1,9 +1,10 @@
 import { usePowerSync } from '@powersync/react';
 import { scaleFactor } from '@recipe-app/domain';
-import { router } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { AddToListSheet } from '../components/AddToListSheet';
+import { CookedButton } from '../components/CookedButton';
 import { DishPhoto } from '../components/DishPhoto';
 import { IngredientList } from '../components/IngredientList';
 import { OriginalPhotos } from '../components/OriginalPhotos';
@@ -13,6 +14,7 @@ import { SharedLinks } from '../components/SharedLinks';
 import { SourceView } from '../components/SourceView';
 import { StarButton } from '../components/StarButton';
 import { confirm } from '../components/confirm';
+import { useCookHistory } from '../cooklog/hooks';
 import { stepsNote } from '../cooking/steps';
 import { useCookPlace } from '../cooking/useCookPlace';
 import { useRecipe, useRecipePages } from '../recipes/hooks';
@@ -155,6 +157,8 @@ export function RecipeScreen({ claims, id }: { claims: Claims; id: string }) {
               ) : null}
             </View>
           ) : null}
+          {!recipe.deleted_at ? <CookedButton claims={claims} recipe={recipe} /> : null}
+          <CookHistory recipeId={recipe.id} />
           {added > 0 ? (
             <Banner>{`Added ${added} ${added === 1 ? 'item' : 'items'} to your list`}</Banner>
           ) : null}
@@ -197,6 +201,25 @@ export function RecipeScreen({ claims, id }: { claims: Claims; id: string }) {
         </>
       )}
     </Screen>
+  );
+}
+
+/** FR-41: how often the household made it, linking to those diary entries. */
+function CookHistory({ recipeId }: { recipeId: string }) {
+  const history = useCookHistory(recipeId);
+  if (!history) return null;
+  return (
+    <Link href={`/diary?recipe=${recipeId}`} asChild>
+      <Pressable
+        role="link"
+        style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs, minHeight: 44 }}
+      >
+        <Icon name="journal-outline" size={16} color={colors.accent} />
+        <Text tone="accent" style={{ textDecorationLine: 'underline' }}>
+          {history}
+        </Text>
+      </Pressable>
+    </Link>
   );
 }
 

@@ -80,6 +80,7 @@ describe('photoPatchSchema', () => {
     expect([...PHOTO_CLIENT_FIELDS].sort()).toEqual(
       [
         'bytes',
+        'cook_log_id',
         'deleted_at',
         'height',
         'household_id',

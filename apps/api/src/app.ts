@@ -82,7 +82,7 @@ export function createApp(deps: AppDeps): Hono {
 
   // FR-18: deletes the caller's household trash older than 30 days, photos
   // first (photos_purge: dismissed or replaced over 30 days ago, or of an
-  // expired recipe), then their files once the rows are gone.
+  // expired recipe or cook log entry), then their files once the rows are gone.
   app.post('/api/trash/purge', async (c) => {
     const token = bearer(c.req.header('Authorization'));
     if (!token) return c.json({ error: 'unauthorized' }, 401);
@@ -93,6 +93,8 @@ export function createApp(deps: AppDeps): Hono {
         where (deleted_at is not null and deleted_at < now() - interval '30 days')
            or recipe_id in (
              select id from public.recipes where deleted_at < now() - interval '30 days')
+           or cook_log_id in (
+             select id from public.cook_logs where deleted_at < now() - interval '30 days')
         returning id, household_id`;
       // Stopped links and links of expired recipes, with their photo copies (ADR-0016).
       const shares = await tx<{ id: string; household_id: string; photo: boolean }[]>`
@@ -105,6 +107,9 @@ export function createApp(deps: AppDeps): Hono {
         delete from public.recipes where deleted_at < now() - interval '30 days' returning id`;
       // Cleared list rows past 30 days (rule 5; shopping spec §4).
       await tx`delete from public.shopping_items where deleted_at < now() - interval '30 days'`;
+      // Cook log entries in expired trash (FR-37), after their photos above. An
+      // expired recipe's entries stay: their recipe_id is set null.
+      await tx`delete from public.cook_logs where deleted_at < now() - interval '30 days'`;
       return { purged: rows.length, photos: [...photos, ...shares.filter((share) => share.photo)] };
     });
     for (const photo of photos) {
