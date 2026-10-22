@@ -5,6 +5,7 @@ export { Chip } from './Chip';
 export { ChipBar } from './ChipBar';
 export { Icon, type IconName } from './Icon';
 export { IconButton } from './IconButton';
+export { LinkedText } from './LinkedText';
 export { PillTabs } from './PillTabs';
 export { RowCard } from './RowCard';
 export { Screen } from './Screen';
