@@ -49,12 +49,12 @@ function repos() {
   return { dir, origin, clone };
 }
 
-/** Runs the app and deploy roles on localhost in --check mode. */
-function roles(dir, vars) {
+/** Runs the app and deploy roles in --check mode, on this machine; `host: 'vm'` takes the VM's settings. */
+function roles(dir, vars, host = 'localhost') {
   const play = join(dir, 'play.yml');
   writeFileSync(
     play,
-    `- hosts: localhost\n  connection: local\n  gather_facts: true\n  roles: [app, deploy]\n`,
+    `- hosts: ${host}\n  connection: local\n  gather_facts: true\n  roles: [app, deploy]\n`,
   );
   return spawnSync(
     'ansible-playbook',
@@ -111,6 +111,30 @@ const check = (name, ok, output) => {
       run.stdout.includes('RUNNING HANDLER [app : Install dependencies]') &&
       run.stdout.includes('RUNNING HANDLER [deploy : Deploy Dishkept]'),
     run.stdout + run.stderr,
+  );
+}
+
+{
+  // The VM trial: a clone with the token failed with every detail hidden by no_log. The
+  // error must show, without the token.
+  const { dir } = repos();
+  const token = 'github_pat_SECRET_trial';
+  const run = roles(
+    dir,
+    {
+      app_dir: join(dir, 'fresh'),
+      repo_url: `https://x-access-token:${token}@127.0.0.1:9/none.git`,
+      vault_github_read_token: token,
+    },
+    'vm',
+  );
+  const out = run.stdout + run.stderr;
+  check(
+    "a failed token clone shows git's error, not the token",
+    run.status !== 0 &&
+      /unable to access|Failed to connect|Could not connect/i.test(out) &&
+      !out.includes(token),
+    out.replaceAll(token, '<TOKEN>'),
   );
 }
 

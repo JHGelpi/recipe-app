@@ -53,16 +53,25 @@
   when: app_checkout.stat.exists
 
 - name: Clone or fast-forward to main
-  ansible.builtin.git:
-    repo: '{{ repo_url }}'
-    dest: '{{ app_dir }}'
-    version: main
-    update: true
-  register: app_code
-  no_log: "{{ inventory_hostname == 'vm' }}"
-  notify:
-    - Install dependencies
-    - Deploy Dishkept
+  block:
+    - name: Clone or fast-forward to main
+      ansible.builtin.git:
+        repo: '{{ repo_url }}'
+        dest: '{{ app_dir }}'
+        version: main
+        update: true
+      register: app_code
+      no_log: "{{ inventory_hostname == 'vm' }}"
+      notify:
+        - Install dependencies
+        - Deploy Dishkept
+  rescue:
+    # no_log hid the whole error on the VM (the trial); show git's message without the token.
+    - name: Report why the clone failed
+      ansible.builtin.fail:
+        msg: >-
+          {{ ((ansible_failed_result.msg | default('')) ~ ' ' ~ (ansible_failed_result.stderr | default('')))
+          | replace(vault_github_read_token | default('') or '\u0000', '***') }}
 
 - name: Make the private folder
   ansible.builtin.file:
