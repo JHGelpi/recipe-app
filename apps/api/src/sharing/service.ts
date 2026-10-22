@@ -1,5 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { buildShareSnapshot, shareSnapshotSchema, type ShareSnapshot } from '@recipe-app/domain';
+import {
+  buildShareSnapshot,
+  shareSnapshotSchema,
+  type Nutrition,
+  type ShareSnapshot,
+} from '@recipe-app/domain';
 import type { AsUser, UserTx } from '../db/asUser';
 import type { PhotoStore } from '../photos/store';
 import { json } from '../db/json';
@@ -75,7 +80,8 @@ export function createSharingService(deps: {
         deps.asUser(token, async (tx) => {
           const [recipe] = await tx<Record<string, unknown>[]>`
             select r.title, r.servings, r.prep_minutes, r.cook_minutes, r.ingredients, r.steps, r.tags,
-                   r.notes, r.source_url, r.source_author, r.household_id, h.name as household_name,
+                   r.notes, r.source_url, r.source_author, r.nutrition, r.household_id,
+                   h.name as household_name,
                    p.id as photo_id, p.bytes as photo_bytes, p.width as photo_width, p.height as photo_height
             from public.recipes r
             join public.households h on h.id = r.household_id
@@ -111,6 +117,7 @@ export function createSharingService(deps: {
                 notes: (recipe.notes as string | null) ?? '',
                 source_url: (recipe.source_url as string | null) ?? null,
                 source_author: (recipe.source_author as string | null) ?? null,
+                nutrition: (recipe.nutrition as Nutrition | null) ?? null,
               },
               String(recipe.household_name),
               copied

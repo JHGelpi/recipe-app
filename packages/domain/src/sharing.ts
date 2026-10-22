@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { isHttpUrl, SOURCE_LIMITS } from './imports';
 import type { Ingredient } from './ingredients';
 import { RECIPE_LIMITS } from './limits';
+import { nutritionLine, nutritionSchema, type Nutrition } from './nutrition';
 import type { Step } from './steps';
 import { ingredientSchema, recipeTitleSchema, stepSchema, tagSchema } from './recipeParts';
 
@@ -17,6 +18,8 @@ export const shareSnapshotSchema = z.strictObject({
   notes: z.string().max(RECIPE_LIMITS.notes),
   source_url: z.string().max(SOURCE_LIMITS.url).refine(isHttpUrl).nullable(),
   source_author: z.string().max(SOURCE_LIMITS.author).nullable(),
+  // FR-43. Optional: snapshots made before it have none.
+  nutrition: nutritionSchema.nullable().optional(),
   household_name: z.string().min(1).max(200),
   shared_at: z.iso.datetime({ offset: true }),
   photo: z
@@ -40,6 +43,7 @@ export type ShareableRecipe = {
   notes: string;
   source_url: string | null;
   source_author: string | null;
+  nutrition?: Nutrition | null;
 };
 
 export const SHARE_ERRORS = ['forbidden', 'share_unavailable', 'own_household'] as const;
@@ -62,6 +66,7 @@ export function buildShareSnapshot(
     notes: recipe.notes,
     source_url: recipe.source_url,
     source_author: recipe.source_author,
+    nutrition: recipe.nutrition ?? null,
     household_name: householdName,
     shared_at: now.toISOString(),
     photo,
@@ -112,6 +117,8 @@ export function shareText(recipe: Omit<ShareableRecipe, 'tags'>): string {
   if (recipe.steps.length > 0) {
     sections.push(['Steps', ...recipe.steps.map((step, index) => `${index + 1}. ${step.text}`)]);
   }
+  const nutrition = nutritionLine(recipe.nutrition);
+  if (nutrition) sections.push([nutrition]);
   if (recipe.notes.trim()) sections.push(['Notes', recipe.notes.trim()]);
   const source = sourceLine(recipe);
   if (source) sections.push([source]);

@@ -73,6 +73,12 @@ describe('shareText (FR-26)', () => {
     ).toBe('Lemon Bars');
     expect(shareText({ ...bars, source_url: null })).toMatch(/\nBy Jane Doe$/);
   });
+
+  it('includes nutrition per serving when the recipe has it (FR-43)', () => {
+    const text = shareText({ ...bars, nutrition: { calories: 210, fat_g: 9 } });
+    expect(text).toContain('\n\nPer serving: 210 kcal · 9 g fat\n\n');
+    expect(shareText({ ...bars, nutrition: null })).not.toContain('Per serving');
+  });
 });
 
 describe('the snapshot (NFR-2)', () => {
@@ -95,6 +101,7 @@ describe('the snapshot (NFR-2)', () => {
         'household_name',
         'ingredients',
         'notes',
+        'nutrition',
         'photo',
         'prep_minutes',
         'servings',

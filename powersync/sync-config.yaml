@@ -10,7 +10,7 @@ streams:
     query: >-
       SELECT id, household_id, title, servings, prep_minutes, cook_minutes,
              ingredients, steps, tags, notes, source_url, source_author, source_text,
-             photo_id,
+             photo_id, nutrition,
              created_at, updated_at, updated_by, deleted_at
       FROM recipes
       WHERE household_id = auth.parameter('household_id')

@@ -36,6 +36,7 @@ const values: RecipeValues = {
   steps: [],
   tags: [],
   notes: '',
+  nutrition: null,
 };
 const ready = importFromRow({
   id: 'i1',

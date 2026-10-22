@@ -1,7 +1,9 @@
 import {
+  cleanNutrition,
   recipeSchema,
   UNITS,
   type Ingredient,
+  type Nutrition,
   type SearchSource,
   type Step,
 } from '@recipe-app/domain';
@@ -30,7 +32,21 @@ export type RecipeRecord = RecipeSource & {
   deleted_at: string | null;
   /** FR-15: the dish photo. */
   photo_id: string | null;
+  /** FR-43: per serving, or null. */
+  nutrition: Nutrition | null;
 };
+
+/**
+ * FR-43, read apart from the recipe: a value this app cannot read (a newer
+ * app's field, a bad row) loses only the nutrition, never the recipe.
+ */
+function nutritionOf(value: unknown): Nutrition | null {
+  try {
+    return cleanNutrition(typeof value === 'string' ? JSON.parse(value) : value);
+  } catch {
+    return null;
+  }
+}
 
 /** A Postgres text[] literal such as {quick,"two words"}. */
 function fromArrayLiteral(text: string): string[] {
@@ -126,6 +142,7 @@ export function rowToRecipe(row: Record<string, unknown>): RecipeRecord | null {
       source_author: recipe.source_author ?? null,
       source_text: recipe.source_text ?? null,
       photo_id: recipe.photo_id ?? null,
+      nutrition: nutritionOf(row.nutrition),
     };
   } catch {
     return null;

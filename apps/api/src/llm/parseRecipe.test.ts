@@ -80,3 +80,24 @@ it('no enum sits on a list of types, which strict mode rejects with a 400', () =
   walk(RECORD_RECIPE_TOOL.input_schema, 'input_schema');
   expect(offenders).toEqual([]);
 });
+
+describe('nutrition (FR-43)', () => {
+  it('the v2 prompt asks for stated nutrition only, and the tool requires the field', () => {
+    const { system } = buildParseRequest({ text: 'Soup', url: null }, []);
+    expect(system).toContain('Never estimate or calculate nutrition from the ingredients');
+    expect(RECORD_RECIPE_TOOL.input_schema.required).toContain('nutrition');
+  });
+
+  it('keeps stated values from the model and drops impossible ones (rule 7)', () => {
+    const outcome = interpretToolInput({
+      is_recipe: true,
+      title: 'Soup',
+      nutrition: { calories: 250, protein_g: -4, carbs_g: 30, fat_g: 99999 },
+      low_confidence: ['nutrition'],
+    });
+    expect(outcome).toMatchObject({
+      kind: 'draft',
+      draft: { nutrition: { calories: 250, carbs_g: 30 }, low_confidence: ['nutrition'] },
+    });
+  });
+});

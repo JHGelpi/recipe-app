@@ -1,6 +1,7 @@
 import { decodeFully, plainText } from './html';
 import { toImportDraft, type ImportDraft } from './importDraft';
 import { parseIngredientLine } from './ingredients';
+import { nutritionFromJsonLd } from './nutrition';
 
 type Node = Record<string, unknown>;
 const isNode = (value: unknown): value is Node =>
@@ -112,6 +113,7 @@ export function draftFromJsonLd(blocks: unknown[]): ImportDraft | null {
     steps: instructionSteps(recipe.recipeInstructions),
     tags: tagWords(recipe.keywords, recipe.recipeCategory),
     author: authorName(recipe.author),
+    nutrition: nutritionFromJsonLd(recipe.nutrition),
     low_confidence: [],
   });
 }

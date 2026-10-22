@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { isHttpUrl, SOURCE_LIMITS } from './imports';
 import { RECIPE_LIMITS } from './limits';
+import { nutritionSchema } from './nutrition';
 import { ingredientSchema, recipeTitleSchema, stepSchema, tagSchema } from './recipeParts';
 
 export * from './imports';
@@ -18,6 +19,7 @@ export * from './household';
 export * from './sharing';
 export * from './shopping';
 export * from './recipeParts';
+export * from './nutrition';
 export * from './links';
 export { RECIPE_LIMITS, TITLE_MAX } from './limits';
 
@@ -70,6 +72,8 @@ export const recipeSchema = z.strictObject({
   source_text: z.string().max(SOURCE_LIMITS.text).nullable().optional(),
   // FR-15: the dish photo, a photos row of this household.
   photo_id: z.guid().nullable().optional(),
+  // FR-43: per serving; null when none is known.
+  nutrition: nutritionSchema.nullable().optional(),
   deleted_at: timestampSchema.nullable().optional(),
 });
 
@@ -93,6 +97,7 @@ export const RECIPE_CLIENT_FIELDS = [
   'source_author',
   'source_text',
   'photo_id',
+  'nutrition',
   'deleted_at',
 ] as const;
 

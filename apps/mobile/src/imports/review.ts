@@ -8,14 +8,16 @@ import type { RecipeForm } from '../recipes/form';
 import { NO_SOURCE, type RecipeRecord } from '../recipes/rows';
 import type { ImportRecord } from './rows';
 
-const FORM_FIELD: Record<DraftField, keyof RecipeForm> = {
-  title: 'title',
-  servings: 'servings',
-  prep_minutes: 'prep',
-  cook_minutes: 'cook',
-  ingredients: 'ingredients',
-  steps: 'steps',
-  tags: 'tags',
+const FORM_FIELDS: Record<DraftField, (keyof RecipeForm)[]> = {
+  title: ['title'],
+  servings: ['servings'],
+  prep_minutes: ['prep'],
+  cook_minutes: ['cook'],
+  ingredients: ['ingredients'],
+  steps: ['steps'],
+  tags: ['tags'],
+  // FR-43: an unclear nutrition panel highlights all four values.
+  nutrition: ['calories', 'protein_g', 'carbs_g', 'fat_g'],
 };
 
 /** The draft as an unsaved recipe, so the editor can open it like any recipe. */
@@ -38,7 +40,7 @@ export function draftRecord(
 
 /** FR-11: the editor fields to highlight. */
 export function flaggedFields(draft: ImportDraft): (keyof RecipeForm)[] {
-  return draft.low_confidence.map((field) => FORM_FIELD[field]);
+  return draft.low_confidence.flatMap((field) => FORM_FIELDS[field]);
 }
 
 /** The site name of an http(s) link, for "From example.com"; null for anything else. */

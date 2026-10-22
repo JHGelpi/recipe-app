@@ -37,6 +37,7 @@ function columns(values: RecipeValues): unknown[] {
     JSON.stringify(values.steps),
     JSON.stringify(values.tags),
     values.notes,
+    values.nutrition ? JSON.stringify(values.nutrition) : null,
   ];
 }
 
@@ -56,8 +57,8 @@ export async function createRecipe(
   const id = crypto.randomUUID();
   await db.execute(
     `insert into recipes (id, household_id, title, servings, prep_minutes, cook_minutes,
-       ingredients, steps, tags, notes, source_url, source_author, source_text, photo_id)
-       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       ingredients, steps, tags, notes, nutrition, source_url, source_author, source_text, photo_id)
+       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       claims.householdId,
@@ -81,7 +82,7 @@ export async function updateRecipe(
   requireWriter(claims);
   await db.execute(
     `update recipes set title = ?, servings = ?, prep_minutes = ?, cook_minutes = ?,
-       ingredients = ?, steps = ?, tags = ?, notes = ? where id = ?`,
+       ingredients = ?, steps = ?, tags = ?, notes = ?, nutrition = ? where id = ?`,
     [...columns(values), id],
   );
 }
