@@ -1,9 +1,10 @@
-import type { HouseholdRoleName } from '@recipe-app/domain';
+import type { HouseholdRoleName, UnitSystem } from '@recipe-app/domain';
 import { usePowerSync } from '@powersync/react';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { confirm } from '../components/confirm';
+import { useUnitsPreference } from '../cooking/useUnitsPreference';
 import { useNetworkOnline } from '../db/useNetworkOnline';
 import { withSession } from '../imports/api';
 import {
@@ -55,6 +56,12 @@ const ROLES: [HouseholdRoleName, string][] = [
 ];
 const days = (iso: string) => Math.max(0, Math.ceil((Date.parse(iso) - Date.now()) / 86_400_000));
 
+const UNITS_TABS: readonly { value: UnitSystem; label: string }[] = [
+  { value: 'as_written', label: 'As written' },
+  { value: 'us', label: 'US' },
+  { value: 'metric', label: 'Metric' },
+];
+
 const APPEARANCE_TABS: readonly { value: Appearance; label: string }[] = [
   { value: 'system', label: 'System' },
   { value: 'light', label: 'Light' },
@@ -84,6 +91,7 @@ export function HouseholdScreen({ claims }: { claims: Claims }) {
   const { signOut } = useSession();
   const online = useNetworkOnline();
   const { appearance, setAppearance } = useAppearance();
+  const { units, setUnits } = useUnitsPreference();
   const members = useMembers(claims.householdId);
   const name = useHouseholdName(claims.householdId);
   const admin = claims.role === 'admin';
@@ -396,6 +404,10 @@ export function HouseholdScreen({ claims }: { claims: Claims }) {
       {/* A device setting, not household data, so viewers have it too (rule 4 doesn't apply). */}
       <Card title="Appearance">
         <PillTabs tabs={APPEARANCE_TABS} value={appearance} onChange={setAppearance} />
+      </Card>
+      {/* FR-23: a device setting too; recipes opened afresh start in these units. */}
+      <Card title="Units">
+        <PillTabs tabs={UNITS_TABS} value={units} onChange={setUnits} />
       </Card>
       <RowCard
         title="Cook diary"

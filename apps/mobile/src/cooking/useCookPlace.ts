@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import type { RecipeRecord } from '../recipes/rows';
 import { clearPlace, fitPlace, freshPlace, readPlace, writePlace, type CookPlace } from './place';
+import { unitsPreferenceNow } from './useUnitsPreference';
 
 const store = () => globalThis.localStorage;
 
@@ -16,7 +17,8 @@ export function useCookPlace(recipe: RecipeRecord): {
 } {
   const [place, setPlace] = useState<CookPlace>(() => {
     const saved = store() ? readPlace(store(), recipe.id, Date.now()) : null;
-    return fitPlace(saved ?? freshPlace(recipe.servings, Date.now()), recipe);
+    // A recipe with a place keeps its own units; one opened afresh starts at the preference.
+    return fitPlace(saved ?? freshPlace(recipe.servings, Date.now(), unitsPreferenceNow()), recipe);
   });
   const update = useCallback(
     (change: Partial<CookPlace>) => {
@@ -30,7 +32,7 @@ export function useCookPlace(recipe: RecipeRecord): {
   );
   const reset = useCallback(() => {
     if (store()) clearPlace(store(), recipe.id);
-    setPlace(freshPlace(recipe.servings, Date.now()));
+    setPlace(freshPlace(recipe.servings, Date.now(), unitsPreferenceNow()));
   }, [recipe.id, recipe.servings]);
   return { place, update, reset };
 }

@@ -19,8 +19,13 @@ const UNITS: readonly string[] = ['as_written', 'us', 'metric'];
 type Store = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 type ListStore = Pick<Storage, 'key' | 'removeItem'> & { readonly length: number };
 
-export function freshPlace(servings: number | null, now: number): CookPlace {
-  return { ticked: [], step: 0, servings, scale: 1, units: 'as_written', at: now };
+/** FR-23: a recipe opened afresh starts in the device's units preference. */
+export function freshPlace(
+  servings: number | null,
+  now: number,
+  units: UnitSystem = 'as_written',
+): CookPlace {
+  return { ticked: [], step: 0, servings, scale: 1, units, at: now };
 }
 
 function isPlace(value: unknown): value is CookPlace {
