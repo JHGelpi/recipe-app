@@ -148,3 +148,23 @@ test('a viewer sees recipes but no New recipe, Edit, Move to Trash, or Trash', a
   await expect(page.getByRole('button', { name: 'More', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /^(Star|Unstar)$/ })).toBeVisible();
 });
+
+test('links in notes open in a new tab; other schemes and the editor stay plain text (FR-36)', async ({
+  browser,
+}) => {
+  const member = await session(browser, SEED.memberA);
+  const title = unique('Linked notes');
+  const notes = 'From www.example.com/pasta. Not javascript:alert(1)';
+  await createRecipe(member, { title, notes });
+
+  const link = member.getByRole('link', { name: 'www.example.com/pasta', exact: true });
+  await expect(link).toHaveAttribute('href', 'https://www.example.com/pasta');
+  await expect(link).toHaveAttribute('target', '_blank');
+  await expect(link).toHaveAttribute('rel', /noopener/);
+  await expect(member.getByRole('link', { name: /javascript/ })).toHaveCount(0);
+  await expect(member.getByText(/Not javascript:alert\(1\)/)).toBeVisible();
+
+  // Editing shows the note as stored, period and all.
+  await member.getByRole('button', { name: 'Edit' }).click();
+  await expect(member.getByLabel('Notes', { exact: true })).toHaveValue(notes);
+});

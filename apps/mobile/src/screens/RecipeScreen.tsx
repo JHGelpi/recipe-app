@@ -21,7 +21,7 @@ import type { RecipeRecord } from '../recipes/rows';
 import { canWrite, type Claims } from '../session/claims';
 import { takeSavedFlash } from '../sharing/pending';
 import { colors, space } from '../theme';
-import { Banner, Button, Card, Chip, Icon, IconButton, Screen, Text } from '../ui';
+import { Banner, Button, Card, Chip, Icon, IconButton, LinkedText, Screen, Text } from '../ui';
 import { useSubstitutions } from '../substitutions/hooks';
 
 function summary(recipe: RecipeRecord): string {
@@ -189,7 +189,7 @@ export function RecipeScreen({ claims, id }: { claims: Claims; id: string }) {
           <RecipeBody claims={claims} recipe={recipe} />
           {recipe.notes ? (
             <Card title="Notes">
-              <Text>{recipe.notes}</Text>
+              <LinkedText>{recipe.notes}</LinkedText>
             </Card>
           ) : null}
           <SourceView source={recipe} />

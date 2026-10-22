@@ -18,6 +18,7 @@ export * from './household';
 export * from './sharing';
 export * from './shopping';
 export * from './recipeParts';
+export * from './links';
 export { RECIPE_LIMITS, TITLE_MAX } from './limits';
 
 const timestampSchema = z.iso.datetime({ offset: true });

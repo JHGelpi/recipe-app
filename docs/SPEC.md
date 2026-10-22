@@ -95,6 +95,7 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 | FR-16 | Tags: free-form, with suggestions from the household's tags; AI suggestions arrive with import | M |
 | FR-17 | Favorites (per user) | S |
 | FR-18 | 30-day trash before permanent delete | S |
+| FR-36 | Links in notes are tappable when viewing (http/https only, with or without a scheme; trailing punctuation left out) and open in a new tab, where the browser offers Copy and Share; the stored note is unchanged *(built)* | S |
 
 ### Search
 | ID | Requirement | Pri |

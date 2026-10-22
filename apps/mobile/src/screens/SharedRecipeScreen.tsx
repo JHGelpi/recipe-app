@@ -10,7 +10,7 @@ import { useSession } from '../session/SessionProvider';
 import { readShare, saveShare, SHARE_MESSAGES } from '../sharing/api';
 import { setPendingShare, setSavedFlash, takePendingShare } from '../sharing/pending';
 import { colors, radius, space } from '../theme';
-import { Banner, Button, Card, Screen, Text } from '../ui';
+import { Banner, Button, Card, LinkedText, Screen, Text } from '../ui';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- Metro asset
 const MARK = require('../../assets/brand/mark.png');
@@ -174,7 +174,7 @@ export function SharedRecipeScreen({ code }: { code: string }) {
       ) : null}
       {recipe.notes ? (
         <Card title="Notes">
-          <Text>{recipe.notes}</Text>
+          <LinkedText>{recipe.notes}</LinkedText>
         </Card>
       ) : null}
       {source ? <Text tone="muted">{source}</Text> : null}
