@@ -77,6 +77,8 @@ resource "google_compute_instance" "dishkept" {
   machine_type = var.machine_type
   zone         = var.zone
   tags         = ["dishkept"]
+  # -var machine_type=e2-small on a running VM stops and restarts it, instead of failing.
+  allow_stopping_for_update = true
   boot_disk {
     initialize_params {
       image = "debian-cloud/debian-12"

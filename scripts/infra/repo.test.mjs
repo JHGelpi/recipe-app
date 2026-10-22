@@ -37,6 +37,11 @@ describe('the VM fits the free tier (free-tier change)', () => {
     expect(vm()).toMatch(/machine_type\s*=\s*var\.machine_type/);
   });
 
+  // The VM trial: -var machine_type=e2-small on a running VM failed without it.
+  it('can change machine type in place', () => {
+    expect(vm()).toMatch(/allow_stopping_for_update\s*=\s*true/);
+  });
+
   it('uses the free 30 GB standard disk', () => {
     expect(vm()).toMatch(/size\s*=\s*30\b/);
     expect(vm()).toMatch(/type\s*=\s*"pd-standard"/);

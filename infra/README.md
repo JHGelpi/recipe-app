@@ -67,7 +67,7 @@ The first run asks for:
 - the Claude key;
 - the `age1…` public key;
 - your sign-in email;
-- a GitHub fine-grained token (Contents: Read, this repo only), which the VM clones with;
+- a GitHub fine-grained token, which the VM clones with: this repo only, with **Contents** set to **Read-only** under Repository permissions. Picking the repo alone grants only Metadata, and the clone then fails with a 403;
 - a new Vault password.
 
 Commit `infra/ansible/group_vars/all/vault.yml` afterwards. Check that it's encrypted first: its first line is `$ANSIBLE_VAULT;1.1;AES256`.
@@ -89,10 +89,12 @@ A second run with nothing new reports `changed=0`.
 
 ## 6. The VM trial
 
-The VM is an `e2-micro` (Google's free tier) with a 30 GB standard disk and a 2 GB swap file. Its first build of the web image is slow, about 15 to 30 minutes. If it runs out of memory, add `-var machine_type=e2-small` (2 GB, a few cents for the trial) to both `tofu apply` lines.
+The VM defaults to an `e2-micro` (Google's free tier) with a 30 GB standard disk and a 2 GB swap file. That runs Dishkept, but **not the trial**: its restore drill starts a second copy of the stack beside the first, and an e2-micro then swaps for hours (seen in the first trial, 2026-10-21). So the trial uses an `e2-small` (2 GB, a few cents for the trial). Its first build of the web image takes about 15 to 30 minutes.
+
+To change the size of a VM that's already running, apply with the new `-var machine_type=…`; OpenTofu stops it, resizes it and starts it again.
 
 ```sh
-cd infra/tofu && tofu apply -var vm=true && cd ../ansible
+cd infra/tofu && tofu apply -var vm=true -var machine_type=e2-small && cd ../ansible
 ansible-playbook trial.yml -l vm --ask-vault-pass     # asks for your AGE-SECRET-KEY line; ends with DRILL PASSED
 cd ../tofu && tofu apply -var vm=false                # removes the VM, NAT and network
 gcloud compute instances list                         # empty
