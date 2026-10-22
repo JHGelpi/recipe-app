@@ -75,6 +75,7 @@ it('reads a friend link status; offline or an error reads as live', async () => 
     expect.objectContaining({ method: 'POST', body: JSON.stringify({ code: B }) }),
   );
   expect(await friendLinkStatus(B, deps(reply(200, { status: 'unknown' })))).toBe('ended');
+  expect(await friendLinkStatus(B, deps(reply(200, { status: 'used' })))).toBe('used');
   expect(await friendLinkStatus(B, deps(reply(500, {})))).toBe('live');
   const down = vi.fn(async () => Promise.reject(new TypeError('offline')));
   expect(await friendLinkStatus(B, deps(down))).toBe('live');

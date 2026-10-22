@@ -33,6 +33,8 @@ function deps(overrides: Partial<AppDeps> = {}): AppDeps {
       createFriendLink: vi.fn(),
       listFriendLinks: vi.fn(),
       revokeFriendLink: vi.fn(),
+      listAcceptedInvites: vi.fn(),
+      listAcceptedFriendLinks: vi.fn(),
     },
     signup: {
       grant: vi.fn().mockResolvedValue(true),

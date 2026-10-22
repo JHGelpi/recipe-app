@@ -13,12 +13,16 @@ import {
   friendUrl,
   inviteUrl,
   leaveHousehold,
+  acceptedLine,
+  listAcceptedFriendLinks,
+  listAcceptedInvites,
   listFriendLinks,
   listInvites,
   removeMember,
   renameHousehold,
   revokeFriendLink,
   setMemberRole,
+  type AcceptedInvite,
   type FriendLink,
   type PendingInvite,
   type Result,
@@ -57,6 +61,23 @@ const APPEARANCE_TABS: readonly { value: Appearance; label: string }[] = [
   { value: 'dark', label: 'Dark' },
 ];
 
+/** FR-42: invitations that were used, newest first (the last 30 days). */
+function AcceptedList({ title, items }: { title: string; items: AcceptedInvite[] }) {
+  if (items.length === 0) return null;
+  return (
+    <>
+      <Text role="heading" aria-level={3} variant="h3">
+        {title}
+      </Text>
+      {items.map((item) => (
+        <Text key={item.id} tone="muted">
+          {acceptedLine(item)}
+        </Text>
+      ))}
+    </>
+  );
+}
+
 /** FR-3–FR-6: who is in the household, and (for Admins) invites and roles. */
 export function HouseholdScreen({ claims }: { claims: Claims }) {
   const db = usePowerSync();
@@ -67,6 +88,8 @@ export function HouseholdScreen({ claims }: { claims: Claims }) {
   const name = useHouseholdName(claims.householdId);
   const admin = claims.role === 'admin';
   const [invites, setInvites] = useState<PendingInvite[]>([]);
+  const [acceptedInvites, setAcceptedInvites] = useState<AcceptedInvite[]>([]);
+  const [acceptedFriends, setAcceptedFriends] = useState<AcceptedInvite[]>([]);
   const [inviteRole, setInviteRole] = useState<HouseholdRoleName>('member');
   const [shared, setShared] = useState<string | null>(null);
   const [newName, setNewName] = useState<string | null>(null);
@@ -76,6 +99,8 @@ export function HouseholdScreen({ claims }: { claims: Claims }) {
     if (!admin || !online) return;
     const result = await withSession(listInvites);
     if (result?.ok) setInvites(result.value);
+    const accepted = await withSession(listAcceptedInvites);
+    if (accepted?.ok) setAcceptedInvites(accepted.value);
   }, [admin, online]);
   useEffect(() => void refresh(), [refresh]);
   const [friendLinks, setFriendLinks] = useState<FriendLink[]>([]);
@@ -83,6 +108,8 @@ export function HouseholdScreen({ claims }: { claims: Claims }) {
     if (!online) return;
     const result = await withSession(listFriendLinks);
     if (result?.ok) setFriendLinks(result.value);
+    const accepted = await withSession(listAcceptedFriendLinks);
+    if (accepted?.ok) setAcceptedFriends(accepted.value);
   }, [online]);
   useEffect(() => void refreshFriendLinks(), [refreshFriendLinks]);
 
@@ -278,6 +305,7 @@ export function HouseholdScreen({ claims }: { claims: Claims }) {
               ))}
             </>
           ) : null}
+          <AcceptedList title="Accepted invites" items={acceptedInvites} />
         </Card>
       ) : null}
 
@@ -328,7 +356,7 @@ export function HouseholdScreen({ claims }: { claims: Claims }) {
               )
             }
           />
-          {friendLinks.length > 0 ? (
+          {friendLinks.length > 0 || acceptedFriends.length > 0 ? (
             <Card title="Friend links" level={3}>
               {friendLinks.map((link) => {
                 const made = new Date(link.created_at).toLocaleDateString();
@@ -360,6 +388,7 @@ export function HouseholdScreen({ claims }: { claims: Claims }) {
                   </View>
                 );
               })}
+              <AcceptedList title="Used links" items={acceptedFriends} />
             </Card>
           ) : null}
         </>

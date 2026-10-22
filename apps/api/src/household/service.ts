@@ -24,6 +24,8 @@ export type InvitePreview = {
   blocker: 'only_admin' | null;
 };
 export type FriendLink = { id: string; created_at: string; expires_at: string };
+/** FR-42: a used invitation, for the sender's short history. */
+export type AcceptedInvite = { id: string; accepted_at: string; email: string | null };
 export type HouseholdService = {
   createInvite(
     token: string,
@@ -45,7 +47,13 @@ export type HouseholdService = {
   /** FR-6: the household's live friend links; every role may see them. */
   listFriendLinks(token: string): Promise<FriendLink[]>;
   revokeFriendLink(token: string, id: string): Promise<void>;
+  /** FR-42: invites accepted in the last 30 days (Admins). */
+  listAcceptedInvites(token: string): Promise<AcceptedInvite[]>;
+  /** FR-42: friend links accepted in the last 30 days (every role). */
+  listAcceptedFriendLinks(token: string): Promise<AcceptedInvite[]>;
 };
+
+const HISTORY = 20;
 
 const iso = (value: Date | string) => new Date(value).toISOString();
 
@@ -83,13 +91,40 @@ export function createHouseholdService(deps: {
         // friend_links_select limits this to the caller's household.
         const rows = await tx<{ id: string; created_at: Date; expires_at: Date }[]>`
       select id, created_at, expires_at from public.friend_links
-      where deleted_at is null and expires_at > now()
+      where deleted_at is null and expires_at > now() and accepted_at is null
       order by created_at desc`;
         return rows.map((row) => ({
           id: row.id,
           created_at: iso(row.created_at),
           expires_at: iso(row.expires_at),
         }));
+      }),
+
+    listAcceptedFriendLinks: (token) =>
+      run(token, async (tx) => {
+        const rows = await tx<{ id: string; accepted_at: Date; email: string | null }[]>`
+          select id, accepted_at, accepted_email as email from public.friend_links
+          where accepted_at > now() - interval '30 days'
+          order by accepted_at desc limit ${HISTORY}`;
+        return rows.map((row) => ({ ...row, accepted_at: iso(row.accepted_at) }));
+      }),
+
+    listAcceptedInvites: (token) =>
+      run(token, async (tx) => {
+        const [me] = await tx<
+          { role: string | null }[]
+        >`select public.auth_household_role() as role`;
+        if (me?.role !== 'admin') throw new HouseholdRefusal('forbidden');
+        // invites_select shows only this household's invites, to Admins. The
+        // person is named while still a member; after leaving, unnamed.
+        const rows = await tx<{ id: string; accepted_at: Date; email: string | null }[]>`
+          select i.id, i.accepted_at, m.email from public.invites i
+          left join public.memberships m
+            on m.user_id = i.accepted_by and m.household_id = i.household_id
+               and m.deleted_at is null
+          where i.accepted_at > now() - interval '30 days'
+          order by i.accepted_at desc limit ${HISTORY}`;
+        return rows.map((row) => ({ ...row, accepted_at: iso(row.accepted_at) }));
       }),
 
     async revokeFriendLink(token, id) {

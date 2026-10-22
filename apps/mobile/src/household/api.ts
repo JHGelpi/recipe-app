@@ -23,9 +23,9 @@ export const HOUSEHOLD_MESSAGES: Record<string, string> = {
   last_admin: 'Make someone else an Admin first',
   only_admin: 'Make someone else an Admin of your household first',
   alone: "You're the only one in this household",
-  invite_used: 'This invite has already been used',
-  invite_expired: 'This invite has expired',
-  invite_cancelled: 'This invite was cancelled',
+  invite_used: 'This invitation has already been used. Ask the sender for a new one.',
+  invite_expired: 'This invitation has expired. Ask the sender for a new one.',
+  invite_cancelled: 'This invitation was cancelled. Ask the sender for a new one.',
   invite_unknown: "This invite isn't valid",
   already_member: "You're already in this household",
   too_many_invites: 'Too many pending invites. Cancel some first.',
@@ -85,6 +85,22 @@ export const listFriendLinks = (deps: ApiDeps) =>
   request<FriendLink[]>(deps, 'GET', '/friend-links');
 export const revokeFriendLink = (id: string, deps: ApiDeps) =>
   request<void>(deps, 'DELETE', `/friend-links/${id}`);
+
+/** FR-42: a used invitation; email is null once that person has left. */
+export type AcceptedInvite = { id: string; accepted_at: string; email: string | null };
+export const listAcceptedInvites = (deps: ApiDeps) =>
+  request<AcceptedInvite[]>(deps, 'GET', '/invites/accepted');
+export const listAcceptedFriendLinks = (deps: ApiDeps) =>
+  request<AcceptedInvite[]>(deps, 'GET', '/friend-links/accepted');
+
+/** "Accepted by sam@example.com · Oct 22" */
+export function acceptedLine(invite: AcceptedInvite): string {
+  const day = new Date(invite.accepted_at).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+  });
+  return `Accepted by ${invite.email ?? 'someone who has since left'} · ${day}`;
+}
 
 /** The friend link a person opens (production spec §4). */
 export function friendUrl(code: string): string {

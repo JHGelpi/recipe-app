@@ -346,7 +346,7 @@ Conventions for every tenant table:
 - `SHARE` (`shares`): `recipe_id`, the validated `snapshot` (with its dish photo's size), sha256 of the link's code, the kept code (`kept_code`, not synced) so Link reuses a live link, `deleted_at` when stopped; read by the household, written only by the ADR-0016 functions; a stopped share and its photo copy go in the 30-day purge
 - `PHOTO` (`photos`): `kind` (page or dish), `import_id` and `position` for pages, `recipe_id`, `media_type`, `bytes`, `width`, `height`, `uploaded_at`; the bytes are on the `photos` volume. A recipe's dish photo is `recipes.photo_id` (ADR-0013)
 
-- `FRIEND_LINK` (`friend_links`): sha256 of a `/welcome/<code>` link's code and a 30-day expiry; made by `create_friend_link`, listed to every member of the household, revoked by `revoke_friend_link`, its status read signed out through `friend_link_status`, not synced
+- `FRIEND_LINK` (`friend_links`): sha256 of a `/welcome/<code>` link's code and a 30-day expiry; made by `create_friend_link`, listed to every member of the household, revoked by `revoke_friend_link`, its status (live, ended, used) read signed out through `friend_link_status`, not synced. Single-use (FR-42): the sign-up pass it grants (`signup_passes.friend_link_id`) holds it for one address, and `handle_new_user` marks it accepted (`accepted_at`, `accepted_by`, `accepted_email`) when that account is made
 - The sign-up gate's `signup_settings`, `signup_allowed` and `signup_passes` hold no household data: RLS on, no policies, no grants, not synced (ADR-0018)
 
 `SHARE` stores an immutable JSON **snapshot** of the recipe. Recipients import from the snapshot, never from the sender's live row.

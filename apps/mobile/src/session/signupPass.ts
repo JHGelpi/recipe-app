@@ -7,7 +7,8 @@ export type PassSource = { kind: 'invite' | 'share' | 'friend'; code: string };
 
 export const INVITE_ONLY =
   'Dishkept is invite-only for now. Ask someone who uses it to send you an invite.';
-export const LINK_EXPIRED = 'This link has expired. Ask for a new one.';
+export const LINK_EXPIRED =
+  'This invitation has expired or has already been used. Ask the sender for a new one.';
 
 const ORDER: LinkKind[] = ['invite', 'share', 'friend'];
 const CODES: Record<LinkKind, () => string | null> = {
@@ -45,7 +46,9 @@ export async function askForPass(
   }
 }
 
-export const FRIEND_LINK_ENDED = 'This link has ended. Ask for a new one.';
+export const FRIEND_LINK_ENDED = 'This invitation has ended. Ask the sender for a new one.';
+export const FRIEND_LINK_USED =
+  'This invitation has already been used. Ask the sender for a new one.';
 
 /**
  * Whether a friend link still works, asked signed out. Only a definite "no"
@@ -54,7 +57,7 @@ export const FRIEND_LINK_ENDED = 'This link has ended. Ask for a new one.';
 export async function friendLinkStatus(
   code: string,
   deps: { fetch: typeof fetch; apiUrl: string },
-): Promise<'live' | 'ended'> {
+): Promise<'live' | 'ended' | 'used'> {
   try {
     const response = await deps.fetch(`${deps.apiUrl}/friend-links/status`, {
       method: 'POST',
@@ -63,6 +66,7 @@ export async function friendLinkStatus(
     });
     if (!response.ok) return 'live';
     const json = (await response.json().catch(() => null)) as { status?: string } | null;
+    if (json?.status === 'used') return 'used';
     return json?.status === 'ended' || json?.status === 'unknown' ? 'ended' : 'live';
   } catch {
     return 'live';
