@@ -131,3 +131,15 @@ describe('instructions written as paragraphs (spec §3)', () => {
     expect(draft?.steps).toEqual(['Chop.', 'Simmer.']);
   });
 });
+
+describe('nutrition from JSON-LD (FR-43)', () => {
+  it('maps the Recipe nutrition block onto the draft, and leaves it null when absent', () => {
+    const recipe = {
+      '@type': 'Recipe',
+      name: 'Oats',
+      nutrition: { '@type': 'NutritionInformation', calories: '310 kcal', fatContent: '7 g' },
+    };
+    expect(draftFromJsonLd([recipe])?.nutrition).toEqual({ calories: 310, fat_g: 7 });
+    expect(draftFromJsonLd([{ '@type': 'Recipe', name: 'Oats' }])?.nutrition).toBeNull();
+  });
+});

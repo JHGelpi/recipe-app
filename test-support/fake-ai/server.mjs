@@ -70,6 +70,26 @@ function userText(content) {
   return `images:${images.length}\n${comments.join('\n')}`;
 }
 
+// FR-43: "Nutrition: 420 kcal, 30 g protein, 45 g carbs, 12 g fat" as the
+// source stating it; a trailing "?" marks it unclear (low confidence).
+function nutritionFrom(lines) {
+  const line = lines.find((l) => l.startsWith('Nutrition:'));
+  if (!line) return { nutrition: null, unsure: false };
+  const grab = (pattern) => {
+    const match = pattern.exec(line);
+    return match ? Number(match[1]) : null;
+  };
+  return {
+    nutrition: {
+      calories: grab(/(\d+(?:\.\d+)?)\s*kcal/),
+      protein_g: grab(/(\d+(?:\.\d+)?)\s*g protein/),
+      carbs_g: grab(/(\d+(?:\.\d+)?)\s*g carbs/),
+      fat_g: grab(/(\d+(?:\.\d+)?)\s*g fat/),
+    },
+    unsure: line.endsWith('?'),
+  };
+}
+
 function recipeFrom(text) {
   const lines = sourceOf(text)
     .split('\n')
@@ -98,7 +118,8 @@ function recipeFrom(text) {
       .map((line) => line.replace(/^\d+[.)]\s*/, '')),
     tags: ['fake-suggested'],
     author: null,
-    low_confidence: ['servings'],
+    nutrition: nutritionFrom(lines).nutrition,
+    low_confidence: nutritionFrom(lines).unsure ? ['servings', 'nutrition'] : ['servings'],
   };
 }
 

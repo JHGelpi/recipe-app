@@ -1,8 +1,8 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import { DRAFT_FIELDS, toImportDraft, UNITS, type ImportDraft } from '@recipe-app/domain';
-import prompt from './prompts/parse-recipe.v1.md';
+import prompt from './prompts/parse-recipe.v2.md';
 
-export const PARSE_PROMPT_VERSION = 'parse-recipe.v1';
+export const PARSE_PROMPT_VERSION = 'parse-recipe.v2';
 const SOURCE_MAX = 30_000;
 
 /** A text source sends a string; photos send content blocks (parsePhoto.ts). */
@@ -50,6 +50,23 @@ export const RECORD_RECIPE_TOOL: Anthropic.Tool = {
       // At most 5 is asked in the prompt and enforced by toImportDraft.
       tags: { type: 'array', items: { type: 'string' } },
       author: nullable('string'),
+      // FR-43: only as the source states it, per serving; never estimated.
+      nutrition: {
+        anyOf: [
+          {
+            type: 'object',
+            properties: {
+              calories: nullable('number'),
+              protein_g: nullable('number'),
+              carbs_g: nullable('number'),
+              fat_g: nullable('number'),
+            },
+            required: ['calories', 'protein_g', 'carbs_g', 'fat_g'],
+            additionalProperties: false,
+          },
+          { type: 'null' },
+        ],
+      },
       low_confidence: { type: 'array', items: { type: 'string', enum: [...DRAFT_FIELDS] } },
     },
     required: [
@@ -62,6 +79,7 @@ export const RECORD_RECIPE_TOOL: Anthropic.Tool = {
       'steps',
       'tags',
       'author',
+      'nutrition',
       'low_confidence',
     ],
   },

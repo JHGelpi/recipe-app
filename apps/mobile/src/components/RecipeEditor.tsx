@@ -103,6 +103,7 @@ export function RecipeEditor({
     style: { minHeight: 132 },
   };
   const numeric = { keyboardType: 'number-pad' as const, inputMode: 'numeric' as const };
+  const decimal = { keyboardType: 'decimal-pad' as const, inputMode: 'decimal' as const };
 
   return (
     <Screen>
@@ -140,6 +141,21 @@ export function RecipeEditor({
           </View>
         ) : null}
         {field('notes', 'Notes', multiline)}
+      </Card>
+      {/* FR-43: optional; blank fields store nothing. */}
+      <Card title="Nutrition (per serving)">
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+          <View style={{ flexGrow: 1, flexBasis: 120 }}>
+            {field('calories', 'Calories (kcal)', decimal)}
+          </View>
+          <View style={{ flexGrow: 1, flexBasis: 120 }}>
+            {field('protein_g', 'Protein (g)', decimal)}
+          </View>
+          <View style={{ flexGrow: 1, flexBasis: 120 }}>
+            {field('carbs_g', 'Carbohydrates (g)', decimal)}
+          </View>
+          <View style={{ flexGrow: 1, flexBasis: 120 }}>{field('fat_g', 'Fat (g)', decimal)}</View>
+        </View>
       </Card>
       <View style={{ flexDirection: 'row', gap: space.sm }}>
         <View style={{ flex: 1 }}>

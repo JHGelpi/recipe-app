@@ -341,6 +341,7 @@ Conventions for every tenant table:
 - `id` as a UUID, generated on the device so it works offline
 - `household_id` (NOT NULL, indexed); RLS policy `household_id = auth_household_id()`
 - `created_at`, `updated_at`, `updated_by`, `deleted_at` (soft delete → 30-day trash, FR-18)
+- Nutrition per serving (FR-43) is an optional `nutrition` jsonb object on the recipe row (`calories`, `protein_g`, `carbs_g`, `fat_g`; null when none), checked by `valid_nutrition` with the same limits as the domain schema; the phone reads it apart from the rest of the row, so a value it cannot read never hides the recipe
 - Ingredients and steps are JSON arrays on the recipe row (ADR-0010), each element with a stable id; ingredients keep the typed line (`raw`) plus parsed `quantity`, `quantity_max`, `unit`, `item`, `note`, so scaling, search, and the Phase 2 shopping list can use them
 - Favorites are a per-user table (`favorites`), synced only to that user
 - `INVITE` (`invites`): role, sha256 of the link's code, expiry, accepted and cancelled times; read by the household's Admins only and written only by the ADR-0015 functions. Roles are checked live from `memberships`, which syncs to phones (`household_members`, `my_membership`)

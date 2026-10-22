@@ -49,7 +49,18 @@ describe('rowToRecipe', () => {
       source_author: null,
       source_text: null,
       photo_id: null,
+      nutrition: null,
     });
+  });
+
+  it('reads nutrition as JSON text, and an unreadable value loses only the nutrition (FR-43)', () => {
+    expect(rowToRecipe({ ...base, nutrition: '{"calories":420,"fat_g":12}' })?.nutrition).toEqual({
+      calories: 420,
+      fat_g: 12,
+    });
+    const odd = rowToRecipe({ ...base, nutrition: '{"calories":"lots"' });
+    expect(odd?.title).toBe(base.title);
+    expect(odd?.nutrition).toBeNull();
   });
 
   it('accepts tags as a Postgres array literal', () => {

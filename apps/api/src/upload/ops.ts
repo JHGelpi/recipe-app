@@ -30,7 +30,7 @@ const ALLOWED_TABLES = new Set([
   'cook_logs',
 ]);
 // jsonb columns: sent with tx.json so postgres.js does not build an array literal.
-const JSON_COLUMNS = new Set(['ingredients', 'steps']);
+const JSON_COLUMNS = new Set(['ingredients', 'steps', 'nutrition']);
 
 const opSchema = z.strictObject({
   op: z.enum(['put', 'patch', 'delete']),

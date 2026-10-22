@@ -108,6 +108,22 @@ describe('POST /api/imports/:id/parse', () => {
     expect(await usage.json()).toEqual({ spentUsd: 0.007, capUsd: 2 });
   });
 
+  it('keeps nutrition the text states, flagged when unclear, and none when it states none (FR-43)', async () => {
+    const cook = await fresh();
+    const stated = await textImport(
+      cook,
+      'Protein Oats\n- 1 cup oats\nNutrition: 310 kcal, 12 g protein, 50 g carbs, 7 g fat?',
+    );
+    await parse(cook, stated);
+    expect((await settled(cook, stated)).draft).toMatchObject({
+      nutrition: { calories: 310, protein_g: 12, carbs_g: 50, fat_g: 7 },
+      low_confidence: ['servings', 'nutrition'],
+    });
+    const none = await textImport(cook, 'Plain Oats\n- 1 cup oats');
+    await parse(cook, none);
+    expect((await settled(cook, none)).draft).toMatchObject({ nutrition: null });
+  });
+
   it('a second call while parsing answers 409, and a ready import is not parsed again', async () => {
     const cook = await fresh();
     const id = await textImport(cook, `${SOUP}\nFAKE_SLOW`);
@@ -190,6 +206,7 @@ describe('POST /api/imports/:id/parse', () => {
       author: 'Fixture Cook',
       servings: 8,
       cook_minutes: 75,
+      nutrition: { calories: 520, protein_g: 32, carbs_g: 41, fat_g: 24 },
     });
     expect((await fakeRequests()).some((text) => text.includes(tag))).toBe(false);
     expect(await spent(cook)).toBe(0);

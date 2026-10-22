@@ -17,6 +17,8 @@ const recipes = new Table(
     source_author: column.text,
     source_text: column.text,
     photo_id: column.text,
+    // FR-43: JSON text, or null.
+    nutrition: column.text,
     created_at: column.text,
     updated_at: column.text,
     updated_by: column.text,

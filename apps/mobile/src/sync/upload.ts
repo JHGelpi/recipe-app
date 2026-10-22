@@ -43,7 +43,7 @@ const CLIENT_FIELDS: Record<string, readonly string[]> = {
 
 // The local database stores these as JSON text; the API expects arrays.
 const JSON_FIELDS: Record<string, readonly string[]> = {
-  recipes: ['ingredients', 'steps', 'tags'],
+  recipes: ['ingredients', 'steps', 'tags', 'nutrition'],
 };
 
 function decoded(table: string, key: string, value: unknown): unknown {

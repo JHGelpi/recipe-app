@@ -41,6 +41,10 @@ describe('draftRecord', () => {
       steps: 'Chop',
       tags: 'dinner, quick',
       notes: '',
+      calories: '',
+      protein_g: '',
+      carbs_g: '',
+      fat_g: '',
     });
     expect(recipe.ingredients[0]).toMatchObject({ id: 'id-0', item: 'spinach', quantity: 2 });
   });
@@ -49,6 +53,15 @@ describe('draftRecord', () => {
 describe('flaggedFields', () => {
   it('names the editor fields the AI was unsure of', () => {
     expect(flaggedFields(record.draft!)).toEqual(['servings', 'prep', 'tags']);
+  });
+
+  it('an unsure nutrition panel highlights all four values (FR-43)', () => {
+    expect(flaggedFields({ ...record.draft!, low_confidence: ['nutrition'] })).toEqual([
+      'calories',
+      'protein_g',
+      'carbs_g',
+      'fat_g',
+    ]);
   });
 });
 

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { parseIngredientLine, UNITS, type Ingredient, type Unit } from './ingredients';
 import { RECIPE_LIMITS, TITLE_MAX } from './limits';
+import { cleanNutrition, nutritionSchema, type Nutrition } from './nutrition';
 import type { Step } from './steps';
 
 /** Fields the AI can mark as unsure (FR-11). */
@@ -12,6 +13,7 @@ export const DRAFT_FIELDS = [
   'ingredients',
   'steps',
   'tags',
+  'nutrition',
 ] as const;
 export type DraftField = (typeof DRAFT_FIELDS)[number];
 
@@ -53,6 +55,8 @@ export const importDraftSchema = z.strictObject({
   steps: z.array(z.string().min(1).max(STEP_MAX)).max(RECIPE_LIMITS.steps),
   tags: z.array(z.string().min(1).max(RECIPE_LIMITS.tagLength)).max(DRAFT_TAG_LIMIT),
   author: z.string().min(1).max(AUTHOR_MAX).nullable(),
+  // FR-43. Optional: drafts stored before it have none.
+  nutrition: nutritionSchema.nullable().optional(),
   low_confidence: z.array(z.enum(DRAFT_FIELDS)),
 });
 export type ImportDraft = z.infer<typeof importDraftSchema>;
@@ -135,6 +139,7 @@ export function toImportDraft(input: unknown): ImportDraft | null {
     steps,
     tags,
     author: author === '' ? null : author,
+    nutrition: cleanNutrition(input.nutrition),
     low_confidence: unique(
       listOf(input.low_confidence).filter((field): field is DraftField =>
         (DRAFT_FIELDS as readonly unknown[]).includes(field),
@@ -153,6 +158,7 @@ export type DraftRecipeFields = {
   ingredients: Ingredient[];
   steps: Step[];
   tags: string[];
+  nutrition: Nutrition | null;
 };
 
 /** The recipe fields a draft becomes, with new ids for ingredients and steps. */
@@ -165,5 +171,6 @@ export function draftToRecipeFields(draft: ImportDraft, newId: () => string): Dr
     ingredients: draft.ingredients.map((ingredient) => ({ ...ingredient, id: newId() })),
     steps: draft.steps.map((text) => ({ id: newId(), text })),
     tags: draft.tags,
+    nutrition: draft.nutrition ?? null,
   };
 }

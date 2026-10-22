@@ -29,6 +29,7 @@ const values: RecipeValues = {
   steps: [],
   tags: ['bread'],
   notes: '',
+  nutrition: null,
 };
 
 describe('recipe writes', () => {
@@ -47,6 +48,7 @@ describe('recipe writes', () => {
       '[]',
       '["bread"]',
       '',
+      null,
       null,
       null,
       null,

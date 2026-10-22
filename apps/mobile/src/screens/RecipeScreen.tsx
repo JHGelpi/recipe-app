@@ -7,6 +7,7 @@ import { AddToListSheet } from '../components/AddToListSheet';
 import { CookedButton } from '../components/CookedButton';
 import { DishPhoto } from '../components/DishPhoto';
 import { IngredientList } from '../components/IngredientList';
+import { NutritionCard } from '../components/NutritionCard';
 import { OriginalPhotos } from '../components/OriginalPhotos';
 import { ServingsBar } from '../components/ServingsBar';
 import { SharePanel } from '../components/ShareMenu';
@@ -191,6 +192,7 @@ export function RecipeScreen({ claims, id }: { claims: Claims; id: string }) {
           ) : null}
           <SharedLinks claims={claims} recipe={recipe} />
           <RecipeBody claims={claims} recipe={recipe} />
+          <NutritionCard nutrition={recipe.nutrition} />
           {recipe.notes ? (
             <Card title="Notes">
               <LinkedText>{recipe.notes}</LinkedText>

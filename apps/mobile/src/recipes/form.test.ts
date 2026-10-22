@@ -17,6 +17,10 @@ describe('valuesFromForm', () => {
         steps: '1. Mix\n2. Cook',
         tags: 'Breakfast, quick',
         notes: 'Sunday',
+        calories: '',
+        protein_g: '',
+        carbs_g: '',
+        fat_g: '',
       },
       null,
       newId,
@@ -96,6 +100,7 @@ describe('formFromRecipe', () => {
       notes: '',
       deleted_at: null,
       photo_id: null,
+      nutrition: null,
       ...NO_SOURCE,
     });
     expect(form).toEqual({
@@ -107,6 +112,22 @@ describe('formFromRecipe', () => {
       steps: 'Bake',
       tags: 'bread, easy',
       notes: '',
+      calories: '',
+      protein_g: '',
+      carbs_g: '',
+      fat_g: '',
+    });
+  });
+
+  it('shows stored nutrition, and a bad value is an error on its own field (FR-43)', () => {
+    const form = { ...emptyForm(), title: 'Oats', calories: '310', fat_g: '7.5' };
+    const saved = valuesFromForm(form, null, newId);
+    expect(saved.ok && saved.values.nutrition).toEqual({ calories: 310, fat_g: 7.5 });
+    const blank = valuesFromForm({ ...emptyForm(), title: 'Oats' }, null, newId);
+    expect(blank.ok && blank.values.nutrition).toBeNull();
+    const bad = valuesFromForm({ ...form, protein_g: '-2' }, null, newId);
+    expect(bad.ok ? null : bad.errors).toEqual({
+      protein_g: 'Protein must be a number from 0 to 1000',
     });
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { recipeSchema } from './index';
-import { draftToRecipeFields, toImportDraft } from './importDraft';
+import { draftToRecipeFields, importDraftSchema, toImportDraft } from './importDraft';
 
 const minimal = { title: 'Soup' };
 
@@ -15,8 +15,22 @@ describe('toImportDraft', () => {
       steps: [],
       tags: [],
       author: null,
+      nutrition: null,
       low_confidence: [],
     });
+  });
+
+  it('keeps nutrition the source stated and drops impossible values (FR-43)', () => {
+    expect(
+      toImportDraft({ ...minimal, nutrition: { calories: 420, protein_g: -3, carbs_g: null } })
+        ?.nutrition,
+    ).toEqual({ calories: 420 });
+  });
+
+  it('reads a draft stored before nutrition existed', () => {
+    const old: Record<string, unknown> = { ...toImportDraft(minimal)! };
+    delete old.nutrition;
+    expect(importDraftSchema.safeParse(old).success).toBe(true);
   });
 
   it('refuses input without a title, or that is not an object', () => {

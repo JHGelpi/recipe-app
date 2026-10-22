@@ -168,3 +168,43 @@ test('links in notes open in a new tab; other schemes and the editor stay plain 
   await member.getByRole('button', { name: 'Edit' }).click();
   await expect(member.getByLabel('Notes', { exact: true })).toHaveValue(notes);
 });
+
+test('nutrition per serving is optional, shown when set, and kept when servings scale (FR-43)', async ({
+  browser,
+}) => {
+  const member = await session(browser, SEED.memberA);
+  const viewer = await session(browser, SEED.viewerA);
+  const plain = unique('No nutrition');
+  await createRecipe(member, { title: plain, servings: '2', ingredients: '1 cup oats' });
+  await expect(member.getByRole('heading', { name: 'Nutrition', exact: true })).toHaveCount(0);
+
+  const title = unique('Macro bowl');
+  await createRecipe(member, { title, servings: '2', ingredients: '1 cup rice' });
+  await member.getByRole('button', { name: 'Edit' }).click();
+  await member.getByLabel('Calories (kcal)').fill('-3');
+  await member.getByRole('button', { name: 'Save' }).click();
+  await expect(member.getByText('Calories must be a number from 0 to 10000')).toBeVisible();
+  await member.getByLabel('Calories (kcal)').fill('480');
+  await member.getByLabel('Protein (g)').fill('25.5');
+  await member.getByRole('button', { name: 'Save' }).click();
+  await expect(member.getByText('Per serving', { exact: true })).toBeVisible();
+  await expect(member.getByText('480 kcal', { exact: true })).toBeVisible();
+  await expect(member.getByText('25.5 g protein', { exact: true })).toBeVisible();
+  await expect(member.getByText('g carbs')).toHaveCount(0);
+
+  // Scaling servings leaves the per-serving values alone.
+  await member.getByRole('button', { name: 'More servings' }).click();
+  await expect(member.getByText('480 kcal', { exact: true })).toBeVisible();
+
+  await (await findRecipe(viewer, title)).click({ timeout: NFR5_MS });
+  await expect(viewer.getByText('480 kcal', { exact: true })).toBeVisible({ timeout: NFR5_MS });
+  await expect(viewer.getByRole('button', { name: 'Edit' })).toHaveCount(0);
+
+  // Clearing every value removes the section.
+  await member.getByRole('button', { name: 'Edit' }).click();
+  await member.getByLabel('Calories (kcal)').fill('');
+  await member.getByLabel('Protein (g)').fill('');
+  await member.getByRole('button', { name: 'Save' }).click();
+  await expect(member.getByRole('heading', { name: title, level: 1 })).toBeVisible();
+  await expect(member.getByRole('heading', { name: 'Nutrition', exact: true })).toHaveCount(0);
+});

@@ -1,8 +1,8 @@
 import type Anthropic from '@anthropic-ai/sdk';
-import prompt from './prompts/parse-recipe-photo.v1.md';
+import prompt from './prompts/parse-recipe-photo.v2.md';
 import type { ParseRequest } from './parseRecipe';
 
-export const PHOTO_PROMPT_VERSION = 'parse-recipe-photo.v1';
+export const PHOTO_PROMPT_VERSION = 'parse-recipe-photo.v2';
 
 /**
  * FR-7: the pages as JPEG image blocks, each labelled with its place, then

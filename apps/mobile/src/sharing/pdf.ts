@@ -1,4 +1,10 @@
-import { pdfSafeText, sourceLine, timesLine, type ShareableRecipe } from '@recipe-app/domain';
+import {
+  nutritionLine,
+  pdfSafeText,
+  sourceLine,
+  timesLine,
+  type ShareableRecipe,
+} from '@recipe-app/domain';
 import { jsPDF } from 'jspdf';
 
 type PdfRecipe = Omit<ShareableRecipe, 'tags'>;
@@ -82,6 +88,11 @@ export function buildRecipePdf(recipe: PdfRecipe, photo: PdfPhoto | null): jsPDF
   if (recipe.steps.length > 0) {
     write('Steps', 14, 'bold');
     recipe.steps.forEach((step, index) => write(`${index + 1}. ${step.text}`, 11, 'normal', 0, 6));
+    y += 4;
+  }
+  const nutrition = nutritionLine(recipe.nutrition);
+  if (nutrition) {
+    write(nutrition, 11);
     y += 4;
   }
   if (recipe.notes.trim()) {

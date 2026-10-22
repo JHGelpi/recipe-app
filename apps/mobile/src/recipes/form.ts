@@ -1,11 +1,16 @@
 import {
   ingredientsFromText,
   ingredientsToText,
+  NUTRITION_FIELDS,
+  nutritionToInput,
   normalizeTags,
+  parseNutritionInput,
   recipeSchema,
   stepsFromText,
   stepsToText,
   type Ingredient,
+  type Nutrition,
+  type NutritionField,
   type Step,
 } from '@recipe-app/domain';
 import type { RecipeRecord } from './rows';
@@ -19,7 +24,7 @@ export type RecipeForm = {
   steps: string;
   tags: string;
   notes: string;
-};
+} & Record<NutritionField, string>;
 
 export type RecipeValues = {
   title: string;
@@ -30,6 +35,8 @@ export type RecipeValues = {
   steps: Step[];
   tags: string[];
   notes: string;
+  /** FR-43: per serving, or null when every field was left blank. */
+  nutrition: Nutrition | null;
 };
 
 export type FormResult =
@@ -80,6 +87,7 @@ export function emptyForm(): RecipeForm {
     steps: '',
     tags: '',
     notes: '',
+    ...nutritionToInput(null),
   };
 }
 
@@ -93,6 +101,7 @@ export function formFromRecipe(recipe: RecipeRecord): RecipeForm {
     steps: stepsToText(recipe.steps),
     tags: recipe.tags.join(', '),
     notes: recipe.notes,
+    ...nutritionToInput(recipe.nutrition),
   };
 }
 
@@ -119,14 +128,24 @@ export function valuesFromForm(
     tags: normalizeTags(form.tags),
     notes: form.notes.trim(),
   };
+  const nutrition = parseNutritionInput(
+    Object.fromEntries(NUTRITION_FIELDS.map((field) => [field, form[field]])) as Record<
+      NutritionField,
+      string
+    >,
+  );
   const parsed = recipeSchema
     .omit({ id: true, household_id: true, deleted_at: true })
     .safeParse(candidate);
-  if (parsed.success) {
-    return { ok: true, values: { ...candidate, title: parsed.data.title } };
+  if (parsed.success && nutrition.ok) {
+    return {
+      ok: true,
+      values: { ...candidate, title: parsed.data.title, nutrition: nutrition.value },
+    };
   }
   const errors: Partial<Record<keyof RecipeForm, string>> = {};
-  for (const issue of parsed.error.issues) {
+  if (!nutrition.ok) errors[nutrition.field] = nutrition.message;
+  for (const issue of parsed.success ? [] : parsed.error.issues) {
     const field = FIELD_OF[String(issue.path[0])];
     if (field && !errors[field]) {
       // too_big issues carry `maximum`; the issue union does not say so for every code.

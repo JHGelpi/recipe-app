@@ -10,6 +10,7 @@ import { useSession } from '../session/SessionProvider';
 import { readShare, saveShare, SHARE_MESSAGES } from '../sharing/api';
 import { setPendingShare, setSavedFlash, takePendingShare } from '../sharing/pending';
 import { colors, radius, space } from '../theme';
+import { NutritionCard } from '../components/NutritionCard';
 import { Banner, Button, Card, LinkedText, Screen, Text } from '../ui';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- Metro asset
@@ -172,6 +173,7 @@ export function SharedRecipeScreen({ code }: { code: string }) {
           ))}
         </Card>
       ) : null}
+      <NutritionCard nutrition={recipe.nutrition} />
       {recipe.notes ? (
         <Card title="Notes">
           <LinkedText>{recipe.notes}</LinkedText>

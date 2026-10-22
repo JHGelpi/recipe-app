@@ -65,9 +65,13 @@ test('a link with recipe data becomes a recipe that shows its site and author (F
   await page.getByRole('button', { name: 'Review' }).click();
   await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Fixture Lasagna');
   await expect(page.getByText('Check this')).toHaveCount(0);
+  // FR-43: the page's schema.org nutrition fills the section.
+  await expect(page.getByLabel('Calories (kcal)')).toHaveValue('520');
+  await expect(page.getByLabel('Fat (g)')).toHaveValue('24');
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('heading', { name: 'Fixture Lasagna', level: 1 })).toBeVisible();
   await expect(page.getByText('From fake-ai · by Fixture Cook')).toBeVisible();
+  await expect(page.getByText('520 kcal', { exact: true })).toBeVisible();
 });
 
 test('an import made offline waits, then is read once online (FR-29)', async ({
@@ -117,4 +121,17 @@ test('dismissing an import removes it', async ({ page }) => {
 test('viewers have no Import button (rule 4)', async ({ page }) => {
   await signIn(page, SEED.viewerA);
   await expect(page.getByRole('button', { name: /^Import/ })).toHaveCount(0);
+});
+
+test('nutrition the AI is unsure of is highlighted on review (FR-43, FR-11)', async ({ page }) => {
+  await signIn(page, freshEmail('import-nutrition'));
+  const title = unique('Unsure oats');
+  await openImport(page);
+  await pasteText(page, `${title}\n- 1 cup oats\nNutrition: 310 kcal, 12 g protein?`);
+  await ready(page);
+  await page.getByRole('button', { name: 'Review' }).click();
+  await expect(page.getByLabel('Calories (kcal)')).toHaveValue('310');
+  await expect(page.getByLabel('Carbohydrates (g)')).toHaveValue('');
+  // Servings, and the four nutrition values.
+  await expect(page.getByText('Check this')).toHaveCount(5);
 });
