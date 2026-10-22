@@ -1,6 +1,6 @@
 # Product Specification
 
-> Status: **Draft v0.2** · Last updated: 2026-10-17
+> Status: **v1.0: Phases 1 and 2 built and in production** · Last updated: 2026-10-22
 > Source of truth for *what* we build. `ARCHITECTURE.md` covers *how*.
 
 ## 1. Vision
@@ -36,6 +36,17 @@ Outside the household:
 | 2 | Shopping list *(built)* | Add ingredients from recipes, merge duplicates, group by aisle |
 | 3 | Meal planning | Weekly dinner menu feeding the shopping list |
 | Future | Desktop app; natural-language / semantic search | |
+
+### Build status
+
+| Phase | Status |
+|---|---|
+| 1 (v1) recipe repository | **Built**, except FR-13 (re-parse) and FR-14 (duplicate warning), both still *proposed* |
+| 2 shopping list | **Built** (FR-31 to FR-35, ADR-0019) |
+| 3 meal planning | Not started |
+| Production | Live at `https://dishkept.geltech.dev` since 2026-10-21, invite-only, on the owner's PC (ADR-0018, ADR-0021) |
+
+Not yet built from §6: NFR-10 (household export) and NFR-12 (native store requirements, which only apply once native builds exist).
 
 **Platforms (v1):** web first, as an installable web app built with Expo; native iOS and Android later from the same codebase (ADR-0007). Desktop later.
 
@@ -96,9 +107,9 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 |---|---|---|
 | FR-21 | Cook mode: screen awake, large text, step-by-step, checkable ingredients | M |
 | FR-22 | Scale servings | S |
-| FR-23 | US ↔ metric conversion (same kind only: volume ↔ volume, weight ↔ weight) | C |
+| FR-23 | US ↔ metric conversion (same kind only: volume ↔ volume, weight ↔ weight), for display; the saved recipe doesn't change *(built)* | C |
 | FR-24 | AI substitutions per ingredient, with amounts and effect on dish | M |
-| FR-25 | Save a substitution to the recipe as a note | C |
+| FR-25 | Save a substitution to the recipe as a note *(built: Add to notes)* | C |
 
 ### Sharing out
 | ID | Requirement | Pri |
@@ -125,7 +136,7 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 
 ## 6. Non-functional requirements
 
-> **Draft — not yet reviewed.** Targets are starting proposals.
+> The targets below are starting proposals, not yet reviewed (§7, question 3). The isolation, privacy, security, offline, durability and accessibility requirements are built and tested.
 
 | ID | Area | Requirement |
 |---|---|---|
@@ -136,9 +147,9 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 | NFR-5 | Sync latency | Online edits visible on other household devices within ~10 s. |
 | NFR-6 | Performance | Cold start < 2 s on a mid-range phone; local search < 300 ms over 2,000 recipes; photo parse < 30 s p90. |
 | NFR-7 | AI cost | Per-household monthly AI spend tracked and capped: $2.00 by default (`AI_MONTHLY_CAP_USD`). |
-| NFR-8 | Availability | Best effort on a home PC; move to a VM when uptime matters (ADR-0018). |
+| NFR-8 | Availability | Best effort on the owner's always-on PC. A GCP VM is defined in OpenTofu and can take over through a restore when uptime matters (ADR-0018, ADR-0021). |
 | NFR-9 | Data durability | Nightly encrypted off-site backups kept 30 days; restore tested (ADR-0018). No data loss on device reinstall once synced. |
-| NFR-10 | Portability | Household can export all recipes (JSON + PDFs). |
+| NFR-10 | Portability | Household can export all recipes (JSON + PDFs). *Not built yet.* |
 | NFR-11 | Accessibility | Supports OS dynamic text size, VoiceOver/TalkBack, WCAG AA contrast in light and dark themes; the theme follows the device setting or the person's choice (ADR-0020). |
 | NFR-12 | Store compliance | Native builds only: in-app account deletion; Sign in with Apple offered on iOS if other social sign-in is offered. |
 | NFR-13 | Attribution | Imported web recipes retain source URL and author attribution. |
