@@ -64,6 +64,7 @@ describe('database roles (spec §4)', () => {
       friend_links: ['SELECT'],
       shopping_items: ['DELETE', 'INSERT', 'SELECT', 'UPDATE'],
       aisle_choices: ['INSERT', 'SELECT', 'UPDATE'],
+      cook_logs: ['DELETE', 'INSERT', 'SELECT', 'UPDATE'],
     });
     expect(grants.filter((grant) => grant.table_name.startsWith('signup_'))).toEqual([]);
   });

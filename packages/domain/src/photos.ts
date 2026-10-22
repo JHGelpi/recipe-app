@@ -10,7 +10,7 @@ export const PHOTO_LIMITS = { bytes: 3_000_000, edge: 4_000, pages: 8 } as const
 export const PAGE_EDGE = 1568;
 export const DISH_EDGE = 1200;
 
-export const PHOTO_KINDS = ['page', 'dish'] as const;
+export const PHOTO_KINDS = ['page', 'dish', 'cook'] as const;
 export type PhotoKind = (typeof PHOTO_KINDS)[number];
 
 const timestampSchema = z.iso.datetime({ offset: true });
@@ -36,6 +36,14 @@ export const photoPutSchema = z.discriminatedUnion('kind', [
     position: z.number().int().min(1).max(PHOTO_LIMITS.pages),
   }),
   z.strictObject({ ...photoFields, kind: z.literal('dish') }),
+  // FR-39: a meal's photo belongs to its cook log entry, never to a recipe.
+  z.strictObject({
+    ...photoFields,
+    kind: z.literal('cook'),
+    recipe_id: z.null().optional(),
+    cook_log_id: z.guid(),
+    position: z.number().int().min(1).max(PHOTO_LIMITS.pages),
+  }),
 ]);
 
 // Pages are ordered before Import and never reordered after, so position is
@@ -54,6 +62,7 @@ export const PHOTO_CLIENT_FIELDS = [
   'import_id',
   'position',
   'recipe_id',
+  'cook_log_id',
   'media_type',
   'bytes',
   'width',

@@ -148,7 +148,7 @@ test.describe('the Appearance setting', () => {
       ingredients: '2 cups flour',
       steps: 'Mix.\nBake.',
     });
-    await page.getByRole('button', { name: 'Cook' }).click();
+    await page.getByRole('button', { name: 'Cook', exact: true }).click();
     const box = page
       .getByRole('checkbox', { name: '2 cups flour' })
       .locator('[aria-hidden="true"]');

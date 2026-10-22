@@ -1,6 +1,8 @@
 import {
   aisleChoicePatchSchema,
   aisleChoicePutSchema,
+  cookLogPatchSchema,
+  cookLogPutSchema,
   favoritePatchSchema,
   favoriteSchema,
   importPatchSchema,
@@ -25,6 +27,7 @@ const ALLOWED_TABLES = new Set([
   'photos',
   'shopping_items',
   'aisle_choices',
+  'cook_logs',
 ]);
 // jsonb columns: sent with tx.json so postgres.js does not build an array literal.
 const JSON_COLUMNS = new Set(['ingredients', 'steps']);
@@ -229,6 +232,31 @@ async function applyAisleChoice(
   return rows.length === 0 ? rejected(op, 'not_found_or_forbidden') : applied(op);
 }
 
+async function applyCookLog(
+  tx: UserTx,
+  op: Op,
+  candidate: Record<string, unknown>,
+): Promise<Result> {
+  if (op.op === 'put') {
+    const parsed = cookLogPutSchema.safeParse(candidate);
+    if (!parsed.success) return rejected(op, 'invalid');
+    const { id, ...fields } = parsed.data;
+    const row = { ...fields, deleted_at: fields.deleted_at ?? null };
+    // As for recipes: another household's row raises 42501 under RLS, and a
+    // recipe of another household breaks the composite foreign key (23503).
+    // cooked_by is the database's to stamp (cook_logs_cooked_by).
+    await tx`
+      insert into public.cook_logs ${tx({ id, ...row })}
+      on conflict (id) do update set ${tx(row)}`;
+    return applied(op);
+  }
+  const parsed = cookLogPatchSchema.safeParse(candidate);
+  if (!parsed.success) return rejected(op, 'invalid');
+  const { id, ...fields } = parsed.data;
+  const rows = await tx`update public.cook_logs set ${tx(fields)} where id = ${id} returning id`;
+  return rows.length === 0 ? rejected(op, 'not_found_or_forbidden') : applied(op);
+}
+
 type Apply = (tx: UserTx, op: Op, candidate: Record<string, unknown>) => Promise<Result>;
 const APPLY: Record<string, Apply> = {
   recipes: applyRecipe,
@@ -237,6 +265,7 @@ const APPLY: Record<string, Apply> = {
   photos: applyPhoto,
   shopping_items: applyShoppingItem,
   aisle_choices: applyAisleChoice,
+  cook_logs: applyCookLog,
 };
 
 async function applyOne(tx: UserTx, op: Op): Promise<Result> {

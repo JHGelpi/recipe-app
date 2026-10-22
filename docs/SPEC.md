@@ -135,6 +135,18 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 | FR-34 | Items are grouped by aisle: a built-in guess, overridden by the household's own choices | M |
 | FR-35 | Tick items off while shopping, clear ticked items, remove items, add typed items. Clear ticked removes fully ticked lines; a partly ticked line stays, counting what is left | M |
 
+### Cook log
+
+| ID | Requirement | Pri |
+|---|---|---|
+| FR-37 | One-tap "I cooked this" on the recipe and at the end of cook mode logs today's meal; the day can be changed after. Entries go to the Trash (FR-18); a recipe's trash or purge keeps its entries *(built)* | M |
+| FR-38 | Notes on an entry, added, edited or removed later *(built)* | S |
+| FR-39 | Up to 8 photos per entry (camera or library), full screen and swipeable *(built)* | S |
+| FR-40 | Cook diary: the household's entries newest first, with day, recipe, cook, first photo and the start of the notes; filter by recipe *(built)* | M |
+| FR-41 | The recipe shows its cook history ("Cooked 4 times · last on Oct 22"), linking to its entries *(built)* | S |
+
+Admins and Members log and edit; Viewers read the diary (rule 4). Every entry belongs to a recipe; a meal not in the app, ratings, and choosing another cook are not built.
+
 ## 6. Non-functional requirements
 
 > The targets below are starting proposals, not yet reviewed (§7, question 3). The isolation, privacy, security, offline, durability and accessibility requirements are built and tested.

@@ -7,6 +7,7 @@ const HIDDEN = [
   /^\/s\//,
   /^\/photo\//,
   /^\/recipe\/[^/]+\/cook$/,
+  /^\/diary\/[^/]+\/photos$/,
   /^\/welcome\//,
 ];
 
@@ -18,7 +19,7 @@ export function activeTab(path: string): Tab | null {
   if (path === '/') return 'recipes';
   if (path === '/favorites') return 'favorites';
   if (path === '/list') return 'list';
-  if (path === '/household' || path === '/trash') return 'household';
+  if (path === '/household' || path === '/trash' || path.startsWith('/diary')) return 'household';
   return null;
 }
 

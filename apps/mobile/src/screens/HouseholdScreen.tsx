@@ -368,10 +368,17 @@ export function HouseholdScreen({ claims }: { claims: Claims }) {
       <Card title="Appearance">
         <PillTabs tabs={APPEARANCE_TABS} value={appearance} onChange={setAppearance} />
       </Card>
+      <RowCard
+        title="Cook diary"
+        subtitle="What the household cooked, with notes and photos"
+        href="/diary"
+        leading={<Icon name="journal-outline" color={colors.muted} />}
+        trailing={<Icon name="chevron-forward" color={colors.muted} />}
+      />
       {canWrite(claims.role) ? (
         <RowCard
           title="Trash"
-          subtitle="Deleted recipes, kept for 30 days"
+          subtitle="Deleted recipes and diary entries, kept for 30 days"
           href="/trash"
           leading={<Icon name="trash-outline" color={colors.muted} />}
           trailing={<Icon name="chevron-forward" color={colors.muted} />}

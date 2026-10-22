@@ -140,6 +140,7 @@ C4Component
     Component(search, "Search", "In-memory index over the local DB (ADR-0011)", "Title/ingredient/tag search + tag filters, offline (FR-19/20)")
     Component(cookEngine, "Cook Engine", "Pure TS (packages/domain)", "Scaling, unit conversion, step state (FR-21–23)")
     Component(shopping, "Shopping List", "Screen + shoppingLines", "Adds a recipe's ingredients at the viewed servings; merges lines; aisles (FR-31–35, ADR-0019)")
+    Component(cookLog, "Cook Diary", "Screens + cook_logs", "I cooked this on a recipe and at the end of cook mode; entries with a day, notes and up to 8 photos; diary filtered by recipe; cook history on the recipe (FR-37–41)")
     Component(theme, "Appearance", "CSS variables + useAppearance", "System, light or dark, per device (ADR-0020)")
     Component(sharing, "Sharing", "Share menu, PDF, /s page", "Text and PDF on the phone; links read snapshots anonymously (FR-26, FR-27)")
     Component(apiClient, "API Client", "fetch", "Typed calls to the API; attaches JWT")
@@ -159,6 +160,8 @@ C4Component
   Rel(cook, cookEngine, "Scales and converts")
   Rel(nav, shopping, "Shopping list")
   Rel(shopping, repo, "Reads recipes; writes shopping rows")
+  Rel(nav, cookLog, "Cook diary")
+  Rel(cookLog, localDb, "Writes cook_logs and cook photos")
   Rel(ui, theme, "Colors from")
   Rel(nav, sharing, "Share")
   Rel(repo, localDb, "SQL")
@@ -344,7 +347,8 @@ Conventions for every tenant table:
 - `SHOPPING_ITEM` (`shopping_items`): one row per added ingredient or typed item: `item`, `item_key` (the merge key), scaled `quantity`, `quantity_max`, `unit`, `note`, `aisle`, `recipe_id` and a copied `recipe_title` (no foreign key), `checked_at`. Merged into lines on screen by `shoppingLines` (ADR-0019); cleared rows are purged after 30 days
 - `AISLE_CHOICE` (`aisle_choices`): the household's aisle for an `item_key`, unique per household and upserted on it; beats the built-in word list
 - `SHARE` (`shares`): `recipe_id`, the validated `snapshot` (with its dish photo's size), sha256 of the link's code, the kept code (`kept_code`, not synced) so Link reuses a live link, `deleted_at` when stopped; read by the household, written only by the ADR-0016 functions; a stopped share and its photo copy go in the 30-day purge
-- `PHOTO` (`photos`): `kind` (page or dish), `import_id` and `position` for pages, `recipe_id`, `media_type`, `bytes`, `width`, `height`, `uploaded_at`; the bytes are on the `photos` volume. A recipe's dish photo is `recipes.photo_id` (ADR-0013)
+- `COOK_LOG` (`cook_logs`): one meal: `recipe_id` (composite key to the household's recipe, set null when the recipe is purged) and a copied `recipe_title`, `cooked_on` (a day), `cooked_by` (stamped by a trigger: the person who logged it, never changed), `notes`. Trashed entries sync for the Trash; they and their photos are purged after 30 days. Moves with the household when a person alone joins another (ADR-0015)
+- `PHOTO` (`photos`): `kind` (page, dish or cook), `import_id` and `position` for pages, `cook_log_id` and `position` for a meal's photos (never a `recipe_id`, so a recipe purge keeps them), `recipe_id`, `media_type`, `bytes`, `width`, `height`, `uploaded_at`; the bytes are on the `photos` volume. A recipe's dish photo is `recipes.photo_id` (ADR-0013)
 
 - `FRIEND_LINK` (`friend_links`): sha256 of a `/welcome/<code>` link's code and a 30-day expiry; made by `create_friend_link`, listed to every member of the household, revoked by `revoke_friend_link`, its status read signed out through `friend_link_status`, not synced
 - The sign-up gate's `signup_settings`, `signup_allowed` and `signup_passes` hold no household data: RLS on, no policies, no grants, not synced (ADR-0018)

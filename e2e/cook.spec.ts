@@ -29,7 +29,7 @@ test('cook mode keeps its place through a reload, and Done starts fresh (FR-21)'
   await signIn(page, freshEmail('cook-mode'));
   const title = unique('Cook cake');
   await cakeRecipe(page, title);
-  await page.getByRole('button', { name: 'Cook' }).click();
+  await page.getByRole('button', { name: 'Cook', exact: true }).click();
   await expect(page.getByText('Step 1 of 3')).toBeVisible();
   await page.getByRole('checkbox', { name: '2 cups flour' }).click();
   await page.getByRole('button', { name: 'Next' }).click();
@@ -42,7 +42,7 @@ test('cook mode keeps its place through a reload, and Done starts fresh (FR-21)'
   await page.getByRole('button', { name: 'Go to step 3' }).click();
   await page.getByRole('button', { name: 'Done' }).click();
   await expect(page.getByRole('heading', { name: title, level: 1 })).toBeVisible();
-  await page.getByRole('button', { name: 'Cook' }).click();
+  await page.getByRole('button', { name: 'Cook', exact: true }).click();
   await expect(page.getByText('Step 1 of 3')).toBeVisible();
   await expect(page.getByRole('checkbox', { name: '2 cups flour' })).not.toBeChecked();
 });
@@ -59,7 +59,7 @@ test('servings scale and units convert on the recipe and in cook mode (FR-22, FR
   await expect(page.getByText('1½ cups buttermilk')).toBeVisible();
   await page.getByRole('button', { name: 'Metric' }).click();
   await expect(page.getByText('710 ml flour')).toBeVisible();
-  await page.getByRole('button', { name: 'Cook' }).click();
+  await page.getByRole('button', { name: 'Cook', exact: true }).click();
   await expect(page.getByRole('checkbox', { name: '710 ml flour' })).toBeVisible();
   await expect(page.getByText('Amounts in steps are for the original 4 servings')).toBeVisible();
 });
@@ -116,7 +116,7 @@ test('a recipe with no steps has Done in cook mode (FR-21)', async ({ page }) =>
   await signIn(page, freshEmail('cook-nosteps'));
   const title = unique('No steps');
   await createRecipe(page, { title, ingredients: '1 egg' });
-  await page.getByRole('button', { name: 'Cook' }).click();
+  await page.getByRole('button', { name: 'Cook', exact: true }).click();
   await page.getByRole('button', { name: 'Done' }).click();
   await expect(page.getByRole('heading', { name: title, level: 1 })).toBeVisible();
 });

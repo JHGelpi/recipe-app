@@ -20,19 +20,31 @@ describe('the tab bar (UI spec §4)', () => {
     '/recipe/new',
     '/import',
     '/import/abc',
+    '/diary',
+    '/diary/abc',
   ])('shows on %s when signed in', (path) => {
     expect(showTabBar(path, true)).toBe(true);
   });
 
-  it.each(['/sign-in', '/invite/xyz', '/s/xyz', '/photo/abc', '/recipe/abc/cook', '/welcome/abc'])(
-    'hides on %s',
-    (path) => {
-      expect(showTabBar(path, true)).toBe(false);
-    },
-  );
+  it.each([
+    '/sign-in',
+    '/invite/xyz',
+    '/s/xyz',
+    '/photo/abc',
+    '/recipe/abc/cook',
+    '/welcome/abc',
+    '/diary/abc/photos',
+  ])('hides on %s', (path) => {
+    expect(showTabBar(path, true)).toBe(false);
+  });
 
   it('hides whenever signed out', () => {
     expect(showTabBar('/', false)).toBe(false);
+  });
+
+  it('the cook diary belongs to Household (FR-40)', () => {
+    expect(activeTab('/diary')).toBe('household');
+    expect(activeTab('/diary/abc')).toBe('household');
   });
 
   it('marks the current tab; Trash belongs to Household', () => {

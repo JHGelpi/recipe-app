@@ -112,3 +112,9 @@ insert into public.shopping_items (id, household_id, item, item_key, aisle) valu
 insert into public.aisle_choices (id, household_id, item_key, aisle) values
   ('00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-00000000000a', 'seed onion', 'produce'),
   ('00000000-0000-0000-0000-0000000000f4', '00000000-0000-0000-0000-00000000000b', 'seed onion', 'produce');
+
+-- One cook log entry per household, so the isolation suite's cook_logs checks
+-- are not vacuous.
+insert into public.cook_logs (id, household_id, recipe_id, recipe_title, cooked_on, cooked_by) values
+  ('00000000-0000-0000-0000-0000000000f5', '00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-0000000000c1', 'Seed pancakes', '2026-10-20', '00000000-0000-0000-0000-0000000000a1'),
+  ('00000000-0000-0000-0000-0000000000f6', '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000c2', 'Seed curry', '2026-10-20', '00000000-0000-0000-0000-0000000000b1');
