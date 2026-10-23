@@ -41,7 +41,7 @@ Outside the household:
 
 | Phase | Status |
 |---|---|
-| 1 (v1) recipe repository | **Built**, except FR-13 (re-parse) and FR-14 (duplicate warning), both still *proposed* |
+| 1 (v1) recipe repository | **Built**, except FR-13 (re-parse), still *proposed* |
 | 2 shopping list | **Built** (FR-31 to FR-35, ADR-0019) |
 | 3 meal planning | Not started |
 | Production | Live at `https://dishkept.geltech.dev` since 2026-10-21, invite-only, on the owner's PC (ADR-0018, ADR-0021) |
@@ -87,7 +87,7 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 | FR-11 | Review screen before save; low-confidence fields highlighted | M |
 | FR-12 | Original photo(s) or URL stored and viewable on the recipe | M |
 | FR-13 | Re-parse from original *(proposed)* | S |
-| FR-14 | Duplicate warning on import *(proposed)* | C |
+| FR-14 | Duplicate warning: when a recipe is imported, added by hand, saved from a share link, or edited, the app checks the household's recipes (the Trash too) for the same title, the same source link, or the same ingredients (same items and amounts, 4 or more items) and warns, naming the match and linking to it. The person can open the existing recipe or go ahead; nothing is ever blocked or merged. An edit checks only what it changed *(built)* | S |
 
 ### Recipe management
 | ID | Requirement | Pri |

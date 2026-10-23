@@ -178,7 +178,8 @@ export type ListRow = SearchSource & {
   totalMinutes: number | null;
 };
 
-function listOf(value: unknown): unknown[] {
+/** A JSON list column, or [] when it is empty or unreadable. */
+export function listOf(value: unknown): unknown[] {
   try {
     const list = jsonList(value);
     return Array.isArray(list) ? list : [];

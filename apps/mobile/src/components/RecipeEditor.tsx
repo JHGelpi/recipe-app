@@ -12,6 +12,8 @@ type Props = {
   initial: RecipeForm;
   previous: RecipeRecord | null;
   onSave: (values: RecipeValues) => Promise<void>;
+  /** Asked with valid values before saving; false keeps the form as it is (FR-14). */
+  beforeSave?: (values: RecipeValues) => Promise<boolean>;
   onCancel: () => void;
   /** FR-11: fields to highlight until edited. */
   flagged?: (keyof RecipeForm)[];
@@ -26,6 +28,7 @@ export function RecipeEditor({
   initial,
   previous,
   onSave,
+  beforeSave,
   onCancel,
   flagged = [],
   cancelLabel = 'Cancel',
@@ -58,6 +61,11 @@ export function RecipeEditor({
     setBusy(true);
     setErrors({});
     try {
+      if (beforeSave && !(await beforeSave(result.values))) {
+        saving.current = false;
+        setBusy(false);
+        return;
+      }
       await onSave(result.values);
     } catch {
       setErrors({ title: 'Could not save the recipe. Try again.' });

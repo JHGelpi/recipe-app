@@ -1,15 +1,18 @@
-import { sourceLine, timesLine, type ShareSnapshot } from '@recipe-app/domain';
+import { usePowerSync } from '@powersync/react';
+import { sourceLine, timesLine, type DuplicateMatch, type ShareSnapshot } from '@recipe-app/domain';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, View } from 'react-native';
 import { config } from '../config';
 import { useNetworkOnline } from '../db/useNetworkOnline';
 import { withSession } from '../imports/api';
+import { findLocalDuplicates } from '../recipes/duplicates';
 import { canWrite } from '../session/claims';
 import { useSession } from '../session/SessionProvider';
 import { readShare, saveShare, SHARE_MESSAGES } from '../sharing/api';
 import { setPendingShare, setSavedFlash, takePendingShare } from '../sharing/pending';
 import { colors, radius, space } from '../theme';
+import { DuplicateWarning } from '../components/DuplicateWarning';
 import { NutritionCard } from '../components/NutritionCard';
 import { Banner, Button, Card, LinkedText, Screen, Text } from '../ui';
 
@@ -19,6 +22,7 @@ const MARK = require('../../assets/brand/mark.png');
 /** FR-27: a shared recipe, readable by anyone with the link. */
 export function SharedRecipeScreen({ code }: { code: string }) {
   const { state } = useSession();
+  const db = usePowerSync();
   const online = useNetworkOnline();
   const [share, setShare] = useState<{
     snapshot: ShareSnapshot;
@@ -28,6 +32,8 @@ export function SharedRecipeScreen({ code }: { code: string }) {
   const [status, setStatus] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // FR-14: the household already has this recipe; asked before save_share runs.
+  const [duplicates, setDuplicates] = useState<DuplicateMatch[]>([]);
   const [attempt, setAttempt] = useState(0);
   const signedIn = state.status === 'signedIn';
 
@@ -69,8 +75,8 @@ export function SharedRecipeScreen({ code }: { code: string }) {
     return () => clearTimeout(timer);
   }, [status, online]);
 
-  async function save() {
-    if (!share) return;
+  async function save(anyway = false) {
+    if (!share || saving) return;
     if (state.status !== 'signedIn') {
       setPendingShare({ code, title: share.snapshot.title });
       router.push('/sign-in');
@@ -81,6 +87,16 @@ export function SharedRecipeScreen({ code }: { code: string }) {
       return;
     }
     setSaving(true);
+    if (!anyway) {
+      // This device holds the household's recipes and the snapshot; nothing new is fetched.
+      const matches = await findLocalDuplicates(db, share.snapshot);
+      if (matches.length > 0) {
+        setDuplicates(matches);
+        setSaving(false);
+        return;
+      }
+    }
+    setDuplicates([]);
     const result = await withSession((deps) => saveShare(code, deps));
     setSaving(false);
     if (!result?.ok) {
@@ -146,6 +162,15 @@ export function SharedRecipeScreen({ code }: { code: string }) {
           onPress={() => void save()}
         />
       )}
+      <DuplicateWarning matches={duplicates}>
+        <Button
+          variant="secondary"
+          label="Save anyway"
+          aria-disabled={saving}
+          onPress={() => void save(true)}
+        />
+        <Button variant="ghost" label="Cancel" onPress={() => setDuplicates([])} />
+      </DuplicateWarning>
       {message ? (
         <Banner tone="danger" role="alert">
           {message}

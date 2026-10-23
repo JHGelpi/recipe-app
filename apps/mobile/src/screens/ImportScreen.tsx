@@ -1,9 +1,10 @@
 import { usePowerSync } from '@powersync/react';
 import { router } from 'expo-router';
-import { PAGE_EDGE, PHOTO_LIMITS } from '@recipe-app/domain';
+import { PAGE_EDGE, PHOTO_LIMITS, type DuplicateMatch } from '@recipe-app/domain';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, View } from 'react-native';
 import { confirm } from '../components/confirm';
+import { DuplicateWarning } from '../components/DuplicateWarning';
 import { PhotoImage } from '../components/PhotoImage';
 import { useNetworkOnline } from '../db/useNetworkOnline';
 import { requestParse, withSession } from '../imports/api';
@@ -13,6 +14,7 @@ import { createImport, createPhotoImport, dismissImport } from '../imports/repos
 import { importPreview } from '../imports/rows';
 import { formatUsd, importView, retryMessage } from '../imports/status';
 import { pickPhotos } from '../photos/pick';
+import { findLocalDuplicates } from '../recipes/duplicates';
 import { PhotoReadError, preparePhoto } from '../photos/prepare';
 import { photoSaver } from '../photos/queue';
 import type { PhotoFile } from '../photos/repository';
@@ -33,6 +35,8 @@ export function ImportScreen({ claims }: { claims: Claims }) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // FR-14: a link the household already has, asked about before it is queued.
+  const [duplicates, setDuplicates] = useState<DuplicateMatch[]>([]);
 
   // Photos still resizing, and an Import pressed meanwhile (spec §3).
   const [preparing, setPreparing] = useState(0);
@@ -88,7 +92,7 @@ export function ImportScreen({ claims }: { claims: Claims }) {
     });
   }
 
-  async function submit() {
+  async function submit(anyway = false) {
     if (kind === 'photo' && preparing > 0) {
       setWaiting(true);
       setNotice('Still preparing photos…');
@@ -120,6 +124,19 @@ export function ImportScreen({ claims }: { claims: Claims }) {
     setBusy(true);
     setError(null);
     try {
+      // Stopping here saves an AI parse (NFR-7); the review checks name and ingredients.
+      if (result.source.type === 'url' && !anyway) {
+        const matches = await findLocalDuplicates(
+          db,
+          { title: '', source_url: result.source.url },
+          { only: ['link'] },
+        );
+        if (matches.length > 0) {
+          setDuplicates(matches);
+          return;
+        }
+      }
+      setDuplicates([]);
       await createImport(db, claims, result.source);
       if (kind === 'text') setText('');
       else setUrl('');
@@ -233,7 +250,10 @@ export function ImportScreen({ claims }: { claims: Claims }) {
             icon="link-outline"
             placeholder="https://"
             value={url}
-            onChangeText={setUrl}
+            onChangeText={(next) => {
+              setUrl(next);
+              setDuplicates([]);
+            }}
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="url"
@@ -244,6 +264,17 @@ export function ImportScreen({ claims }: { claims: Claims }) {
           <Banner tone="danger" role="alert">
             {error}
           </Banner>
+        ) : null}
+        {kind === 'url' ? (
+          <DuplicateWarning matches={duplicates}>
+            <Button
+              variant="secondary"
+              label="Import anyway"
+              aria-disabled={busy}
+              onPress={() => void submit(true)}
+            />
+            <Button variant="ghost" label="Cancel" onPress={() => setDuplicates([])} />
+          </DuplicateWarning>
         ) : null}
         <Button
           full

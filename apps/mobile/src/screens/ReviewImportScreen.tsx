@@ -1,13 +1,17 @@
 import { usePowerSync } from '@powersync/react';
+import { duplicateMessage, type DuplicateMatch } from '@recipe-app/domain';
 import { Link, router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
+import { confirm } from '../components/confirm';
+import { DuplicateWarning } from '../components/DuplicateWarning';
 import { PhotoImage } from '../components/PhotoImage';
 import { RecipeEditor } from '../components/RecipeEditor';
 import { SourceView } from '../components/SourceView';
 import { useImport, usePages } from '../imports/hooks';
 import { dismissImport, saveImportedRecipe, sourceOf } from '../imports/repository';
 import { draftRecord, flaggedFields } from '../imports/review';
+import { findLocalDuplicates } from '../recipes/duplicates';
 import { clearFilter } from '../recipes/listFilter';
 import { formFromRecipe } from '../recipes/form';
 import { canWrite, type Claims } from '../session/claims';
@@ -31,6 +35,19 @@ export function ReviewImportScreen({ claims, id }: { claims: Claims; id: string 
         : null,
     [record?.id, draftKey, claims.householdId],
   );
+  const sourceUrl = record ? sourceOf(record).source_url : null;
+  // FR-14: the household's recipes matching the parsed draft, named above the form.
+  const [duplicates, setDuplicates] = useState<DuplicateMatch[]>([]);
+  useEffect(() => {
+    if (!recipe) return;
+    let live = true;
+    void findLocalDuplicates(db, { ...recipe, source_url: sourceUrl }).then((matches) => {
+      if (live) setDuplicates(matches);
+    });
+    return () => {
+      live = false;
+    };
+  }, [db, recipe, sourceUrl]);
 
   if (!canWrite(claims.role)) {
     return (
@@ -65,6 +82,7 @@ export function ReviewImportScreen({ claims, id }: { claims: Claims; id: string 
             <Text role="heading" aria-level={1} variant="h1">
               Review import
             </Text>
+            <DuplicateWarning matches={duplicates} />
             <SourceView source={sourceOf(record)} />
             {pages.length > 0 ? (
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.md }}>
@@ -104,6 +122,15 @@ export function ReviewImportScreen({ claims, id }: { claims: Claims; id: string 
             ) : null}
           </View>
         }
+        beforeSave={async (values) => {
+          // Checked again, so edits made during review count. Only a match the
+          // banner didn't already name is asked about; Save still goes ahead.
+          const matches = await findLocalDuplicates(db, { ...values, source_url: sourceUrl });
+          const named = new Set(duplicates.map((match) => match.id));
+          const fresh = matches.filter((match) => !named.has(match.id));
+          setDuplicates(matches);
+          return fresh.length === 0 || confirm(`${duplicateMessage(fresh)!} Save anyway?`);
+        }}
         onCancel={() => {
           setLeaving(true);
           void dismissImport(db, claims, record.id).then(() => router.replace('/import'));
