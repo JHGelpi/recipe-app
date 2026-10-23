@@ -147,6 +147,37 @@ describe('joining', () => {
     ).toHaveLength(1);
   });
 
+  it('a person alone brings their shopping list; their aisle choice gives way to the household’s (#36)', async () => {
+    const admin = await fresh();
+    const joiner = await fresh();
+    const item = randomUUID();
+    const kept = randomUUID();
+    const clash = randomUUID();
+    await as(
+      admin,
+      (tx) =>
+        tx`insert into public.aisle_choices (id, household_id, item_key, aisle) values (${randomUUID()}, ${admin.householdId}, 'milk', 'dairy')`,
+    );
+    await as(joiner, async (tx) => {
+      await tx`insert into public.shopping_items (id, household_id, item, item_key, aisle) values (${item}, ${joiner.householdId}, 'eggs', 'egg', 'dairy')`;
+      await tx`insert into public.aisle_choices (id, household_id, item_key, aisle) values (${kept}, ${joiner.householdId}, 'egg', 'other')`;
+      await tx`insert into public.aisle_choices (id, household_id, item_key, aisle) values (${clash}, ${joiner.householdId}, 'milk', 'other')`;
+    });
+    await accept(joiner, await invite(admin));
+    const where = async (table: string, id: string) =>
+      (
+        await adminSql<{ household_id: string }[]>`
+        select household_id from public.${adminSql(table)} where id = ${id}`
+      )[0]?.household_id;
+    expect(await where('shopping_items', item)).toBe(admin.householdId);
+    expect(await where('aisle_choices', kept)).toBe(admin.householdId);
+    // The household's own choice for milk stays; the joiner's is left, not deleted.
+    expect(await where('aisle_choices', clash)).toBe(joiner.householdId);
+    const [milk] = await adminSql<{ aisle: string }[]>`
+      select aisle from public.aisle_choices where household_id = ${admin.householdId} and item_key = 'milk'`;
+    expect(milk?.aisle).toBe('dairy');
+  });
+
   it('a person from a shared household moves nothing; its only Admin is refused', async () => {
     const admin = await fresh();
     const host = await fresh();
