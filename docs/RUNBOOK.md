@@ -175,7 +175,7 @@ Ideas and problem reports from the app (FR-45, ADR-0023) are filed as issues in 
    - **Resource owner:** you. **Repository access:** only `JHGelpi/recipe-app`.
    - **Permissions:** Issues, read and write. Nothing else.
    - **Expiration:** a year; note the date.
-2. Run `pnpm infra:secrets --edit` and add a line `GITHUB_FEEDBACK_TOKEN=github_pat_…`.
+2. Run `pnpm infra:secrets --edit`. In the `vault_prod_env: |` block, add `GITHUB_FEEDBACK_TOKEN=github_pat_…` beside the other env lines, **indented by two spaces like them** and above `vault_gcs_backup_key: |`. A line outside the block, or without the indent, breaks the file's YAML, and Ansible stops with "could not find expected ':'". Then commit the Vault file.
 3. Run Ansible as in [Rotating secrets](#rotating-secrets), which rewrites `.env.production` and redeploys.
 4. Send a test idea from Household → Send feedback, check it on GitHub, then close it.
 
