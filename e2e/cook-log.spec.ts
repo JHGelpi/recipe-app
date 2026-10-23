@@ -25,6 +25,7 @@ test('one tap logs a meal; notes, date and photos are added after; the household
   member.on('dialog', (dialog) => void dialog.accept());
   const admin = await session(browser, SEED.adminA);
   const title = unique('Logged chili');
+  const note = unique('Used thighs, kids loved it');
   await createRecipe(member, { title, steps: 'Simmer' });
 
   await member.getByRole('button', { name: 'I cooked this' }).click();
@@ -33,7 +34,7 @@ test('one tap logs a meal; notes, date and photos are added after; the household
 
   await member.getByRole('button', { name: 'Add notes or photos' }).click();
   await expect(member.getByRole('heading', { name: title, level: 1 })).toBeVisible();
-  await member.getByLabel('Notes', { exact: true }).fill('Used thighs, kids loved it');
+  await member.getByLabel('Notes', { exact: true }).fill(note);
   await member.getByRole('button', { name: 'Save notes' }).click();
   await expect(member.getByText('Saved', { exact: true })).toBeVisible();
   await member.getByRole('button', { name: 'Yesterday' }).click();
@@ -54,13 +55,11 @@ test('one tap logs a meal; notes, date and photos are added after; the household
 
   // The diary, newest first, with the notes' start; and on another member's phone.
   await member.goto('/diary');
-  await expect(member.getByText('Used thighs, kids loved it')).toBeVisible();
+  await expect(member.getByText(note)).toBeVisible();
   await admin.goto('/diary');
   await expect(admin.getByRole('link', { name: title })).toBeVisible({ timeout: NFR5_MS });
   await admin.getByRole('link', { name: title }).click();
-  await expect(admin.getByLabel('Notes', { exact: true })).toHaveValue(
-    'Used thighs, kids loved it',
-  );
+  await expect(admin.getByLabel('Notes', { exact: true })).toHaveValue(note);
 });
 
 test('a viewer reads the diary but cannot log or edit (rule 4)', async ({ browser }) => {
@@ -131,15 +130,16 @@ test('a meal logged offline, with notes, reaches the household once back online 
   const member = await session(browser, SEED.memberA);
   const admin = await session(browser, SEED.adminA);
   const title = unique('Offline curry');
+  const cabin = unique('Made in the cabin');
   await createRecipe(member, { title });
   await member.context().setOffline(true);
   await member.getByRole('button', { name: 'I cooked this' }).click();
   await member.getByRole('button', { name: 'Add notes or photos' }).click();
-  await member.getByLabel('Notes', { exact: true }).fill('Made in the cabin');
+  await member.getByLabel('Notes', { exact: true }).fill(cabin);
   await member.getByRole('button', { name: 'Save notes' }).click();
   await expect(member.getByText('Saved', { exact: true })).toBeVisible();
   await member.context().setOffline(false);
 
   await admin.goto('/diary');
-  await expect(admin.getByText('Made in the cabin')).toBeVisible({ timeout: NFR5_MS });
+  await expect(admin.getByText(cabin)).toBeVisible({ timeout: NFR5_MS });
 });
