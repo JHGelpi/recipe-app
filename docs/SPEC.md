@@ -69,7 +69,7 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 ### Households & users
 | ID | Requirement | Pri |
 |---|---|---|
-| FR-1 | Sign up / sign in with an email one-time code. Sign-up is limited to allowed addresses and invited people (ADR-0018) | M |
+| FR-1 | Sign up / sign in with an email one-time code (6 digits, valid for 10 minutes; the email and the sign-in screen say so). Sign-up is limited to allowed addresses and invited people (ADR-0018) | M |
 | FR-2 | Creating an account creates a household; creator becomes Admin | M |
 | FR-3 | Admin invites people into the household by text or email link *(built in sub-project 6)* | M |
 | FR-4 | Roles: Admin, Member, Viewer with permissions per §2 | M |

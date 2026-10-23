@@ -68,6 +68,8 @@ export function SignInScreen({ intro }: { intro?: string } = {}) {
         ) : (
           <>
             <Text>We sent a 6-digit code to {email.trim().toLowerCase()}.</Text>
+            {/* GOTRUE_MAILER_OTP_EXP in docker-compose.yml: keep them in step. */}
+            <Text tone="muted">It expires in 10 minutes.</Text>
             <TextField
               label="Code"
               value={code}

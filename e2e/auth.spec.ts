@@ -8,6 +8,20 @@ test('a new email signs in with a code and lands on an empty recipe list', async
   await expect(page.getByText('No recipes yet')).toBeVisible();
 });
 
+test('the code lasts 10 minutes, and both the screen and the email say so', async ({ page }) => {
+  const email = freshEmail('expiry');
+  await requestCode(page, email);
+  await expect(page.getByText('It expires in 10 minutes.')).toBeVisible();
+  const query = encodeURIComponent(`to:${email}`);
+  const found = (await (await fetch(`${env.mailUrl}/api/v1/search?query=${query}`)).json()) as {
+    messages: { ID: string }[];
+  };
+  const message = (await (
+    await fetch(`${env.mailUrl}/api/v1/message/${found.messages[0]!.ID}`)
+  ).json()) as { HTML?: string };
+  expect(message.HTML).toContain('This code expires in 10 minutes.');
+});
+
 test('an email typed with capitals and spaces still signs in', async ({ page }) => {
   const email = freshEmail('caps');
   await page.goto('/');
