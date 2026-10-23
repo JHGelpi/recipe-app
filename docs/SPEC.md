@@ -110,7 +110,7 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 |---|---|---|
 | FR-21 | Cook mode: screen awake, large text, step-by-step, checkable ingredients | M |
 | FR-22 | Scale servings | S |
-| FR-23 | US ↔ metric conversion (same kind only: volume ↔ volume, weight ↔ weight), for display; the saved recipe doesn't change *(built)* | C |
+| FR-23 | US ↔ metric conversion (same kind only: volume ↔ volume, weight ↔ weight), for display; the saved recipe doesn't change. Each person can set a default (As written / US / Metric) on this device that recipes open in *(built)* | C |
 | FR-24 | AI substitutions per ingredient, with amounts and effect on dish | M |
 | FR-25 | Save a substitution to the recipe as a note *(built: Add to notes)* | C |
 

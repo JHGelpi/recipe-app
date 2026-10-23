@@ -2,6 +2,7 @@ import { useFonts } from 'expo-font';
 import { Slot } from 'expo-router';
 import { useEffect } from 'react';
 import { View } from 'react-native';
+import { UnitsSync } from '../src/cooking/useUnitsPreference';
 import { DatabaseProvider } from '../src/db/DatabaseProvider';
 import { DatabaseSessionBridge } from '../src/db/DatabaseSessionBridge';
 import { TabBar } from '../src/navigation/TabBar';
@@ -25,6 +26,7 @@ export default function RootLayout() {
   return (
     <SessionProvider>
       <AppearanceSync />
+      <UnitsSync />
       <DatabaseProvider>
         <DatabaseSessionBridge>
           <View style={{ flex: 1, backgroundColor: colors.bg }}>
