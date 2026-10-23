@@ -57,8 +57,8 @@ services:
       # Sign-in codes last 10 minutes. The email (deploy/email-templates/otp.html)
       # and the sign-in screen both say so: change all three together.
       GOTRUE_MAILER_OTP_EXP: 600
-      GOTRUE_MAILER_SUBJECTS_MAGIC_LINK: Your sign-in code
-      GOTRUE_MAILER_SUBJECTS_CONFIRMATION: Your sign-in code
+      GOTRUE_MAILER_SUBJECTS_MAGIC_LINK: Your Dishkept sign-in code
+      GOTRUE_MAILER_SUBJECTS_CONFIRMATION: Your Dishkept sign-in code
       GOTRUE_MAILER_TEMPLATES_MAGIC_LINK: http://proxy:8080/email-templates/otp.html
       GOTRUE_MAILER_TEMPLATES_CONFIRMATION: http://proxy:8080/email-templates/otp.html
       GOTRUE_SMTP_HOST: ${SMTP_HOST}
@@ -216,6 +216,8 @@ services:
       SMTP_PASS: ${SMTP_PASS}
       SMTP_FROM: ${SMTP_FROM}
       SMTP_SENDER_NAME: ${SMTP_SENDER_NAME:-Dishkept}
+      # FR-46: the alert's logo and footer link point at the public address.
+      PUBLIC_URL: ${PUBLIC_URL}
       # rclone's GCS remote, named "offsite", from the environment.
       RCLONE_CONFIG_OFFSITE_TYPE: 'google cloud storage'
       RCLONE_CONFIG_OFFSITE_SERVICE_ACCOUNT_FILE: /run/secrets/gcs.json

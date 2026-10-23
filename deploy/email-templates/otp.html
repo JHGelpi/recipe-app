@@ -1,4 +1,145 @@
-<h2>Your sign-in code</h2>
-<p>Enter this code in the app:</p>
-<p><strong>{{ .Token }}</strong></p>
-<p>This code expires in 10 minutes. If it has expired, ask the app for a new one.</p>
+<!doctype html>
+<!--
+  FR-46: the sign-in code email (GoTrue's magic link and confirmation templates).
+  Light palette of ADR-0017 (apps/mobile/src/theme/palettes.ts), inline and in
+  tables so Outlook and Gmail keep it. "10 minutes" must match
+  GOTRUE_MAILER_OTP_EXP in docker-compose.yml. The logo loads from the public
+  address (the SiteURL value), never from inside the stack.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light only" />
+    <meta name="supported-color-schemes" content="light" />
+    <title>Your Dishkept sign-in code</title>
+  </head>
+  <body
+    style="
+      margin: 0;
+      padding: 0;
+      background-color: #f6f7f9;
+      color: #0e121a;
+      font-family:
+        -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    "
+  >
+    <div style="display: none; max-height: 0; overflow: hidden">
+      Your Dishkept sign-in code is {{ .Token }}. It expires in 10 minutes.
+    </div>
+    <table
+      role="presentation"
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      border="0"
+      bgcolor="#F6F7F9"
+      style="background-color: #f6f7f9"
+    >
+      <tr>
+        <td align="center" style="padding: 32px 16px">
+          <table
+            role="presentation"
+            width="100%"
+            cellpadding="0"
+            cellspacing="0"
+            border="0"
+            style="max-width: 480px"
+          >
+            <tr>
+              <td style="padding: 0 0 24px 0">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                  <tr>
+                    <td valign="middle" style="padding-right: 12px">
+                      <img
+                        src="{{ .SiteURL }}/email-templates/logo.png"
+                        width="56"
+                        height="56"
+                        alt="Dishkept"
+                        style="
+                          display: block;
+                          border: 0;
+                          width: 56px;
+                          height: 56px;
+                          border-radius: 12px;
+                        "
+                      />
+                    </td>
+                    <td
+                      valign="middle"
+                      style="font-size: 24px; font-weight: 700; line-height: 1.2; color: #0e121a"
+                    >
+                      Dishkept
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td
+                bgcolor="#FFFFFF"
+                style="
+                  background-color: #ffffff;
+                  border: 1px solid #d3d9e3;
+                  border-radius: 16px;
+                  padding: 28px 24px;
+                "
+              >
+                <h1
+                  style="
+                    margin: 0 0 8px 0;
+                    font-size: 20px;
+                    line-height: 1.3;
+                    font-weight: 700;
+                    color: #0e121a;
+                  "
+                >
+                  Your sign-in code
+                </h1>
+                <p style="margin: 0 0 20px 0; font-size: 16px; line-height: 1.5; color: #0e121a">
+                  Enter this code in the app:
+                </p>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                  <tr>
+                    <td
+                      align="center"
+                      bgcolor="#ECEFF4"
+                      style="
+                        background-color: #eceff4;
+                        border-radius: 12px;
+                        padding: 18px 12px;
+                        font-family: 'SF Mono', Menlo, Consolas, 'Courier New', monospace;
+                        font-size: 36px;
+                        font-weight: 700;
+                        letter-spacing: 8px;
+                        color: #0e121a;
+                      "
+                    >
+                      {{ .Token }}
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin: 20px 0 0 0; font-size: 16px; line-height: 1.5; color: #0e121a">
+                  This code expires in 10 minutes. If it has expired, ask the app for a new one.
+                </p>
+                <p style="margin: 12px 0 0 0; font-size: 14px; line-height: 1.5; color: #535c6e">
+                  If you didn't ask to sign in, you can ignore this email.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td
+                align="center"
+                style="padding: 20px 0 0 0; font-size: 14px; line-height: 1.5; color: #535c6e"
+              >
+                <a href="{{ .SiteURL }}" style="color: #00756a; text-decoration: underline"
+                  >Open Dishkept</a
+                >
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

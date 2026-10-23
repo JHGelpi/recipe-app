@@ -152,6 +152,11 @@ const headers = await (
 if (!headers.Date?.length) fail('the alert has no Date header');
 const body = (await (await fetch(`http://127.0.0.1:8025/api/v1/message/${alertId}`)).json()).Text;
 if (!body.includes('nosuchremote')) fail(`the alert has no log lines:\n${body}`);
+// FR-46: a branded HTML version too, with the same log lines, escaped.
+const html = (await (await fetch(`http://127.0.0.1:8025/api/v1/message/${alertId}`)).json()).HTML;
+if (!html?.includes('/email-templates/logo.png')) fail('the alert has no branded HTML version');
+if (!html.includes('nosuchremote')) fail('the alert HTML has no log lines');
+if (!html.includes('pnpm prod:logs backup')) fail('the alert HTML has no next step');
 
 // 2c. TLS by port: STARTTLS on 587, implicit TLS on 465, none for Mailpit.
 const flags = (port) =>
