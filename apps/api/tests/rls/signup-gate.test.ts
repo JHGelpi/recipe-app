@@ -255,6 +255,56 @@ describe('friend links', () => {
     expect(await grant('friend', code, fresh)).toBe(true);
   });
 
+  it('Admins see and revoke every link; Members and Viewers only their own (#33)', async () => {
+    const admin = await signInFresh(address('vis-admin'));
+    const joinAs = async (role: string) => {
+      const [row] = await as(
+        admin,
+        (tx) =>
+          tx<
+            { token: string }[]
+          >`select token from public.create_invite(${role}::public.household_role)`,
+      );
+      const person = await signInFresh(address(`vis-${role}`));
+      await as(person, (tx) => tx`select * from public.accept_invite(${row!.token})`);
+      return signInAs(person.email);
+    };
+    const member = await joinAs('member');
+    const viewer = await joinAs('viewer');
+    const ids = {
+      admin: await linkId(await friendCode(admin)),
+      member: await linkId(await friendCode(member)),
+      viewer: await linkId(await friendCode(viewer)),
+    };
+    const seen = async (actor: Actor) =>
+      (await as(actor, (tx) => tx<{ id: string }[]>`select id from public.friend_links`))
+        .map((row) => row.id)
+        .sort();
+    const revoke = (actor: Actor, id: string) =>
+      outcome(as(actor, (tx) => tx`select public.revoke_friend_link(${id}::uuid)`));
+
+    expect(await seen(admin)).toEqual(Object.values(ids).sort());
+    expect(await seen(member)).toEqual([ids.member]);
+    expect(await seen(viewer)).toEqual([ids.viewer]);
+    expect(await revoke(member, ids.viewer)).toBe('link_unknown');
+    expect(await revoke(viewer, ids.admin)).toBe('link_unknown');
+    expect(await revoke(viewer, ids.viewer)).toBe('ok');
+    expect(await revoke(admin, ids.member)).toBe('ok');
+
+    // Live roles (ADR-0015): demoted, the old Admin sees only their own at once.
+    await adminSql`update public.memberships set role = 'member' where user_id = ${admin.userId}`;
+    expect(await seen(admin)).toEqual([ids.admin]);
+    expect(await revoke(admin, ids.viewer)).toBe('link_unknown');
+  });
+
+  it('records who made a link', async () => {
+    const maker = await signInFresh(address('maker'));
+    const id = await linkId(await friendCode(maker));
+    const [row] = await adminSql<{ created_by: string }[]>`
+      select created_by from public.friend_links where id = ${id}`;
+    expect(row?.created_by).toBe(maker.userId);
+  });
+
   it('signed out, a link reads as live, ended once expired, or unknown', async () => {
     const admin = await signInFresh(address('status-admin'));
     const code = await friendCode(admin);

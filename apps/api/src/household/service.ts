@@ -44,12 +44,12 @@ export type HouseholdService = {
   rename(token: string, name: string): Promise<void>;
   /** FR-6: a link for a friend to start their own household (production spec §4). */
   createFriendLink(token: string): Promise<{ code: string; expires_at: string }>;
-  /** FR-6: the household's live friend links; every role may see them. */
+  /** FR-6: the live friend links the caller may see: all of them for an Admin, else their own (#33). */
   listFriendLinks(token: string): Promise<FriendLink[]>;
   revokeFriendLink(token: string, id: string): Promise<void>;
   /** FR-42: invites accepted in the last 30 days (Admins). */
   listAcceptedInvites(token: string): Promise<AcceptedInvite[]>;
-  /** FR-42: friend links accepted in the last 30 days (every role). */
+  /** FR-42: friend links accepted in the last 30 days, seen as the live list is (#33). */
   listAcceptedFriendLinks(token: string): Promise<AcceptedInvite[]>;
 };
 
@@ -88,7 +88,7 @@ export function createHouseholdService(deps: {
 
     listFriendLinks: (token) =>
       run(token, async (tx) => {
-        // friend_links_select limits this to the caller's household.
+        // friend_links_select limits this to the household's links the caller may see (#33).
         const rows = await tx<{ id: string; created_at: Date; expires_at: Date }[]>`
       select id, created_at, expires_at from public.friend_links
       where deleted_at is null and expires_at > now() and accepted_at is null
