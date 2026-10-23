@@ -44,6 +44,7 @@ C4Context
   System_Ext(stores, "App Stores (later)", "Apple App Store / Google Play, for the native builds (ADR-0007)")
   System_Ext(cloudflare, "Cloudflare", "DNS for geltech.dev; the tunnel's public edge")
   System_Ext(gcs, "Google Cloud Storage", "Encrypted off-site backups")
+  System_Ext(github, "GitHub", "Issues: in-app ideas and problem reports (FR-45)")
   System_Ext(osShare, "Phone OS Share Sheet", "Messages, Mail, etc. for sending PDF/text")
 
   Rel(admin, dishkept, "Manages household, recipes")
@@ -57,6 +58,7 @@ C4Context
   Rel(dishkept, email, "Sign-in codes; backup alerts")
   Rel(dishkept, cloudflare, "Served through an outbound tunnel")
   Rel(dishkept, gcs, "Nightly encrypted backups")
+  Rel(dishkept, github, "Files feedback as issues", "HTTPS")
   Rel(stores, admin, "Installs the native app (later); today the web app installs from the browser")
 ```
 
@@ -86,6 +88,7 @@ C4Container
   System_Ext(sites, "Recipe Websites")
   System_Ext(email, "Email Delivery (Zoho SMTP)")
   System_Ext(gcs, "Google Cloud Storage")
+  System_Ext(github, "GitHub")
 
   Rel(user, mobile, "Uses")
   Rel(mobile, localDb, "Reads/writes (always local-first)")
@@ -102,6 +105,7 @@ C4Container
   Rel(auth, db, "Users, sessions; reads memberships for claims")
   Rel(api, llm, "Parse imports; suggest substitutions", "HTTPS")
   Rel(api, sites, "Fetch page HTML", "HTTPS")
+  Rel(api, github, "File feedback issues (ADR-0023)", "HTTPS")
   Rel(auth, email, "Sign-in codes", "SMTP")
 ```
 

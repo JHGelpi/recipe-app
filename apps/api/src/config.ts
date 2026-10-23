@@ -1,4 +1,5 @@
 import type { VerifierConfig } from './auth/verify';
+import type { GitHubConfig } from './feedback/service';
 import type { AiConfig } from './llm/gateway';
 
 export type Config = {
@@ -10,6 +11,8 @@ export type Config = {
   fetchAllowHosts: string[];
   /** Where photo files live (ADR-0013). */
   photosDir: string;
+  /** FR-45: where feedback is filed; null until a token is set. */
+  github: GitHubConfig | null;
 };
 
 function required(env: NodeJS.ProcessEnv, name: string): string {
@@ -51,6 +54,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       .map((host) => host.trim().toLowerCase())
       .filter(Boolean),
     photosDir: env.PHOTOS_DIR || '/data/photos',
+    github: env.GITHUB_FEEDBACK_TOKEN
+      ? {
+          token: env.GITHUB_FEEDBACK_TOKEN,
+          repo: env.GITHUB_FEEDBACK_REPO || 'JHGelpi/recipe-app',
+          // Test-only override: the fake GitHub in docker-compose.test.yml.
+          apiUrl: (env.GITHUB_API_URL || 'https://api.github.com').replace(/\/+$/, ''),
+        }
+      : null,
   };
 }
 

@@ -1,3 +1,5 @@
+export type RateLimiter = ((key: string) => boolean) & { refund(key: string): void };
+
 /**
  * In-memory sliding window per key. One API process (family scale), so no
  * shared store. Keys are swept once a window by time, and at `maxKeys` a new
@@ -8,12 +10,12 @@ export function createRateLimiter(opts: {
   windowMs: number;
   maxKeys?: number;
   now?: () => number;
-}): (key: string) => boolean {
+}): RateLimiter {
   const now = opts.now ?? Date.now;
   const maxKeys = opts.maxKeys ?? 10_000;
   const hits = new Map<string, number[]>();
   let sweepAt = 0;
-  return (key) => {
+  const take = (key: string): boolean => {
     const at = now();
     if (at >= sweepAt) {
       for (const [k, times] of hits)
@@ -27,4 +29,10 @@ export function createRateLimiter(opts: {
     hits.set(key, recent);
     return allowed;
   };
+  return Object.assign(take, {
+    // Gives back the newest hit, for a request that failed after it was counted.
+    refund(key: string): void {
+      hits.get(key)?.pop();
+    },
+  });
 }

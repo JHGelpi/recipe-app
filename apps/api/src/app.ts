@@ -7,6 +7,8 @@ import { registerSharingRoutes } from './sharing/routes';
 import { registerSignupRoutes } from './signup/routes';
 import type { SignupService } from './signup/service';
 import type { SharingService } from './sharing/service';
+import { registerFeedbackRoutes } from './feedback/routes';
+import type { FeedbackService } from './feedback/service';
 import { registerHouseholdRoutes } from './household/routes';
 import type { HouseholdService } from './household/service';
 import { isGuid } from './ids';
@@ -25,6 +27,7 @@ export type AppDeps = {
   household: HouseholdService;
   sharing: SharingService;
   signup: SignupService;
+  feedback: FeedbackService;
   /** Per-email, per-link, per-address and global limits for signed-out link requests. */
   limits: {
     email: (key: string) => boolean;
@@ -225,6 +228,7 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   registerHouseholdRoutes(app, deps);
+  registerFeedbackRoutes(app, deps);
   registerSharingRoutes(app, deps);
   registerSignupRoutes(app, {
     signup: deps.signup,
