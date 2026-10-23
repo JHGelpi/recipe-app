@@ -61,6 +61,12 @@ export function ratingText(summary: RatingSummary): string {
   return `${summary.average.toFixed(1)} · ${summary.count} ${summary.count === 1 ? 'rating' : 'ratings'}`;
 }
 
+/** The list row's short form: "4.3 (6)", so one 5-star rating doesn't pass for a favorite; or "Not rated". */
+export function ratingRowText(summary: RatingSummary): string {
+  if (summary.average === null) return 'Not rated';
+  return `${summary.average.toFixed(1)} (${summary.count})`;
+}
+
 /** The same for screen readers: "Average 4.3 from 6 ratings", or "Not rated yet". */
 export function ratingSpoken(summary: RatingSummary): string {
   if (summary.average === null) return 'Not rated yet';

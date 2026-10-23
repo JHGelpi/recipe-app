@@ -4,6 +4,7 @@ import { BuildFooter } from '../components/BuildFooter';
 import { HouseholdNoticeBanner } from '../components/HouseholdNoticeBanner';
 import { FavoriteButton } from '../components/FavoriteButton';
 import { StatusLine } from '../components/StatusLine';
+import { RatingMeta } from '../components/Rating';
 import { durationLabel } from '../recipes/duration';
 import { useRecipeSearch } from '../recipes/hooks';
 import { clearFilter, setFilter, toggleTag, useListFilter } from '../recipes/listFilter';
@@ -94,33 +95,32 @@ export function RecipeListScreen({
             href={`/recipe/${item.id}`}
             leading={<Thumb photoId={item.photoId} label={`Photo of ${item.title}`} />}
             meta={
-              item.tags.length > 0 || item.totalMinutes !== null ? (
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: space.sm,
-                    marginTop: space.xs,
-                  }}
-                >
-                  {item.tags[0] ? <Chip label={item.tags[0]} tone="tag" /> : null}
-                  {item.totalMinutes !== null ? (
-                    <View
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: space.xs,
-                        flexShrink: 0,
-                      }}
-                    >
-                      <Icon name="time-outline" size={14} color={colors.muted} />
-                      <Text variant="caption" tone="muted">
-                        {durationLabel(item.totalMinutes)}
-                      </Text>
-                    </View>
-                  ) : null}
-                </View>
-              ) : null
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: space.sm,
+                  marginTop: space.xs,
+                }}
+              >
+                {item.tags[0] ? <Chip label={item.tags[0]} tone="tag" /> : null}
+                <RatingMeta summary={item.rating} />
+                {item.totalMinutes !== null ? (
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: space.xs,
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Icon name="time-outline" size={14} color={colors.muted} />
+                    <Text variant="caption" tone="muted">
+                      {durationLabel(item.totalMinutes)}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
             }
             trailing={<FavoriteButton claims={claims} recipeId={item.id} favorite={item.starred} />}
           />

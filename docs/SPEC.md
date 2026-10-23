@@ -98,7 +98,7 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 | FR-18 | 30-day trash before permanent delete | S |
 | FR-36 | Links in notes are tappable when viewing (http/https only, with or without a scheme; trailing punctuation left out) and open in a new tab, where the browser offers Copy and Share; the stored note is unchanged *(built)* | S |
 | FR-43 | Optional nutrition per serving: calories, protein, carbohydrates, fat. Filled at import only when the source states it (schema.org nutrition, or the AI copying a stated panel; never estimated), editable on every recipe, shown when set, kept in shares and saved copies *(built)* | C |
-| FR-44 | Each person rates a recipe 1–5 whole stars, with or without having cooked it. Beside the title the recipe shows the household average ("★ 4.3"), which opens a picker of five stars with the average and count ("4.3 · 6 ratings", or "Not rated yet."). Any role can rate; tapping your current rating clears it. People see only the average and count, never each other's ratings (ADR-0022). Read-only in the Trash *(built)* | S |
+| FR-44 | Each person rates a recipe 1–5 whole stars, with or without having cooked it. Beside the title the recipe shows the household average ("★ 4.3"), which opens a picker of five stars with the average and count ("4.3 · 6 ratings", or "Not rated yet."). Any role can rate; tapping your current rating clears it. People see only the average and count, never each other's ratings (ADR-0022). Read-only in the Trash. Each row on the Recipes and Favorites lists shows the average with its count ("★ 4.3 (6)"), or a muted "Not rated"; read-only there *(built)* | S |
 
 ### Search
 | ID | Requirement | Pri |

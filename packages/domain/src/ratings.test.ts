@@ -3,6 +3,7 @@ import {
   nextRating,
   rateLabel,
   ratingSummary,
+  ratingRowText,
   ratingSpoken,
   ratingText,
   recipeRatingPatchSchema,
@@ -79,6 +80,12 @@ describe('the household average (FR-44)', () => {
     expect(ratingSpoken(summarizeRatings([]))).toBe('Not rated yet');
     expect(ratingSummary({ stars_total: 7, ratings_count: 3 })).toEqual({ average: 2.3, count: 3 });
     expect(ratingSummary({ stars_total: 9, ratings_count: 2 }).average).toBe(4.5);
+  });
+
+  it('the list row shows the average with its count, or Not rated', () => {
+    expect(ratingRowText({ average: 4.3, count: 6 })).toBe('4.3 (6)');
+    expect(ratingRowText({ average: 5, count: 1 })).toBe('5.0 (1)');
+    expect(ratingRowText(ratingSummary({ stars_total: 0, ratings_count: 0 }))).toBe('Not rated');
   });
 });
 
