@@ -3,6 +3,7 @@ import {
   MAX_STARS,
   nextRating,
   rateLabel,
+  ratingRowText,
   ratingSpoken,
   ratingText,
   type RatingSummary,
@@ -63,6 +64,30 @@ export function RatingBadge({
     >
       {content}
     </Pressable>
+  );
+}
+
+/**
+ * FR-44 on the Recipes and Favorites lists: "★ 4.3 (6)", or a muted "Not
+ * rated" so every row looks alike. Read-only; rating happens on the recipe.
+ */
+export function RatingMeta({ summary }: { summary: RatingSummary }) {
+  const rated = summary.average !== null;
+  return (
+    <View
+      role="img"
+      aria-label={`Rating: ${ratingSpoken(summary)}`}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs, flexShrink: 0 }}
+    >
+      <Icon
+        name={rated ? 'star' : 'star-outline'}
+        size={14}
+        color={rated ? colors.tag : colors.muted}
+      />
+      <Text variant="caption" tone={rated ? 'text' : 'muted'}>
+        {ratingRowText(summary)}
+      </Text>
+    </View>
   );
 }
 

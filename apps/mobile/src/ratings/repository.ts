@@ -9,6 +9,10 @@ export const MY_RATING_SQL =
 // The household's total and count; the server keeps them (household_ratings).
 export const RATING_TOTALS_SQL =
   'select stars_total, ratings_count from recipe_rating_totals where id = ?';
+// Every recipe's totals for the list (FR-44); never recipe_ratings, which hold
+// only your own (ADR-0022).
+export const RATING_TOTALS_LIST_SQL =
+  'select id, stars_total, ratings_count from recipe_rating_totals';
 
 // One rating change at a time per recipe: a double tap must not insert two rows.
 const chains = new Map<string, Promise<void>>();

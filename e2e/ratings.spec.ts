@@ -66,3 +66,41 @@ test('the heart is the favorite, and a recipe in the Trash shows its rating read
   await expect(badge(member)).toHaveCount(0);
   await expect(star(member, 1)).toHaveCount(0);
 });
+
+test('the Recipes and Favorites lists show each recipe’s average and count, live (FR-44)', async ({
+  browser,
+}) => {
+  const member = await session(browser, SEED.memberA);
+  const viewer = await session(browser, SEED.viewerA);
+  const title = unique('Listed rated soup');
+  await createRecipe(member, { title });
+  await member.getByRole('button', { name: 'Favorite', exact: true }).click();
+  await member.getByRole('link', { name: 'Recipes', exact: true }).click();
+  await findRecipe(member, title);
+  const row = member.getByRole('link', { name: title, exact: true });
+  const rating = row.getByRole('img', { name: /^Rating:/ });
+  // Unrated rows say so, so every row looks alike.
+  await expect(rating).toHaveAccessibleName('Rating: Not rated yet');
+  await expect(rating).toContainText('Not rated');
+
+  // Someone else rates; the open list follows once the totals sync, with no reload.
+  await (await findRecipe(viewer, title)).click({ timeout: 30_000 });
+  await badge(viewer).click();
+  await star(viewer, 4).click();
+  await expect(rating).toHaveAccessibleName('Rating: Average 4.0 from 1 rating', {
+    timeout: 15_000,
+  });
+  await expect(rating).toContainText('4.0 (1)');
+
+  // Read-only: the row still opens the recipe.
+  await row.click();
+  await expect(member.getByRole('heading', { name: title, level: 1 })).toBeVisible();
+  await badge(member).click();
+  await star(member, 5).click();
+
+  await member.getByRole('link', { name: 'Favorites', exact: true }).click();
+  await findRecipe(member, title);
+  await expect(
+    member.getByRole('link', { name: title, exact: true }).getByRole('img', { name: /^Rating:/ }),
+  ).toContainText('4.5 (2)', { timeout: 15_000 });
+});

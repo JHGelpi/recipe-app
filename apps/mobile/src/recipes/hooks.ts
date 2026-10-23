@@ -1,7 +1,14 @@
 import { useQuery } from '@powersync/react';
 import { buildSearchIndex, searchRecipes } from '@recipe-app/domain';
 import { useMemo, useRef } from 'react';
-import { tagsForTab, toListItems, type ListItem } from './listItems';
+import { RATING_TOTALS_LIST_SQL } from '../ratings/repository';
+import {
+  ratingsByRecipe,
+  tagsForTab,
+  toListItems,
+  type ListItem,
+  type RatingTotalsRow,
+} from './listItems';
 import {
   LIST_RECIPES_SQL,
   RECIPE_PAGES_SQL,
@@ -32,7 +39,8 @@ export type { ListItem } from './listItems';
 /**
  * The current tab's recipes matching the search, best first, live from the
  * local database. The index is rebuilt only when recipes change: favorites
- * are a separate query, so a star tap recomputes only the visible items.
+ * and rating totals are separate queries, so a tap on either recomputes only
+ * the visible items (NFR-6).
  */
 export function useRecipeSearch(
   userId: string,
@@ -42,18 +50,20 @@ export function useRecipeSearch(
 ): { items: ListItem[]; tags: string[] } {
   const { data: recipeRows } = useQuery<Record<string, unknown>>(LIST_RECIPES_SQL);
   const { data: starredRows } = useQuery<{ recipe_id: string }>(STARRED_IDS_SQL, [userId]);
+  const { data: totalsRows } = useQuery<RatingTotalsRow>(RATING_TOTALS_LIST_SQL);
   // Rows whose columns did not change are reused, not parsed again (NFR-6).
   const cache = useRef(new Map<string, { stamp: string; row: ListRow }>());
   const rows = useMemo(() => listRowsFrom(recipeRows, cache.current), [recipeRows]);
   const index = useMemo(() => buildSearchIndex([...rows.values()]), [rows]);
   const starred = useMemo(() => new Set(starredRows.map((row) => row.recipe_id)), [starredRows]);
+  const ratings = useMemo(() => ratingsByRecipe(totalsRows), [totalsRows]);
   const ids = useMemo(
     () => searchRecipes(index, query, selectedTags),
     [index, query, selectedTags],
   );
   const items = useMemo(
-    () => toListItems(ids, rows, starred, favoritesOnly),
-    [ids, rows, starred, favoritesOnly],
+    () => toListItems(ids, rows, starred, favoritesOnly, ratings),
+    [ids, rows, starred, favoritesOnly, ratings],
   );
   const tags = useMemo(
     () => tagsForTab(rows, starred, favoritesOnly),
