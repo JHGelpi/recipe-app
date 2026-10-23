@@ -363,3 +363,108 @@ describe('POST /api/upload, recipe details and favorites', () => {
     expect(result?.status).toBe('rejected');
   });
 });
+
+describe('POST /api/upload, recipe ratings (FR-44)', () => {
+  async function newRecipe(actor: Actor): Promise<string> {
+    const id = randomUUID();
+    await upload(actor, [put(actor, id, 'Rated stew')]);
+    return id;
+  }
+
+  function rate(actor: Actor, id: string, recipeId: string, stars: unknown) {
+    return {
+      op: 'put',
+      table: 'recipe_ratings',
+      id,
+      data: { household_id: actor.householdId, user_id: actor.userId, recipe_id: recipeId, stars },
+    };
+  }
+
+  async function totalsOf(actor: Actor, recipeId: string) {
+    const rows = await as(
+      actor,
+      (tx) => tx<{ stars_total: number; ratings_count: number }[]>`
+        select stars_total, ratings_count from public.recipe_rating_totals where id = ${recipeId}`,
+    );
+    return rows[0];
+  }
+
+  it('a viewer rates, changes, clears and rates again; the household sees the totals', async () => {
+    const viewer = await signInAs(SEED.viewerA);
+    const member = await signInAs(SEED.memberA);
+    const recipeId = await newRecipe(member);
+    const ratingId = randomUUID();
+    const results = await upload(viewer, [
+      rate(viewer, ratingId, recipeId, 3),
+      { op: 'patch', table: 'recipe_ratings', id: ratingId, data: { stars: 5 } },
+    ]);
+    expect(results.map((result) => result.status)).toEqual(['applied', 'applied']);
+    await upload(member, [rate(member, randomUUID(), recipeId, 2)]);
+    expect(await totalsOf(member, recipeId)).toEqual({ stars_total: 7, ratings_count: 2 });
+
+    await upload(viewer, [
+      {
+        op: 'patch',
+        table: 'recipe_ratings',
+        id: ratingId,
+        data: { deleted_at: new Date().toISOString() },
+      },
+    ]);
+    expect(await totalsOf(viewer, recipeId)).toEqual({ stars_total: 2, ratings_count: 1 });
+
+    await upload(viewer, [
+      { op: 'patch', table: 'recipe_ratings', id: ratingId, data: { deleted_at: null, stars: 4 } },
+    ]);
+    expect(await totalsOf(viewer, recipeId)).toEqual({ stars_total: 6, ratings_count: 2 });
+  });
+
+  it('rejects half and out-of-range stars, server-owned fields, and moving a rating', async () => {
+    const member = await signInAs(SEED.memberA);
+    const recipeId = await newRecipe(member);
+    const ratingId = randomUUID();
+    await upload(member, [rate(member, ratingId, recipeId, 4)]);
+    const results = await upload(member, [
+      rate(member, randomUUID(), recipeId, 0),
+      rate(member, randomUUID(), recipeId, 6),
+      rate(member, randomUUID(), recipeId, 3.5),
+      { op: 'patch', table: 'recipe_ratings', id: ratingId, data: { updated_by: member.userId } },
+      { op: 'patch', table: 'recipe_ratings', id: ratingId, data: { recipe_id: randomUUID() } },
+    ]);
+    expect(results.map((result) => result.reason)).toEqual([
+      'invalid',
+      'invalid',
+      'invalid',
+      'invalid',
+      'invalid',
+    ]);
+  });
+
+  it("rejects a rating in someone else's name, a second row, and another household's recipe", async () => {
+    const member = await signInAs(SEED.memberA);
+    const admin = await signInAs(SEED.adminA);
+    const adminB = await signInAs(SEED.adminB);
+    const recipeId = await newRecipe(member);
+    const ratingId = randomUUID();
+    await upload(member, [rate(member, ratingId, recipeId, 4)]);
+    const results = await upload(admin, [
+      {
+        op: 'put',
+        table: 'recipe_ratings',
+        id: randomUUID(),
+        data: {
+          household_id: admin.householdId,
+          user_id: member.userId,
+          recipe_id: recipeId,
+          stars: 1,
+        },
+      },
+      { op: 'patch', table: 'recipe_ratings', id: ratingId, data: { stars: 1 } },
+    ]);
+    expect(results.map((result) => result.status)).toEqual(['rejected', 'rejected']);
+    const [second] = await upload(member, [rate(member, randomUUID(), recipeId, 2)]);
+    expect(second?.status).toBe('rejected');
+    const [other] = await upload(adminB, [rate(adminB, randomUUID(), recipeId, 5)]);
+    expect(other?.status).toBe('rejected');
+    expect(await totalsOf(member, recipeId)).toEqual({ stars_total: 4, ratings_count: 1 });
+  });
+});

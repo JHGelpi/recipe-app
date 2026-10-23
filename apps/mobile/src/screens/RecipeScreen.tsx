@@ -6,18 +6,20 @@ import { Pressable, View } from 'react-native';
 import { AddToListSheet } from '../components/AddToListSheet';
 import { CookedButton } from '../components/CookedButton';
 import { DishPhoto } from '../components/DishPhoto';
+import { FavoriteButton } from '../components/FavoriteButton';
 import { IngredientList } from '../components/IngredientList';
 import { NutritionCard } from '../components/NutritionCard';
 import { OriginalPhotos } from '../components/OriginalPhotos';
+import { RatingBadge, RatingPicker } from '../components/Rating';
 import { ServingsBar } from '../components/ServingsBar';
 import { SharePanel } from '../components/ShareMenu';
 import { SharedLinks } from '../components/SharedLinks';
 import { SourceView } from '../components/SourceView';
-import { StarButton } from '../components/StarButton';
 import { confirm } from '../components/confirm';
 import { useCookHistory } from '../cooklog/hooks';
 import { stepsNote } from '../cooking/steps';
 import { useCookPlace } from '../cooking/useCookPlace';
+import { useRating } from '../ratings/hooks';
 import { useRecipe, useRecipePages } from '../recipes/hooks';
 import { restoreRecipe, trashRecipe } from '../recipes/repository';
 import type { RecipeRecord } from '../recipes/rows';
@@ -47,6 +49,8 @@ export function RecipeScreen({ claims, id }: { claims: Claims; id: string }) {
   useEffect(() => {
     if (takeSavedFlash()) setSaved(true);
   }, []);
+  const { mine, summary: ratings } = useRating(id, claims.userId);
+  const [rating, setRatingOpen] = useState(false);
   const [panel, setPanel] = useState<'share' | 'more' | null>(null);
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(0);
@@ -78,8 +82,16 @@ export function RecipeScreen({ claims, id }: { claims: Claims; id: string }) {
             <Text role="heading" aria-level={1} variant="h1" style={{ flex: 1 }}>
               {recipe.title}
             </Text>
-            <StarButton claims={claims} recipeId={recipe.id} starred={starred} />
+            <RatingBadge
+              summary={ratings}
+              open={rating && !recipe.deleted_at}
+              onPress={recipe.deleted_at ? undefined : () => setRatingOpen((open) => !open)}
+            />
+            <FavoriteButton claims={claims} recipeId={recipe.id} favorite={starred} />
           </View>
+          {rating && !recipe.deleted_at ? (
+            <RatingPicker claims={claims} recipeId={recipe.id} mine={mine} summary={ratings} />
+          ) : null}
           {saved ? <Banner>Saved to your recipes</Banner> : null}
           {recipe.deleted_at ? (
             <Banner

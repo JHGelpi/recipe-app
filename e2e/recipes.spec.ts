@@ -146,7 +146,7 @@ test('a viewer sees recipes but no New recipe, Edit, Move to Trash, or Trash', a
   await expect(page.getByRole('button', { name: 'Edit' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Move to Trash' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'More', exact: true })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /^(Star|Unstar)$/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^(Favorite|Unfavorite)$/ })).toBeVisible();
 });
 
 test('links in notes open in a new tab; other schemes and the editor stay plain text (FR-36)', async ({

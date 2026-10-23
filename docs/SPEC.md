@@ -94,10 +94,11 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 |---|---|---|
 | FR-15 | Edit all fields; personal notes (shared with the household). One dish photo per recipe (4b) | M |
 | FR-16 | Tags: free-form, with suggestions from the household's tags; AI suggestions arrive with import | M |
-| FR-17 | Favorites (per user) | S |
+| FR-17 | Favorites (per user), marked with a heart | S |
 | FR-18 | 30-day trash before permanent delete | S |
 | FR-36 | Links in notes are tappable when viewing (http/https only, with or without a scheme; trailing punctuation left out) and open in a new tab, where the browser offers Copy and Share; the stored note is unchanged *(built)* | S |
 | FR-43 | Optional nutrition per serving: calories, protein, carbohydrates, fat. Filled at import only when the source states it (schema.org nutrition, or the AI copying a stated panel; never estimated), editable on every recipe, shown when set, kept in shares and saved copies *(built)* | C |
+| FR-44 | Each person rates a recipe 1–5 whole stars, with or without having cooked it. Beside the title the recipe shows the household average ("★ 4.3"), which opens a picker of five stars with the average and count ("4.3 · 6 ratings", or "Not rated yet."). Any role can rate; tapping your current rating clears it. People see only the average and count, never each other's ratings (ADR-0022). Read-only in the Trash *(built)* | S |
 
 ### Search
 | ID | Requirement | Pri |
@@ -147,7 +148,7 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 | FR-40 | Cook diary: the household's entries newest first, with day, recipe, cook, first photo and the start of the notes; filter by recipe *(built)* | M |
 | FR-41 | The recipe shows its cook history ("Cooked 4 times · last on Oct 22"), linking to its entries *(built)* | S |
 
-Admins and Members log and edit; Viewers read the diary (rule 4). Every entry belongs to a recipe; a meal not in the app, ratings, and choosing another cook are not built.
+Admins and Members log and edit; Viewers read the diary (rule 4). Every entry belongs to a recipe; a meal not in the app and choosing another cook are not built. Ratings belong to the recipe, not to an entry (FR-44).
 
 ## 6. Non-functional requirements
 

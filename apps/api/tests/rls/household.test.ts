@@ -91,7 +91,7 @@ describe('invites', () => {
 });
 
 describe('joining', () => {
-  it('a person alone brings recipes, photos, imports, substitutions, favorites and cook logs, and their old household closes', async () => {
+  it('a person alone brings recipes, photos, imports, substitutions, favorites, cook logs and ratings, and their old household closes', async () => {
     const admin = await fresh();
     const joiner = await fresh();
     const recipe = randomUUID();
@@ -109,11 +109,23 @@ describe('joining', () => {
         values (${cookLog}, ${joiner.householdId}, ${recipe}, 'My soup', '2026-10-20')`;
       await tx`insert into public.photos (id, household_id, kind, cook_log_id, position, media_type, bytes, width, height)
         values (${randomUUID()}, ${joiner.householdId}, 'cook', ${cookLog}, 1, 'image/jpeg', 10, 1, 1)`;
+      await tx`insert into public.recipe_ratings (id, household_id, user_id, recipe_id, stars)
+        values (${randomUUID()}, ${joiner.householdId}, ${joiner.userId}, ${recipe}, 4)`;
     });
+    // A totals row with no ratings left under it (the rater's account was
+    // deleted): it moves too, or its recipe's foreign key would stop the join.
+    const unrated = randomUUID();
+    const gone = randomUUID();
+    await as(joiner, async (tx) => {
+      await tx`insert into public.recipes (id, household_id, title) values (${unrated}, ${joiner.householdId}, 'Unrated')`;
+      await tx`insert into public.recipe_ratings (id, household_id, user_id, recipe_id, stars)
+        values (${gone}, ${joiner.householdId}, ${joiner.userId}, ${unrated}, 2)`;
+    });
+    await adminSql`delete from public.recipe_ratings where id = ${gone}`;
     const token = await invite(admin);
     expect(await preview(joiner, token)).toMatchObject({
       status: 'ok',
-      moving_recipes: 1,
+      moving_recipes: 2,
       blocker: null,
     });
     const [result] = await as(
@@ -121,15 +133,17 @@ describe('joining', () => {
       (tx) => tx<{ moved_recipes: number; moved_photos: string[] }[]>`
       select * from public.accept_invite(${token})`,
     );
-    expect(result?.moved_recipes).toBe(1);
+    expect(result?.moved_recipes).toBe(2);
     expect(result?.moved_photos).toHaveLength(2);
     const expected = {
-      recipes: 1,
+      recipes: 2,
       imports: 1,
       photos: 2,
       substitutions: 1,
       favorites: 1,
       cook_logs: 1,
+      recipe_ratings: 1,
+      recipe_rating_totals: 2,
     };
     for (const [table, n] of Object.entries(expected)) {
       const rows = await adminSql<{ n: number }[]>`
@@ -328,6 +342,47 @@ describe('review fixes', () => {
     const live =
       await adminSql`select id from public.favorites where user_id = ${guest.userId} and deleted_at is null`;
     expect(live).toHaveLength(0);
+  });
+
+  it('ratings of recipes left behind stop counting there, by joining, leaving or removal (FR-44)', async () => {
+    const host = await fresh();
+    const joiner = await fresh();
+    const leaver = await fresh();
+    const removed = await fresh();
+    const target = await fresh();
+    for (const person of [joiner, leaver, removed]) await accept(person, await invite(host));
+    const recipe = randomUUID();
+    await as(
+      host,
+      (tx) =>
+        tx`insert into public.recipes (id, household_id, title) values (${recipe}, ${host.householdId}, 'Rated')`,
+    );
+    // Their tokens still name their first households; RLS reads the live one.
+    for (const [person, stars] of [
+      [host, 5],
+      [joiner, 1],
+      [leaver, 2],
+      [removed, 3],
+    ] as const) {
+      await as(
+        person,
+        (tx) => tx`insert into public.recipe_ratings (id, household_id, user_id, recipe_id, stars)
+          values (${randomUUID()}, ${host.householdId}, ${person.userId}, ${recipe}, ${stars})`,
+      );
+    }
+    const totals = async () =>
+      (
+        await adminSql<{ stars_total: number; ratings_count: number }[]>`
+        select stars_total, ratings_count from public.recipe_rating_totals where id = ${recipe}`
+      )[0];
+    expect(await totals()).toEqual({ stars_total: 11, ratings_count: 4 });
+
+    await accept(joiner, await invite(target));
+    expect(await totals()).toEqual({ stars_total: 10, ratings_count: 3 });
+    await as(leaver, (tx) => tx`select public.leave_household()`);
+    expect(await totals()).toEqual({ stars_total: 8, ratings_count: 2 });
+    await as(host, (tx) => tx`select public.remove_member(${removed.userId})`);
+    expect(await totals()).toEqual({ stars_total: 5, ratings_count: 1 });
   });
 });
 

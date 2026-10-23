@@ -182,6 +182,32 @@ const cook_logs = new Table(
   { indexes: { recipe: ['recipe_id'] } },
 );
 
+// FR-44: only the signed-in user's own ratings (user_ratings stream). stars is 1–5.
+const recipe_ratings = new Table(
+  {
+    household_id: column.text,
+    user_id: column.text,
+    recipe_id: column.text,
+    stars: column.integer,
+    created_at: column.text,
+    updated_at: column.text,
+    updated_by: column.text,
+    deleted_at: column.text,
+  },
+  { indexes: { recipe: ['recipe_id'] } },
+);
+
+// FR-44: each rated recipe's total and count (household_ratings stream). id is
+// the recipe's id. Written by the server only; nothing here is uploaded.
+const recipe_rating_totals = new Table({
+  household_id: column.text,
+  stars_total: column.integer,
+  ratings_count: column.integer,
+  created_at: column.text,
+  updated_at: column.text,
+  deleted_at: column.text,
+});
+
 // attachments is PowerSync's local-only queue table: never uploaded.
 export const AppSchema = new Schema({
   recipes,
@@ -195,6 +221,8 @@ export const AppSchema = new Schema({
   shopping_items,
   aisle_choices,
   cook_logs,
+  recipe_ratings,
+  recipe_rating_totals,
   attachments: new AttachmentTable(),
 });
 
@@ -206,3 +234,4 @@ export type PhotoRow = Database['photos'];
 export type ShoppingItemRow = Database['shopping_items'];
 export type AisleChoiceRow = Database['aisle_choices'];
 export type CookLogRow = Database['cook_logs'];
+export type RecipeRatingRow = Database['recipe_ratings'];

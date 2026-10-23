@@ -3,17 +3,17 @@ import { createRecipe, freshEmail, signIn, unique } from './helpers';
 
 test.use({ viewport: { width: 390, height: 600 } });
 
-test('a long title wraps and the star stays on screen (Review Focus 1)', async ({ page }) => {
+test('a long title wraps and the heart stays on screen (Review Focus 1)', async ({ page }) => {
   await signIn(page, freshEmail('look-long'));
   const title = unique('A very long recipe title '.repeat(5));
   await createRecipe(page, { title, tags: 'a-really-long-tag-name-that-goes-on-on' });
   await page.getByRole('link', { name: 'Recipes', exact: true }).click();
-  const star = page.getByRole('button', { name: 'Star', exact: true }).first();
-  const box = (await star.boundingBox())!;
+  const heart = page.getByRole('button', { name: 'Favorite', exact: true }).first();
+  const box = (await heart.boundingBox())!;
   expect(box.x + box.width).toBeLessThanOrEqual(390);
 });
 
-test('a long tag and a total time stay clear of the star (Final 3)', async ({ page }) => {
+test('a long tag and a total time stay clear of the heart (Final 3)', async ({ page }) => {
   await signIn(page, freshEmail('look-meta'));
   await createRecipe(page, {
     title: unique('Meta soup'),
@@ -23,8 +23,8 @@ test('a long tag and a total time stay clear of the star (Final 3)', async ({ pa
   });
   await page.getByRole('link', { name: 'Recipes', exact: true }).click();
   const time = page.getByText('1 h 35 min');
-  const star = page.getByRole('button', { name: 'Star', exact: true }).first();
-  const [t, s] = [(await time.boundingBox())!, (await star.boundingBox())!];
+  const heart = page.getByRole('button', { name: 'Favorite', exact: true }).first();
+  const [t, s] = [(await time.boundingBox())!, (await heart.boundingBox())!];
   expect(t.x + t.width).toBeLessThanOrEqual(s.x);
 });
 
