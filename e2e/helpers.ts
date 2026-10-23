@@ -187,3 +187,13 @@ export async function setGate(on: boolean): Promise<void> {
     await sql.end();
   }
 }
+
+/**
+ * The household's name and members arrive from sync after the screen paints, pushing the cards
+ * below them down. A click while they land can miss: its mouseup falls elsewhere, and React Native
+ * Web's onPress, which runs on the native click, never fires.
+ */
+export async function settled(page: Page): Promise<void> {
+  await expect(page.getByText(/ household$/)).toBeVisible();
+  await expect(page.getByText(/\(you\)$/)).toBeVisible();
+}

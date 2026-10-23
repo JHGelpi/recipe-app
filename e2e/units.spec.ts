@@ -1,9 +1,10 @@
 import { expect, test } from './fixtures';
-import { createRecipe, findRecipe, freshEmail, signIn, unique } from './helpers';
+import { createRecipe, findRecipe, freshEmail, settled, signIn, unique } from './helpers';
 
 async function openUnits(page: import('@playwright/test').Page) {
   await page.getByRole('link', { name: 'Household', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Units' })).toBeVisible();
+  await settled(page);
 }
 
 async function openRecipe(page: import('@playwright/test').Page, title: string) {
