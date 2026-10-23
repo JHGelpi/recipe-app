@@ -129,6 +129,22 @@ describe('household endpoints', () => {
     expect(await status.json()).toEqual({ status: 'ended' });
   });
 
+  it('a Member lists and revokes only their own friend links; the Admin sees all (#33)', async () => {
+    const admin = await fresh();
+    const member = await fresh();
+    await call(member, 'POST', '/invites/accept', { token: await invite(admin, 'member') });
+    const memberNow = await signInFresh(member.email);
+    await call(admin, 'POST', '/friend-links', {});
+    await call(memberNow, 'POST', '/friend-links', {});
+    const mine = (await (await call(memberNow, 'GET', '/friend-links')).json()) as { id: string }[];
+    const all = (await (await call(admin, 'GET', '/friend-links')).json()) as { id: string }[];
+    expect(mine).toHaveLength(1);
+    expect(all).toHaveLength(2);
+    const adminsLink = all.find((link) => link.id !== mine[0]!.id)!;
+    expect((await call(memberNow, 'DELETE', `/friend-links/${adminsLink.id}`)).status).toBe(404);
+    expect((await call(admin, 'DELETE', `/friend-links/${mine[0]!.id}`)).status).toBe(204);
+  });
+
   it('a used invite leaves the pending list for the history, and a second use is refused (FR-42)', async () => {
     const admin = await fresh();
     const joiner = await fresh();
