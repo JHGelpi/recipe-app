@@ -67,7 +67,7 @@ test('two tag chips narrow to recipes having both, and combine with a word', asy
 test('search works within Favorites, and a missing tag there says so', async ({ page }) => {
   await kitchen(page);
   await page.getByText('Fried rice', { exact: true }).click();
-  await page.getByRole('button', { name: 'Star', exact: true }).click();
+  await page.getByRole('button', { name: 'Favorite', exact: true }).click();
   await page.getByRole('link', { name: 'All recipes' }).click();
   await page.getByRole('link', { name: 'Favorites', exact: true }).click();
   await page.getByLabel('Search recipes').fill('rice');

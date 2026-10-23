@@ -10,6 +10,8 @@ import {
   photoPatchSchema,
   photoPutSchema,
   recipePatchSchema,
+  recipeRatingPatchSchema,
+  recipeRatingSchema,
   recipeSchema,
   SHOPPING_LIMITS,
   shoppingItemPatchSchema,
@@ -28,6 +30,7 @@ const ALLOWED_TABLES = new Set([
   'shopping_items',
   'aisle_choices',
   'cook_logs',
+  'recipe_ratings',
 ]);
 // jsonb columns: sent with tx.json so postgres.js does not build an array literal.
 const JSON_COLUMNS = new Set(['ingredients', 'steps', 'nutrition']);
@@ -125,6 +128,32 @@ async function applyFavorite(
   const rows = await tx`
     update public.favorites set deleted_at = ${parsed.data.deleted_at}
     where id = ${parsed.data.id} returning id`;
+  return rows.length === 0 ? rejected(op, 'not_found_or_forbidden') : applied(op);
+}
+
+async function applyRating(
+  tx: UserTx,
+  op: Op,
+  candidate: Record<string, unknown>,
+): Promise<Result> {
+  if (op.op === 'put') {
+    const parsed = recipeRatingSchema.safeParse(candidate);
+    if (!parsed.success) return rejected(op, 'invalid');
+    const { id, ...fields } = parsed.data;
+    const row = { ...fields, deleted_at: fields.deleted_at ?? null };
+    // As for favorites: a second row for the same person and recipe is 23505;
+    // someone else's row is hidden by RLS, so the DO UPDATE raises 42501.
+    await tx`
+      insert into public.recipe_ratings ${tx({ id, ...row })}
+      on conflict (id) do update set stars = excluded.stars, deleted_at = excluded.deleted_at`;
+    return applied(op);
+  }
+  const parsed = recipeRatingPatchSchema.safeParse(candidate);
+  if (!parsed.success) return rejected(op, 'invalid');
+  const { id, ...fields } = parsed.data;
+  if (Object.keys(fields).length === 0) return applied(op);
+  const rows = await tx`
+    update public.recipe_ratings set ${tx(fields)} where id = ${id} returning id`;
   return rows.length === 0 ? rejected(op, 'not_found_or_forbidden') : applied(op);
 }
 
@@ -266,6 +295,7 @@ const APPLY: Record<string, Apply> = {
   shopping_items: applyShoppingItem,
   aisle_choices: applyAisleChoice,
   cook_logs: applyCookLog,
+  recipe_ratings: applyRating,
 };
 
 async function applyOne(tx: UserTx, op: Op): Promise<Result> {

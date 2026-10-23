@@ -25,6 +25,26 @@ streams:
       FROM favorites
       WHERE user_id = auth.user_id() AND household_id = auth.parameter('household_id')
 
+  # Mirrors recipe_ratings_select: the user's own ratings in their current
+  # household. Nobody's device receives another person's rating (FR-44).
+  user_ratings:
+    auto_subscribe: true
+    query: >-
+      SELECT id, household_id, user_id, recipe_id, stars,
+             created_at, updated_at, updated_by, deleted_at
+      FROM recipe_ratings
+      WHERE user_id = auth.user_id() AND household_id = auth.parameter('household_id')
+
+  # Mirrors recipe_rating_totals_select: household_id = auth_household_id().
+  # Each rated recipe's total and count, for the household average (FR-44).
+  household_ratings:
+    auto_subscribe: true
+    query: >-
+      SELECT id, household_id, stars_total, ratings_count,
+             created_at, updated_at, deleted_at
+      FROM recipe_rating_totals
+      WHERE household_id = auth.parameter('household_id')
+
   # Mirrors imports_select: household_id = auth_household_id(), narrowed to
   # rows not dismissed, so a dismissed or saved import leaves the phone.
   household_imports:

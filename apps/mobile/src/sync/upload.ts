@@ -5,6 +5,7 @@ import {
   IMPORT_CLIENT_FIELDS,
   PHOTO_CLIENT_FIELDS,
   RECIPE_CLIENT_FIELDS,
+  RECIPE_RATING_CLIENT_FIELDS,
   SHOPPING_ITEM_CLIENT_FIELDS,
 } from '@recipe-app/domain';
 
@@ -39,6 +40,7 @@ const CLIENT_FIELDS: Record<string, readonly string[]> = {
   shopping_items: SHOPPING_ITEM_CLIENT_FIELDS,
   aisle_choices: AISLE_CHOICE_CLIENT_FIELDS,
   cook_logs: COOK_LOG_CLIENT_FIELDS,
+  recipe_ratings: RECIPE_RATING_CLIENT_FIELDS,
 };
 
 // The local database stores these as JSON text; the API expects arrays.

@@ -25,5 +25,6 @@ Lightweight ADRs ([Michael Nygard format](https://cognitect.com/blog/2011/11/15/
 | [0019](0019-shopping-list.md) | Shopping list: added rows merged on screen, aisles by word list and household choices | Accepted |
 | [0020](0020-light-mode-with-css-variables.md) | Light mode with CSS variables, chosen per device | Accepted |
 | [0021](0021-infrastructure-as-code.md) | Infrastructure as code: OpenTofu for the cloud, Ansible for the hosts, secrets in Ansible Vault | Accepted |
+| [0022](0022-private-ratings-with-household-totals.md) | Private ratings, with household totals kept by a trigger | Accepted |
 
 Template: [`template.md`](template.md)

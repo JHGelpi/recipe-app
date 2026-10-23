@@ -205,6 +205,27 @@ describe('toUploadOps for recipe details and favorites', () => {
       data: { household_id: 'h1', user_id: 'u1', recipe_id: 'r1' },
     });
   });
+
+  it('uploads only the client fields of a rating (FR-44)', () => {
+    const ops = toUploadOps([
+      {
+        op: 'PUT',
+        table: 'recipe_ratings',
+        id: 'g1',
+        opData: { household_id: 'h1', user_id: 'u1', recipe_id: 'r1', stars: 4, updated_by: 'x' },
+      },
+      { op: 'PATCH', table: 'recipe_ratings', id: 'g1', opData: { stars: 2, deleted_at: null } },
+    ]);
+    expect(ops).toEqual([
+      {
+        op: 'put',
+        table: 'recipe_ratings',
+        id: 'g1',
+        data: { household_id: 'h1', user_id: 'u1', recipe_id: 'r1', stars: 4 },
+      },
+      { op: 'patch', table: 'recipe_ratings', id: 'g1', data: { stars: 2, deleted_at: null } },
+    ]);
+  });
 });
 
 it('uploads only the client fields of an import', () => {

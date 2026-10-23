@@ -136,7 +136,7 @@ C4Component
     Component(cook, "Cook Mode", "Screen", "Step-by-step view, wake lock, scaling and units on the phone; recipes open in the device's units preference (FR-21–23)")
     Component(household, "Household", "Screen", "Members, roles, invites; follows membership changes (FR-3–6)")
     Component(importQ, "Import Queue", "imports table + kicker", "The synced imports table; the kicker asks the server to read waiting imports when online (FR-29, ADR-0012)")
-    Component(repo, "Recipe Repository", "TypeScript over PowerSync", "CRUD on local DB; soft delete/trash; role checks for UI")
+    Component(repo, "Recipe Repository", "TypeScript over PowerSync", "CRUD on local DB; soft delete/trash; favorites (a heart) and your own rating (FR-17, FR-44); role checks for UI")
     Component(search, "Search", "In-memory index over the local DB (ADR-0011)", "Title/ingredient/tag search + tag filters, offline (FR-19/20)")
     Component(cookEngine, "Cook Engine", "Pure TS (packages/domain)", "Scaling, unit conversion, step state (FR-21–23)")
     Component(shopping, "Shopping List", "Screen + shoppingLines", "Adds a recipe's ingredients at the viewed servings; merges lines; aisles (FR-31–35, ADR-0019)")
@@ -328,7 +328,10 @@ erDiagram
   IMPORT ||--o{ PHOTO : pages
   HOUSEHOLD ||--o{ IMPORT : queues
   USER ||--o{ FAVORITE : marks
-  RECIPE ||--o{ FAVORITE : "starred as"
+  RECIPE ||--o{ FAVORITE : "hearted as"
+  USER ||--o{ RECIPE_RATING : gives
+  RECIPE ||--o{ RECIPE_RATING : "rated by"
+  RECIPE ||--o| RECIPE_RATING_TOTALS : "averaged in"
   RECIPE ||--o{ SHARE : "shared as"
   HOUSEHOLD ||--o{ INVITE : issues
   HOUSEHOLD ||--o{ AI_USAGE : accrues
@@ -344,6 +347,7 @@ Conventions for every tenant table:
 - Nutrition per serving (FR-43) is an optional `nutrition` jsonb object on the recipe row (`calories`, `protein_g`, `carbs_g`, `fat_g`; null when none), checked by `valid_nutrition` with the same limits as the domain schema; the phone reads it apart from the rest of the row, so a value it cannot read never hides the recipe
 - Ingredients and steps are JSON arrays on the recipe row (ADR-0010), each element with a stable id; ingredients keep the typed line (`raw`) plus parsed `quantity`, `quantity_max`, `unit`, `item`, `note`, so scaling, search, and the Phase 2 shopping list can use them
 - Favorites are a per-user table (`favorites`), synced only to that user
+- `RECIPE_RATING` (`recipe_ratings`, FR-44): one row per person and recipe, `stars` 1–5, cleared by `deleted_at`; read and written only by its owner (any role) and synced only to them (`user_ratings`). `RECIPE_RATING_TOTALS` (`recipe_rating_totals`): each rated recipe's `stars_total` and `ratings_count`, kept by a definer trigger that recounts the recipe's live ratings; read by the household (`household_ratings`), written by no client, `updated_by` always null (ADR-0022)
 - `INVITE` (`invites`): role, sha256 of the link's code, expiry, accepted and cancelled times; read by the household's Admins only and written only by the ADR-0015 functions. Roles are checked live from `memberships`, which syncs to phones (`household_members`, `my_membership`)
 - `SHOPPING_ITEM` (`shopping_items`): one row per added ingredient or typed item: `item`, `item_key` (the merge key), scaled `quantity`, `quantity_max`, `unit`, `note`, `aisle`, `recipe_id` and a copied `recipe_title` (no foreign key), `checked_at`. Merged into lines on screen by `shoppingLines` (ADR-0019); cleared rows are purged after 30 days. Rows and aisle choices move with a person alone who joins another household (an aisle choice only where that household has none for the item)
 - `AISLE_CHOICE` (`aisle_choices`): the household's aisle for an `item_key`, unique per household and upserted on it; beats the built-in word list

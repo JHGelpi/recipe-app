@@ -2,7 +2,7 @@ import { useDeferredValue } from 'react';
 import { FlatList, View } from 'react-native';
 import { BuildFooter } from '../components/BuildFooter';
 import { HouseholdNoticeBanner } from '../components/HouseholdNoticeBanner';
-import { StarButton } from '../components/StarButton';
+import { FavoriteButton } from '../components/FavoriteButton';
 import { StatusLine } from '../components/StatusLine';
 import { durationLabel } from '../recipes/duration';
 import { useRecipeSearch } from '../recipes/hooks';
@@ -122,7 +122,7 @@ export function RecipeListScreen({
                 </View>
               ) : null
             }
-            trailing={<StarButton claims={claims} recipeId={item.id} starred={item.starred} />}
+            trailing={<FavoriteButton claims={claims} recipeId={item.id} favorite={item.starred} />}
           />
         )}
         ListEmptyComponent={
