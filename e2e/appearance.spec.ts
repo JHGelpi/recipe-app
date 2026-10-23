@@ -1,5 +1,5 @@
 import { expect, test, type Page } from './fixtures';
-import { createRecipe, freshEmail, signIn, unique } from './helpers';
+import { createRecipe, freshEmail, settled, signIn, unique } from './helpers';
 
 const LIGHT_BG = 'rgb(246, 247, 249)';
 const DARK_BG = 'rgb(14, 18, 26)';
@@ -78,6 +78,7 @@ async function cssBg(page: Page) {
 async function openAppearance(page: Page) {
   await page.getByRole('link', { name: 'Household' }).click();
   await expect(page.getByText('Appearance')).toBeVisible();
+  await settled(page);
 }
 
 test.describe('the Appearance setting', () => {
