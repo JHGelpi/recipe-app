@@ -18,6 +18,13 @@ const samples = readdirSync(dir)
   .filter((name) => /\.(txt|html)$/.test(name))
   .sort();
 
+// FR-43: nutrition only as stated per serving. Every other sample states none,
+// so any value there was estimated; nutrition-total gives only a whole-pot
+// figure, which must not be divided.
+const NUTRITION: Record<string, unknown> = {
+  'nutrition-panel.txt': { calories: 420, protein_g: 32, carbs_g: 45, fat_g: 11 },
+};
+
 describe.skipIf(!config.ai.apiKey)('parse eval (real Claude)', () => {
   const gateway = createGateway({ ...config.ai, baseUrl: null });
   let total = 0;
@@ -35,6 +42,9 @@ describe.skipIf(!config.ai.apiKey)('parse eval (real Claude)', () => {
         JSON.stringify(outcome, null, 2),
     );
     expect(outcome.kind).toBe(name.startsWith('not-recipe') ? 'not_a_recipe' : 'draft');
+    if (outcome.kind === 'draft') {
+      expect(outcome.draft.nutrition ?? null).toEqual(NUTRITION[name] ?? null);
+    }
   });
 
   // Photos: <name>-1.jpg, <name>-2.jpg … are the pages of one recipe, in order.
@@ -71,6 +81,8 @@ describe.skipIf(!config.ai.apiKey)('parse eval (real Claude)', () => {
         JSON.stringify(outcome, null, 2),
     );
     expect(outcome.kind).toBe(recipe.startsWith('not-recipe') ? 'not_a_recipe' : 'draft');
+    // None of the photo samples states nutrition (FR-43).
+    if (outcome.kind === 'draft') expect(outcome.draft.nutrition ?? null).toBeNull();
     expect(seconds, 'NFR-6: a photo parse under 30 s').toBeLessThan(30);
   });
 });
