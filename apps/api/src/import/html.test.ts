@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { extractJsonLd, pageText } from './html';
 
+// Linear parsing of a 3 MB hostile page takes tens of milliseconds; the
+// quadratic regexes these tests guard against take many seconds. A second
+// still catches that, without failing on a slow shared CI runner (#40).
+const BUDGET_MS = 1000;
+
 describe('extractJsonLd', () => {
   it('parses every JSON-LD block and skips broken ones', () => {
     const html = `<script type="application/ld+json">{"@type":"Recipe","name":"A"}</script>
@@ -40,20 +45,20 @@ describe('hostile pages (spec §3)', () => {
     return performance.now() - start;
   };
 
-  it('a page of unclosed tags parses in under 200 ms', () => {
+  it('a page of unclosed tags parses within the time budget', () => {
     const page = '<style>'.repeat(Math.floor(size / 7));
-    expect(timed(() => pageText(page))).toBeLessThan(200);
+    expect(timed(() => pageText(page))).toBeLessThan(BUDGET_MS);
   });
 
-  it('a page of unclosed JSON-LD scripts parses in under 200 ms', () => {
+  it('a page of unclosed JSON-LD scripts parses within the time budget', () => {
     const open = '<script type="application/ld+json">';
     const page = open.repeat(Math.floor(size / open.length));
-    expect(timed(() => extractJsonLd(page))).toBeLessThan(200);
+    expect(timed(() => extractJsonLd(page))).toBeLessThan(BUDGET_MS);
   });
 
-  it('a page of unclosed comments parses in under 200 ms', () => {
+  it('a page of unclosed comments parses within the time budget', () => {
     const page = '<!--'.repeat(Math.floor(size / 4));
-    expect(timed(() => pageText(page))).toBeLessThan(200);
+    expect(timed(() => pageText(page))).toBeLessThan(BUDGET_MS);
   });
 });
 
@@ -65,13 +70,13 @@ describe('final review', () => {
     expect(pageText(page)).toBe('İrmik İ\nİçli köfte'.replace('\n', ' '));
   });
 
-  it('a page of bare "<" and "<li" parses in under 200 ms', () => {
+  it('a page of bare "<" and "<li" parses within the time budget', () => {
     const size = Number(process.env.HOSTILE_BYTES ?? 3 * 1024 * 1024);
     for (const unit of ['<', '<li']) {
       const page = unit.repeat(Math.floor(size / unit.length));
       const start = performance.now();
       pageText(page);
-      expect(performance.now() - start).toBeLessThan(200);
+      expect(performance.now() - start).toBeLessThan(BUDGET_MS);
     }
   });
 });
