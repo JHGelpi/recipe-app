@@ -165,6 +165,21 @@ Every secret is in the Vault file. To change one, run `pnpm infra:secrets --edit
   OpenTofu has already deleted the old key.
 - **Tunnel token:** `tofu apply -replace=random_id.tunnel_secret`, then `pnpm infra:secrets --refresh`, then Ansible.
 - **GitHub read token** (yearly, before it expires): make a new one, put it in `vault_github_read_token` with `--edit`, then run Ansible on the VM if there is one.
+- **Feedback token** (`GITHUB_FEEDBACK_TOKEN`, before it expires): make a new one as in [In-app feedback](#in-app-feedback), put it in place of the old line with `--edit`, run Ansible, then revoke the old token on GitHub.
+
+## In-app feedback
+
+Ideas and problem reports from the app (FR-45, ADR-0023) are filed as issues in `JHGelpi/recipe-app`. Until a token is set, the app says feedback isn't set up.
+
+1. On GitHub, open **Settings → Developer settings → Fine-grained tokens → Generate new token**.
+   - **Resource owner:** you. **Repository access:** only `JHGelpi/recipe-app`.
+   - **Permissions:** Issues, read and write. Nothing else.
+   - **Expiration:** a year; note the date.
+2. Run `pnpm infra:secrets --edit` and add a line `GITHUB_FEEDBACK_TOKEN=github_pat_…`.
+3. Run Ansible as in [Rotating secrets](#rotating-secrets), which rewrites `.env.production` and redeploys.
+4. Send a test idea from Household → Send feedback, check it on GitHub, then close it.
+
+Issues are labelled `feature` (ideas) or `bug` (problems); both labels must exist in the repository. Each issue ends with an anonymous reporter id. To see who sent one, look it up as the `postgres` login: `select user_id from public.feedback_reporters where reporter_id = 'r-…'`.
 
 ## Switching the sender to a geltech.dev mailbox
 

@@ -45,4 +45,9 @@ export const TENANT_COLUMN: Record<(typeof TENANT_TABLES)[number], string> = {
  * Public tables that hold no household data (production spec §4): RLS on,
  * no policies, no grants. Only security definer functions and postgres reach them.
  */
-export const SYSTEM_TABLES = ['signup_allowed', 'signup_passes', 'signup_settings'] as const;
+export const SYSTEM_TABLES = [
+  'feedback_reporters',
+  'signup_allowed',
+  'signup_passes',
+  'signup_settings',
+] as const;

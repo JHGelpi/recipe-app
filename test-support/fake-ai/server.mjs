@@ -1,4 +1,5 @@
-// A stand-in for the Claude API and for recipe pages, used only in test mode
+// A stand-in for the Claude API, for recipe pages and for GitHub's issues API
+// (FR-45), used only in test mode
 // (docker-compose.test.yml). Deterministic, so tests can assert on drafts.
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
@@ -7,6 +8,7 @@ const PORT = Number(process.env.PORT ?? 4010);
 const PAGES = new URL('./pages/', import.meta.url);
 const requests = []; // the user text of each /v1/messages call, newest last
 const failures = new Map(); // FAKE_FAIL_TWICE tokens → failures served so far
+const issues = []; // FR-45: issues filed through /github, newest last
 
 function send(res, status, body, type = 'application/json') {
   res.writeHead(status, { 'Content-Type': type });
@@ -199,8 +201,34 @@ async function messages(res, body) {
   });
 }
 
+/**
+ * GitHub's "create an issue". A title containing FAKE_GITHUB_DOWN fails the
+ * first time it is sent, so tests can see a failure and a retry.
+ */
+function fileIssue(req, res, raw, repo) {
+  if (req.headers.authorization !== 'Bearer fake-github-token') {
+    return send(res, 401, { message: 'Bad credentials' });
+  }
+  const issue = JSON.parse(raw || '{}');
+  if (String(issue.title).includes('FAKE_GITHUB_DOWN') && !failures.has(issue.title)) {
+    failures.set(issue.title, 1);
+    return send(res, 502, { message: 'Server Error' });
+  }
+  const number = 1000 + issues.length;
+  issues.push({ repo, ...issue, number });
+  send(res, 201, { number, html_url: `https://github.com/${repo}/issues/${number}` });
+}
+
 createServer((req, res) => {
   const path = (req.url ?? '/').split('?')[0];
+  const issuesPath = /^\/github\/repos\/([^/]+\/[^/]+)\/issues$/.exec(path);
+  if (req.method === 'POST' && issuesPath) {
+    let raw = '';
+    req.on('data', (chunk) => (raw += chunk));
+    req.on('end', () => fileIssue(req, res, raw, issuesPath[1]));
+    return;
+  }
+  if (path === '/__issues') return send(res, 200, { issues });
   if (req.method === 'POST' && path === '/v1/messages') {
     let raw = '';
     req.on('data', (chunk) => (raw += chunk));

@@ -17,3 +17,11 @@ it('at its key cap a new key is refused, and keys free up a window later', () =>
   now = 1_000;
   expect(allow('c')).toBe(true);
 });
+
+it('a refund gives back the newest hit, so a failed request does not count', () => {
+  const allow = createRateLimiter({ limit: 2, windowMs: 1_000, now: () => 0 });
+  expect([allow('a'), allow('a')]).toEqual([true, true]);
+  allow.refund('a');
+  expect([allow('a'), allow('a')]).toEqual([true, false]);
+  allow.refund('unknown'); // nothing to give back
+});

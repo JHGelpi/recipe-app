@@ -9,6 +9,8 @@ import { createImportStore } from './import/store';
 import { createHouseholdService } from './household/service';
 import { createSharingService } from './sharing/service';
 import { createSignupService } from './signup/service';
+import { createFeedbackService } from './feedback/service';
+import { FEEDBACK_DAILY_LIMIT } from '@recipe-app/domain';
 import { createRateLimiter } from './rateLimit';
 import { createGateway } from './llm/gateway';
 import { createSubstitutionService } from './substitutions/service';
@@ -58,6 +60,14 @@ const sharing = createSharingService({
   store: photoStore,
 });
 const signup = createSignupService({ asAnonymous: createAsAnonymous(sql) });
+// FR-45: five filed reports per person a day; a failed one is given back.
+const feedback = createFeedbackService({
+  asUser: createAsUser(sql, verify),
+  github: config.github,
+  fetch: (input, init) => fetch(input, init),
+  limit: createRateLimiter({ limit: FEEDBACK_DAILY_LIMIT, windowMs: 86_400_000 }),
+  log: (event) => console.log(JSON.stringify(event)),
+});
 // 10 asks per email, 30 per link and 30 per address an hour, 300 in all;
 // GoTrue rate-limits the emails themselves.
 const limits = {
@@ -76,6 +86,7 @@ const app = createApp({
   household,
   sharing,
   signup,
+  feedback,
   limits,
 });
 

@@ -12,7 +12,9 @@ export function RowCard({
   leading,
   trailing,
   href,
+  externalHref,
   onPress,
+  disabled = false,
 }: {
   title: string;
   subtitle?: string | null;
@@ -21,12 +23,16 @@ export function RowCard({
   trailing?: ReactNode;
   /** Makes the row a link named by its title. */
   href?: Href;
+  /** Another site: a link named by its title, opening in a new tab. */
+  externalHref?: string;
   onPress?: () => void;
+  /** Shown greyed out, not a link: for example offline, with the reason as subtitle. */
+  disabled?: boolean;
 }) {
   const body = (
     <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
       {/* Two lines at most, so the actions stay on screen (Review Focus 1). */}
-      <Text variant="h3" numberOfLines={2}>
+      <Text variant="h3" tone={disabled ? 'muted' : undefined} numberOfLines={2}>
         {title}
       </Text>
       {subtitle ? (
@@ -50,7 +56,17 @@ export function RowCard({
       }}
     >
       {leading}
-      {href ? (
+      {disabled ? (
+        <View aria-disabled style={main}>
+          {body}
+        </View>
+      ) : externalHref ? (
+        <Link href={externalHref} target="_blank" rel="noopener noreferrer" asChild>
+          <Pressable role="link" aria-label={title} style={main}>
+            {body}
+          </Pressable>
+        </Link>
+      ) : href ? (
         <Link href={href} asChild>
           <Pressable role="link" aria-label={title} style={main}>
             {body}

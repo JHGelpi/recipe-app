@@ -24,6 +24,7 @@ export * from './links';
 export * from './cookLog';
 export * from './ratings';
 export * from './duplicates';
+export * from './feedback';
 export { RECIPE_LIMITS, TITLE_MAX } from './limits';
 
 const timestampSchema = z.iso.datetime({ offset: true });

@@ -24,3 +24,6 @@ services:
       ANTHROPIC_BASE_URL: http://fake-ai:4010
       # Test-only: lets the importer fetch the fixture pages on the Docker network.
       IMPORT_FETCH_ALLOW_HOSTS: fake-ai
+      # FR-45: issues go to the fake GitHub, never the real repository.
+      GITHUB_FEEDBACK_TOKEN: fake-github-token
+      GITHUB_API_URL: http://fake-ai:4010/github

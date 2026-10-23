@@ -49,6 +49,8 @@ import {
   TextField,
 } from '../ui';
 
+const GITHUB_URL = 'https://github.com/JHGelpi/recipe-app';
+
 const ROLES: [HouseholdRoleName, string][] = [
   ['admin', 'Admin'],
   ['member', 'Member'],
@@ -425,6 +427,23 @@ export function HouseholdScreen({ claims }: { claims: Claims }) {
           trailing={<Icon name="chevron-forward" color={colors.muted} />}
         />
       ) : null}
+      {/* FR-45: anyone signed in, Viewers too; both need a connection. */}
+      <RowCard
+        title="Send feedback"
+        subtitle={online ? 'Suggest an idea or report a problem' : 'Needs a connection.'}
+        href="/feedback"
+        disabled={!online}
+        leading={<Icon name="chatbubble-ellipses-outline" color={colors.muted} />}
+        trailing={<Icon name="chevron-forward" color={colors.muted} />}
+      />
+      <RowCard
+        title="Dishkept on GitHub"
+        subtitle={online ? 'See what’s planned and what’s been reported' : 'Needs a connection.'}
+        externalHref={GITHUB_URL}
+        disabled={!online}
+        leading={<Icon name="logo-github" color={colors.muted} />}
+        trailing={<Icon name="open-outline" color={colors.muted} />}
+      />
       <Button
         variant="secondary"
         icon="log-out-outline"
