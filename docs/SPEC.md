@@ -76,6 +76,7 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 | FR-5 | Admin can change roles and remove members *(built in sub-project 6)* | M |
 | FR-6 | Any user can invite someone to create their own household. Admins see and can revoke all of the household's friend links; everyone else sees and can revoke only the links they made *(built in sub-project 6; friend links in the production sub-project; revoking in the bug batch; visibility in #33)* | S |
 | FR-42 | Invitation links work once: a household invite once accepted, a friend link once an account is made with it (the first address to ask holds it for 24 hours). Used links leave the pending list for a short history ("Accepted by Sam · Oct 22"); a used, revoked or expired link says so and asks for a new one *(built)* | S |
+| FR-46 | Sign-in code and backup alert emails are branded: Dishkept logo and wordmark, light layout, footer link to the app. The code email shows the code large, says it expires in 10 minutes and can be ignored if not requested; subject "Your Dishkept sign-in code" *(built)* | S |
 
 ### Capture & import
 | ID | Requirement | Pri |

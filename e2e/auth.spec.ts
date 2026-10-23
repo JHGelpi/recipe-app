@@ -18,8 +18,14 @@ test('the code lasts 10 minutes, and both the screen and the email say so', asyn
   };
   const message = (await (
     await fetch(`${env.mailUrl}/api/v1/message/${found.messages[0]!.ID}`)
-  ).json()) as { HTML?: string };
+  ).json()) as { HTML?: string; Subject?: string };
   expect(message.HTML).toContain('This code expires in 10 minutes.');
+  // FR-46: branded, with the logo from the public address mail clients can reach.
+  expect(message.Subject).toBe('Your Dishkept sign-in code');
+  expect(message.HTML).toContain(`src="${env.publicUrl}/email-templates/logo.png"`);
+  expect(message.HTML).toContain('alt="Dishkept"');
+  expect(message.HTML).toContain("If you didn't ask to sign in, you can ignore this email.");
+  expect(message.HTML).not.toContain('proxy:8080');
 });
 
 test('an email typed with capitals and spaces still signs in', async ({ page }) => {

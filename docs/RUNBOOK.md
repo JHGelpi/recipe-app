@@ -134,6 +134,15 @@ People with an invite, share or friend link don't need to be on the list. The ap
 
 Phones pick up a new build on their own. A phone at the home screen may take it silently the next time the app is closed and reopened.
 
+### Checking the emails after a deploy
+
+Both emails are branded (FR-46), and the logo loads from `https://dishkept.geltech.dev/email-templates/logo.png`.
+
+- **Sign-in code:** sign in on a private window with your own address. The email's subject is "Your Dishkept sign-in code". It shows the logo, the code in a grey card, "This code expires in 10 minutes", and an "Open Dishkept" link.
+- **Backup alert:** run `pnpm prod:test-alert`. "Dishkept alert test" arrives with the same header and footer, and "Nothing failed".
+
+If the logo is missing, open its address in a browser. It should load without signing in.
+
 ## Restore
 
 **A restore replaces everything with that night's backup.** Changes made after it are lost, unless a phone still holds them unsynced; those upload afterwards.
