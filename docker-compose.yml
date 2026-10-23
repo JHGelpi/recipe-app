@@ -54,7 +54,9 @@ services:
       GOTRUE_EXTERNAL_PHONE_ENABLED: 'false'
       GOTRUE_MAILER_AUTOCONFIRM: 'false'
       GOTRUE_MAILER_OTP_LENGTH: 6
-      GOTRUE_MAILER_OTP_EXP: 3600
+      # Sign-in codes last 10 minutes. The email (deploy/email-templates/otp.html)
+      # and the sign-in screen both say so: change all three together.
+      GOTRUE_MAILER_OTP_EXP: 600
       GOTRUE_MAILER_SUBJECTS_MAGIC_LINK: Your sign-in code
       GOTRUE_MAILER_SUBJECTS_CONFIRMATION: Your sign-in code
       GOTRUE_MAILER_TEMPLATES_MAGIC_LINK: http://proxy:8080/email-templates/otp.html
