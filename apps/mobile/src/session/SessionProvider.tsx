@@ -87,8 +87,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       async verifyCode(input, code) {
         const email = normalizeEmail(input);
         const token = code.trim();
-        if (!email || !/^\d{6}$/.test(token)) {
-          return { ok: false, message: 'Enter the 6-digit code from the email.' };
+        if (!email || !/^\d{8}$/.test(token)) {
+          return { ok: false, message: 'Enter the 8-digit code from the email.' };
         }
         try {
           const { error } = await auth.verifyOtp({ email, token, type: 'email' });

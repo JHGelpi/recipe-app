@@ -9,7 +9,7 @@ import { createVerifier, UnauthorizedError } from '../../src/auth/verify';
 const verify = createVerifier({ audience: 'authenticated', jwksUrl: env.jwksUrl });
 
 describe('the auth service', () => {
-  it('emails a 6-digit code and issues an ES256 token the API verifier accepts', async () => {
+  it('emails an 8-digit code and issues an ES256 token the API verifier accepts', async () => {
     const actor = await signInFresh(`gate-${randomUUID()}@example.test`);
     expect(decodeProtectedHeader(actor.accessToken).alg).toBe('ES256');
     const claims = await verify(actor.accessToken);

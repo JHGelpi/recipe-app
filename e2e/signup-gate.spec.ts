@@ -105,7 +105,7 @@ test('an existing account signs in through a dead friend link; a new one is told
     ),
   ).toBeVisible();
   const code = await requestCode(page, SEED.adminA);
-  expect(code).toMatch(/^\d{6}$/);
+  expect(code).toMatch(/^\d{8}$/);
 });
 
 test('a friend link is listed on Household; once revoked, its page says it has ended (FR-6)', async ({
@@ -150,7 +150,7 @@ test('a live friend link works even when its status check never answers (final r
   await friend.route('**/api/friend-links/status', () => {});
   await friend.goto(url);
   await enterEmail(friend, freshEmail('friend-slow-new'));
-  await expect(friend.getByText(/^We sent a 6-digit code/)).toBeVisible();
+  await expect(friend.getByText(/^We sent an 8-digit code/)).toBeVisible();
   await friend.context().close();
 });
 

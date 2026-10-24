@@ -52,7 +52,7 @@ async function signIn(email) {
     ).json();
     const id = found.messages?.[0]?.ID;
     if (id)
-      code = /\b(\d{6})\b/.exec(
+      code = /\b(\d{8})\b/.exec(
         (await (await fetch(`${mail}/api/v1/message/${id}`)).json()).Text,
       )?.[1];
   }

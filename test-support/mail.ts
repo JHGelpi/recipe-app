@@ -22,7 +22,7 @@ export async function watchMailbox(mailUrl: string, email: string) {
         if (newest && newest !== before) {
           const response = await fetch(`${mailUrl}/api/v1/message/${newest}`);
           const message = (await response.json()) as { Text?: string; HTML?: string };
-          const match = /\b(\d{6})\b/.exec(`${message.Text ?? ''} ${message.HTML ?? ''}`);
+          const match = /\b(\d{8})\b/.exec(`${message.Text ?? ''} ${message.HTML ?? ''}`);
           if (match?.[1]) return match[1];
         }
         await new Promise((resolve) => setTimeout(resolve, 250));
