@@ -68,6 +68,10 @@ services:
       GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_FROM}
       GOTRUE_SMTP_SENDER_NAME: ${SMTP_SENDER_NAME:-Dishkept}
       GOTRUE_SMTP_MAX_FREQUENCY: ${AUTH_EMAIL_MAX_FREQUENCY:-60s}
+      # The OTP, verify and refresh limits below count per address, and GoTrue
+      # skips them unless told which header holds it. The proxy sets this one
+      # on /auth/*; never X-Forwarded-For, whose leftmost value the client picks.
+      GOTRUE_RATE_LIMIT_HEADER: X-Client-IP
       GOTRUE_RATE_LIMIT_EMAIL_SENT: ${AUTH_RATE_LIMIT:-30}
       GOTRUE_RATE_LIMIT_OTP: ${AUTH_RATE_LIMIT:-30}
       GOTRUE_RATE_LIMIT_VERIFY: ${AUTH_RATE_LIMIT:-30}
