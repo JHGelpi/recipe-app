@@ -6,6 +6,9 @@ import { env } from '../../../../test-support/env';
 // AUTH_RATE_LIMIT per 5 minutes. It keys on the X-Client-IP header the proxy
 // sets, and skips the limit entirely when no header is configured.
 const BURST = 30;
+// The suites after this one sign in through the same bucket, so the test
+// leaves it full: 30 tokens at AUTH_RATE_LIMIT per 300 s (1000 in .env: 9 s).
+const REFILL_MS = Math.ceil((BURST * 300_000) / Number(process.env.AUTH_RATE_LIMIT ?? 30));
 
 async function verify(email: string, headers: Record<string, string> = {}): Promise<number> {
   const response = await fetch(`${env.authUrl}/verify`, {
@@ -34,9 +37,8 @@ describe('the auth service rate limit', () => {
     );
     expect(spoofed.filter((status) => status !== 429).length).toBeLessThanOrEqual(1);
 
-    // The bucket refills, so the files after this one can still sign in.
-    await expect
-      .poll(() => verify(email), { timeout: 20_000, interval: 500 })
-      .not.toBe(429);
-  });
+    // The bucket refills, so a locked-out address can try again later.
+    await expect.poll(() => verify(email), { timeout: 20_000, interval: 500 }).not.toBe(429);
+    await new Promise((resolve) => setTimeout(resolve, REFILL_MS));
+  }, 60_000);
 });
