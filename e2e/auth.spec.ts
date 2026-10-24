@@ -45,7 +45,7 @@ test('an invalid email shows a message and sends nothing', async ({ page }) => {
 
 test('a wrong code shows a message and the right code still works', async ({ page }) => {
   const code = await requestCode(page, freshEmail('wrong'));
-  const wrong = code === '000000' ? '111111' : '000000';
+  const wrong = code === '00000000' ? '11111111' : '00000000';
   await page.getByLabel('Code').fill(wrong);
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page.getByText('That code is incorrect or has expired.')).toBeVisible();
