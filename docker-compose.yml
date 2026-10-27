@@ -236,7 +236,7 @@ services:
       - backups:/backups
 
   mail:
-    image: axllent/mailpit:v1.31.6
+    image: axllent/mailpit:v1.32.0
     profiles: [dev]
     restart: unless-stopped
     ports:
