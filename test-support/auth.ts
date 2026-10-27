@@ -17,22 +17,33 @@ export type Actor = {
   role: string | null;
 };
 
-// GoTrue sends at most one email per address per AUTH_EMAIL_MAX_FREQUENCY
-// (1s in .env). Each test file signs the seed users in afresh (Vitest gives
-// every file its own module copy, so the cache below cannot span files), and
-// files can start within that second. A refused request sends no email, so
-// waiting and asking again is safe.
-const RATE_LIMITED = 'over_email_send_rate_limit';
+// Two GoTrue limits can refuse a test's sign-in. Neither changes any state, so
+// waiting and asking again is safe:
+// - one email per address per AUTH_EMAIL_MAX_FREQUENCY (1s in .env). Each test
+//   file signs the seed users in afresh (Vitest gives every file its own module
+//   copy, so the cache below cannot span files), and files can start within
+//   that second;
+// - /otp and /verify per client address: a bucket of 30 that refills at
+//   AUTH_RATE_LIMIT per 5 minutes (3.3/s in .env). Every test signs in from
+//   the same address, and a fast CI runner can empty it.
+const RATE_LIMITED = new Set(['over_email_send_rate_limit', 'over_request_rate_limit']);
 const RETRY_AFTER_MS = 1_100;
-const MAX_TRIES = 5;
+const MAX_TRIES = 10;
 
-async function requestCode(client: InstanceType<typeof AuthClient>, email: string): Promise<void> {
+async function withRetry<T extends { error: { code?: string } | null }>(
+  call: () => Promise<T>,
+): Promise<T> {
   for (let attempt = 1; ; attempt++) {
-    const { error } = await client.signInWithOtp({ email });
-    if (!error) return;
-    if (error.code !== RATE_LIMITED || attempt >= MAX_TRIES) throw error;
+    const result = await call();
+    const code = result.error?.code;
+    if (!code || !RATE_LIMITED.has(code) || attempt >= MAX_TRIES) return result;
     await new Promise((resolve) => setTimeout(resolve, RETRY_AFTER_MS));
   }
+}
+
+async function requestCode(client: InstanceType<typeof AuthClient>, email: string): Promise<void> {
+  const { error } = await withRetry(() => client.signInWithOtp({ email }));
+  if (error) throw error;
 }
 
 /** Signs in through the real email-code flow, so the token hook runs. */
@@ -46,7 +57,7 @@ export async function signInFresh(email: string): Promise<Actor> {
   const mailbox = await watchMailbox(env.mailUrl, email);
   await requestCode(client, email);
   const code = await mailbox.nextCode();
-  const verified = await client.verifyOtp({ email, token: code, type: 'email' });
+  const verified = await withRetry(() => client.verifyOtp({ email, token: code, type: 'email' }));
   if (verified.error || !verified.data.session) {
     throw verified.error ?? new Error(`No session for ${email}`);
   }
