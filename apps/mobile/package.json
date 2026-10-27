@@ -28,7 +28,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
-    "typescript": "~6.0.3",
+    "typescript": "~7.0.2",
     "workbox-cli": "7.4.1"
   },
   "scripts": {
