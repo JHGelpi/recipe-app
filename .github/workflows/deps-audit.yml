@@ -1,0 +1,55 @@
+# Weekly audit of the production dependency tree (ADR-0024). Dependabot bumps
+# what it can; this catches advisories it cannot fix by a bump, such as a
+# transitive package an Expo SDK pins. High and critical findings keep one
+# open issue up to date; it is closed when they are gone.
+name: Dependency audit
+
+on:
+  schedule:
+    # Mondays 11:00 UTC: after Dependabot's 06:00 New York run.
+    - cron: '0 11 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: deps-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TITLE: 'Dependency audit: high or critical advisories'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Reads the lock file only; nothing is installed. pnpm audit exits non-zero
+      # when it finds anything; a failed audit makes the report step fail instead.
+      - name: Audit
+        id: audit
+        run: |
+          pnpm audit --prod --json > audit.json || true
+          node scripts/deps-audit/report.mjs audit.json > report.md
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Update the audit issue
+        env:
+          BLOCKING: ${{ steps.audit.outputs.blocking }}
+        run: |
+          existing=$(gh issue list --state open --search "in:title \"$TITLE\"" --json number --jq '.[0].number // empty')
+          if [ "$BLOCKING" = true ]; then
+            if [ -n "$existing" ]; then
+              gh issue edit "$existing" --body-file report.md
+            else
+              gh label create dependencies --color 0366d6 --description 'Dependency updates' 2>/dev/null || true
+              gh issue create --title "$TITLE" --label dependencies --body-file report.md
+            fi
+          elif [ -n "$existing" ]; then
+            gh issue close "$existing" --comment "No high or critical advisories in this week's audit."
+          fi
