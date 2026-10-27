@@ -90,7 +90,7 @@ services:
       retries: 60
 
   migrate:
-    image: ghcr.io/amacneil/dbmate:2.36.0
+    image: ghcr.io/amacneil/dbmate:2.37.0
     restart: 'no'
     depends_on:
       db:
@@ -145,7 +145,7 @@ services:
       - photos:/data/photos
 
   sync:
-    image: journeyapps/powersync-service:1.27.0
+    image: journeyapps/powersync-service:1.27.1
     restart: unless-stopped
     command: ['start', '-r', 'unified']
     depends_on:
@@ -236,7 +236,7 @@ services:
       - backups:/backups
 
   mail:
-    image: axllent/mailpit:v1.31.5
+    image: axllent/mailpit:v1.31.6
     profiles: [dev]
     restart: unless-stopped
     ports:
