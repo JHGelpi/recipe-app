@@ -11,7 +11,10 @@ version: 2
 
 updates:
   - package-ecosystem: npm
-    directories: ['/', '/apps/api', '/apps/mobile', '/packages/domain']
+    # The root covers every workspace package and updates pnpm-lock.yaml with
+    # them. Listing the packages too adds per-package PRs without the lock
+    # file, which fail CI's --frozen-lockfile.
+    directory: '/'
     schedule:
       interval: weekly
       day: monday
