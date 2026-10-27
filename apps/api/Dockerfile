@@ -1,4 +1,4 @@
-FROM node:22-slim AS build
+FROM node:22.23.4-slim AS build
 WORKDIR /repo
 RUN corepack enable
 # Manifests first, so the dependency layer is cached until they change.
@@ -13,7 +13,7 @@ COPY apps/api apps/api
 RUN pnpm --filter @recipe-app/api run build
 
 # One bundled file; no node_modules in the runtime image.
-FROM node:22-slim
+FROM node:22.23.4-slim
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /repo/apps/api/dist/server.cjs ./server.cjs

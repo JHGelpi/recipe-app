@@ -3,7 +3,7 @@
 # `pnpm dev:backend` switches back to the real AI service.
 services:
   fake-ai:
-    image: node:22-alpine
+    image: node:22.23.4-alpine
     command: ['node', '/srv/server.mjs']
     volumes:
       - ./test-support/fake-ai:/srv:ro

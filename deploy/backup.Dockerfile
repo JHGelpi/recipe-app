@@ -1,5 +1,5 @@
 # Nightly backup (production spec §5): pg_dump, tar, age, rclone, msmtp.
-FROM postgres:17-alpine
+FROM postgres:17.11-alpine
 RUN apk add --no-cache age rclone msmtp tzdata coreutils jq
 COPY scripts/backup/ /opt/backup/
 RUN chmod +x /opt/backup/*.sh

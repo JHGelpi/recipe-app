@@ -1,0 +1,118 @@
+# Weekly version bumps as pull requests (ADR-0024). CI runs on each one;
+# nothing merges or deploys without review, and production changes only
+# through `pnpm prod:deploy` (RUNBOOK, "Dependency updates").
+#
+# Every ecosystem below runs Mondays at 06:00 New York time, waits until a
+# release is 5 days old (so a bad or compromised one has time to be pulled),
+# groups its minor and patch updates into one PR, and gives each major update
+# a PR of its own. Security updates (a repository setting) skip the wait and
+# the schedule. YAML anchors are avoided: Dependabot may not resolve them.
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directories: ['/', '/apps/api', '/apps/mobile', '/packages/domain']
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: America/New_York
+    cooldown:
+      default-days: 5
+    commit-message:
+      prefix: chore
+      include: scope
+    open-pull-requests-limit: 10
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # The Expo SDK fixes these versions together; an SDK upgrade is its own
+      # change, made with `npx expo install --fix` (ADR-0007).
+      - dependency-name: 'expo'
+      - dependency-name: 'expo-*'
+      - dependency-name: '@expo/*'
+      - dependency-name: 'react'
+      - dependency-name: 'react-dom'
+      - dependency-name: 'react-native'
+      - dependency-name: 'react-native-*'
+      - dependency-name: '@types/react'
+
+  - package-ecosystem: docker-compose
+    directory: '/'
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: America/New_York
+    cooldown:
+      default-days: 5
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      compose-minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # A new Postgres major needs the data upgraded (pg_upgrade or a dump and
+      # restore), a runbook job rather than a tag change.
+      - dependency-name: 'postgres'
+        update-types: ['version-update:semver-major']
+      # Node majors move together with CI's node-version.
+      - dependency-name: 'node'
+        update-types: ['version-update:semver-major']
+
+  - package-ecosystem: docker
+    directories: ['/apps/api', '/deploy']
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: America/New_York
+    cooldown:
+      default-days: 5
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      docker-minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # As for compose: Postgres and Node majors are deliberate upgrades.
+      - dependency-name: 'postgres'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'node'
+        update-types: ['version-update:semver-major']
+
+  - package-ecosystem: github-actions
+    directory: '/'
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: America/New_York
+    cooldown:
+      default-days: 5
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      actions-minor-and-patch:
+        update-types: [minor, patch]
+
+  # OpenTofu, not terraform: the lock file records registry.opentofu.org.
+  - package-ecosystem: opentofu
+    directory: '/infra/tofu'
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: America/New_York
+    cooldown:
+      default-days: 5
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      tofu-minor-and-patch:
+        update-types: [minor, patch]

@@ -143,6 +143,19 @@ Both emails are branded (FR-46), and the logo loads from `https://dishkept.gelte
 
 If the logo is missing, open its address in a browser. It should load without signing in.
 
+### Dependency updates
+
+Dependabot opens pull requests on Mondays (ADR-0024): one grouped PR per ecosystem for minor and patch updates, and one PR for each major update. Nothing reaches production until you deploy.
+
+1. Wait for CI to pass on the PR. A red PR stays open; fix it on its branch or close it.
+2. Read the release notes in the PR, especially for GoTrue, PowerSync, cloudflared and Caddy. Look for changed settings, removed flags and data migrations.
+3. Merge, then run `cd ~/dishkept && git pull && pnpm prod:deploy`.
+4. Run `pnpm prod:status`, and check the changed service in `pnpm prod:logs <service>`. For cloudflared, look for `Registered tunnel connection`.
+
+Never proposed here: a Postgres major (it needs a data upgrade), a Node major, and Expo SDK upgrades (`npx expo install --fix`). Plan each as its own change.
+
+When the "Dependency audit: high or critical advisories" issue is open, a transitive package has an advisory that no bump fixed. Upgrade the parent, or add a `pnpm.overrides` entry. The next Monday's audit closes the issue once the advisory is gone; to check sooner, run the "Dependency audit" workflow by hand in the Actions tab.
+
 ## Restore
 
 **A restore replaces everything with that night's backup.** Changes made after it are lost, unless a phone still holds them unsynced; those upload afterwards.

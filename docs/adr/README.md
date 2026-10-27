@@ -27,5 +27,6 @@ Lightweight ADRs ([Michael Nygard format](https://cognitect.com/blog/2011/11/15/
 | [0021](0021-infrastructure-as-code.md) | Infrastructure as code: OpenTofu for the cloud, Ansible for the hosts, secrets in Ansible Vault | Accepted |
 | [0022](0022-private-ratings-with-household-totals.md) | Private ratings, with household totals kept by a trigger | Accepted |
 | [0023](0023-in-app-feedback-filed-as-github-issues.md) | In-app feedback filed as GitHub issues, under an anonymous reporter id | Accepted |
+| [0024](0024-weekly-dependency-updates-with-dependabot.md) | Weekly dependency updates with Dependabot, and a weekly audit | Accepted |
 
 Template: [`template.md`](template.md)
