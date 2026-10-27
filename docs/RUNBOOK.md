@@ -152,7 +152,7 @@ Dependabot opens pull requests on Mondays (ADR-0024): one grouped PR per ecosyst
 3. Merge, then run `cd ~/dishkept && git pull && pnpm prod:deploy`.
 4. Run `pnpm prod:status`, and check the changed service in `pnpm prod:logs <service>`. For cloudflared, look for `Registered tunnel connection`.
 
-Never proposed here: a Postgres major (it needs a data upgrade), a Node major, and Expo SDK upgrades (`npx expo install --fix`). Plan each as its own change.
+Never proposed here: a Postgres major (it needs a data upgrade), a Node major, an OpenTofu provider major (it needs code changes and a `tofu plan`), and Expo SDK upgrades (`npx expo install --fix`). Plan each as its own change.
 
 When the "Dependency audit: high or critical advisories" issue is open, a transitive package has an advisory that no bump fixed. Upgrade the parent, or add a `pnpm.overrides` entry. The next Monday's audit closes the issue once the advisory is gone; to check sooner, run the "Dependency audit" workflow by hand in the Actions tab.
 

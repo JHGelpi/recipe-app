@@ -116,3 +116,9 @@ updates:
     groups:
       tofu-minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      # A provider major renames resources and changes schemas, so it needs
+      # code changes and a `tofu plan`; main.tf's `~>` limits exclude it anyway,
+      # and Dependabot fails trying. Plan majors as their own change.
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
