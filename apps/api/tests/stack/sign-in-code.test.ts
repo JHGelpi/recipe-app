@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { AuthClient } from '@supabase/auth-js';
 import { describe, expect, it } from 'vitest';
+import { authClient } from '../../../../test-support/auth';
 import { env } from '../../../../test-support/env';
 import { watchMailbox } from '../../../../test-support/mail';
 import { adminSql } from '../helpers/db';
@@ -8,13 +8,7 @@ import { adminSql } from '../helpers/db';
 // FR-1: a sign-in code works once, only while it is the newest, and only for
 // 10 minutes (GOTRUE_MAILER_OTP_EXP). Against the local stack, never production.
 
-const client = () =>
-  new AuthClient({
-    url: env.authUrl,
-    persistSession: false,
-    autoRefreshToken: false,
-    detectSessionInUrl: false,
-  });
+const client = authClient;
 
 const freshEmail = (tag: string) => `code-${tag}-${randomUUID()}@example.test`;
 

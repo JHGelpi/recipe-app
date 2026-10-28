@@ -85,12 +85,14 @@
 			header Content-Type application/x-x509-ca-cert
 			file_server
 		}
-		# Only the GoTrue routes the app uses (issue #68): email codes, token
-		# refresh, sign-out, the key set and health. Everything else, the
-		# admin API, password sign-up and login, setting a password, is 404.
+		# Only the GoTrue routes the app uses (issue #68): token refresh,
+		# sign-out, the key set and health. Everything else, the admin API,
+		# password sign-up and login, setting a password, is 404. Email codes
+		# go through the API (/api/auth/otp, /api/auth/verify), which counts
+		# wrong codes per email (issue #72).
 		handle_path /auth/* {
 			@auth_allowed expression <<CEL
-				(method('POST') && path('/otp', '/verify', '/logout'))
+				(method('POST') && path('/logout'))
 				|| (method('POST') && path('/token') && {http.request.uri.query} == 'grant_type=refresh_token')
 				|| (method('GET') && path('/user', '/.well-known/jwks.json', '/health'))
 				CEL

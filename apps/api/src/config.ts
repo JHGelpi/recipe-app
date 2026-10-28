@@ -17,6 +17,8 @@ export type Config = {
   limits: { parsesPerHour: number; uploadsPerMinute: number; photosPerHour: number };
   /** Issue #67: the photo files a household may keep, in bytes. */
   photoQuotaBytes: number;
+  /** Issue #72: GoTrue on the Docker network, for relaying email codes. */
+  authUrl: string;
 };
 
 function required(env: NodeJS.ProcessEnv, name: string): string {
@@ -73,6 +75,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       photosPerHour: amount(env, 'API_PHOTOS_PER_HOUR', 200),
     },
     photoQuotaBytes: amount(env, 'PHOTO_QUOTA_MB', 2048) * 1024 * 1024,
+    authUrl: (env.AUTH_INTERNAL_URL || 'http://auth:9999').replace(/\/+$/, ''),
   };
 }
 

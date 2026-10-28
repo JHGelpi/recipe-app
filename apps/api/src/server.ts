@@ -12,6 +12,7 @@ import { createSignupService } from './signup/service';
 import { createFeedbackService } from './feedback/service';
 import { FEEDBACK_DAILY_LIMIT } from '@recipe-app/domain';
 import { createRateLimiter } from './rateLimit';
+import { createLockout } from './auth/lockout';
 import { createGateway } from './llm/gateway';
 import { createSubstitutionService } from './substitutions/service';
 import { createPhotoService } from './photos/service';
@@ -96,6 +97,12 @@ const app = createApp({
   feedback,
   limits,
   userLimits,
+  // Issue #72: five wrong codes for one email in 15 minutes, until a new code.
+  codes: {
+    authUrl: config.authUrl,
+    fetch: (input, init) => fetch(input, init),
+    lockout: createLockout({ limit: 5, windowMs: 900_000 }),
+  },
 });
 
 const server = serve({ fetch: app.fetch, port: config.port, hostname: '0.0.0.0' });

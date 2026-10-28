@@ -37,3 +37,28 @@ resource "cloudflare_record" "app" {
   content = cloudflare_zero_trust_tunnel_cloudflared.dishkept.cname
   proxied = true
 }
+
+# Issue #72: refuse floods of sign-in code requests at Cloudflare, before they
+# reach the house. The free plan allows one rule, a 10-second period, counting
+# per address and data centre, and the path in the expression. The API's own
+# per-email lockout and GoTrue's per-address limits do the fine-grained work.
+resource "cloudflare_ruleset" "sign_in_rate_limit" {
+  zone_id     = cloudflare_zone.site.id
+  name        = "Sign-in code rate limit"
+  description = "Email code requests and checks, per address"
+  kind        = "zone"
+  phase       = "http_ratelimit"
+
+  rules {
+    description = "More than 10 code requests or checks in 10 seconds from one address"
+    expression  = "(http.request.uri.path eq \"/api/auth/otp\") or (http.request.uri.path eq \"/api/auth/verify\")"
+    action      = "block"
+    enabled     = true
+    ratelimit {
+      characteristics     = ["cf.colo.id", "ip.src"]
+      period              = 10
+      requests_per_period = 10
+      mitigation_timeout  = 10
+    }
+  }
+}

@@ -154,7 +154,10 @@ GoTrue counts sign-in emails for the whole site, not per person (issue #61). If 
 | Code checks and token refreshes per address, per 5 minutes | 10 | `AUTH_RATE_LIMIT` |
 | Emails to one person | 1 a minute | `AUTH_EMAIL_MAX_FREQUENCY` |
 
-One address can make at most 54 code requests in its first hour and 24 an hour after that, so it can't use up the 60 on its own. Many addresses together still can; the Cloudflare rule in issue #72 is the answer to that.
+One address can make at most 54 code requests in its first hour and 24 an hour after that, so it can't use up the 60 on its own. Many addresses together still could; two more layers cover that (issue #72, ADR-0030):
+
+- **Cloudflare blocks floods first.** More than 10 code requests or checks in 10 seconds from one address are refused at the edge (`cloudflare_ruleset.sign_in_rate_limit`). It takes effect once `tofu apply` has run, as in step 1.
+- **The API locks an email after five wrong codes.** Further checks for that email get "Too many wrong codes. Request a new code." until a new code is requested or 15 minutes pass. The count lives in the API's memory, so `pnpm prod:recreate api` clears it.
 
 **Zoho's limit must stay above the budget.** Zoho caps how many emails the `noreply@geltech.dev` mailbox may send per hour and per day, and that cap is also shared by the whole site. Check it in the Zoho Mail admin console for your plan. If it's below 60 an hour, or below about 1,500 a day, lower `AUTH_RATE_LIMIT_EMAIL` to match, so GoTrue refuses before Zoho blocks the mailbox. Backup alerts go through the same mailbox.
 

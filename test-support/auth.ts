@@ -1,3 +1,4 @@
+import { codeRelayUrl } from '../packages/domain/src/codeRelay';
 import { AuthClient } from '@supabase/auth-js';
 import { env } from './env';
 import { watchMailbox } from './mail';
@@ -46,14 +47,21 @@ async function requestCode(client: InstanceType<typeof AuthClient>, email: strin
   if (error) throw error;
 }
 
-/** Signs in through the real email-code flow, so the token hook runs. */
-export async function signInFresh(email: string): Promise<Actor> {
-  const client = new AuthClient({
+/** An auth-js client as the app makes it: email codes go through the API's relay (#72). */
+export function authClient(): InstanceType<typeof AuthClient> {
+  return new AuthClient({
     url: env.authUrl,
     persistSession: false,
     autoRefreshToken: false,
     detectSessionInUrl: false,
+    fetch: (input, init) =>
+      fetch(typeof input === 'string' ? codeRelayUrl(input, env.authUrl, env.apiUrl) : input, init),
   });
+}
+
+/** Signs in through the real email-code flow, so the token hook runs. */
+export async function signInFresh(email: string): Promise<Actor> {
+  const client = authClient();
   const mailbox = await watchMailbox(env.mailUrl, email);
   await requestCode(client, email);
   const code = await mailbox.nextCode();
