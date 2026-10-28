@@ -85,12 +85,23 @@
 			header Content-Type application/x-x509-ca-cert
 			file_server
 		}
+		# Only the GoTrue routes the app uses (issue #68): email codes, token
+		# refresh, sign-out, the key set and health. Everything else, the
+		# admin API, password sign-up and login, setting a password, is 404.
 		handle_path /auth/* {
-			reverse_proxy auth:9999 {
-				# GoTrue's per-address limits key on this header and are off
-				# without it. Set here, so a client-sent value is overwritten.
-				header_up X-Client-IP {client_ip}
+			@auth_allowed expression <<CEL
+				(method('POST') && path('/otp', '/verify', '/logout'))
+				|| (method('POST') && path('/token') && {http.request.uri.query} == 'grant_type=refresh_token')
+				|| (method('GET') && path('/user', '/.well-known/jwks.json', '/health'))
+				CEL
+			handle @auth_allowed {
+				reverse_proxy auth:9999 {
+					# GoTrue's per-address limits key on this header and are off
+					# without it. Set here, so a client-sent value is overwritten.
+					header_up X-Client-IP {client_ip}
+				}
 			}
+			respond 404
 		}
 		handle /api/* {
 			# A coarse cap; the API enforces its exact 1 MB limit itself.
@@ -102,10 +113,16 @@
 				header_up X-Client-IP {client_ip}
 			}
 		}
+		# Only the sync stream (HTTP or WebSocket) and write checkpoints
+		# (issue #68); PowerSync's admin and other routes are 404.
 		handle_path /sync/* {
-			reverse_proxy sync:8080 {
-				flush_interval -1
+			@sync_allowed path /sync/stream /write-checkpoint2.json
+			handle @sync_allowed {
+				reverse_proxy sync:8080 {
+					flush_interval -1
+				}
 			}
+			respond 404
 		}
 		handle /email-templates/* {
 			root * /srv
