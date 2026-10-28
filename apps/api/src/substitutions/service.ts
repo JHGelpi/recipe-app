@@ -8,7 +8,7 @@ import type { TokenClaims, VerifyToken } from '../auth/verify';
 import type { AsClaims } from '../db/asUser';
 import { AiUnavailableError, costMicroUsd, type AiConfig, type Gateway } from '../llm/gateway';
 import { buildSubstituteRequest, RECORD_SUBSTITUTES_TOOL } from '../llm/suggestSubstitutes';
-import { AI_RESERVE_MICROUSD, reserveSpend, settleSpend } from '../llm/usage';
+import { AI_RESERVE_MICROUSD, reserveSpend, settleSpend, spendCaps } from '../llm/usage';
 import { json } from '../db/json';
 
 export type SubstitutionOutcome =
@@ -35,7 +35,7 @@ export function createSubstitutionService(deps: {
   verify: VerifyToken;
   asClaims: AsClaims;
   gateway: Gateway;
-  ai: Pick<AiConfig, 'capUsd' | 'priceInputPerMTokUsd' | 'priceOutputPerMTokUsd'>;
+  ai: Pick<AiConfig, 'capUsd' | 'globalCapUsd' | 'priceInputPerMTokUsd' | 'priceOutputPerMTokUsd'>;
   log?: (event: Record<string, unknown>) => void;
 }): SubstitutionService {
   return {
@@ -43,7 +43,7 @@ export function createSubstitutionService(deps: {
       const claims: TokenClaims = await deps.verify(token);
       if (!WRITERS.includes(String(claims.household_role))) return { kind: 'forbidden' };
 
-      const cap = Math.round(deps.ai.capUsd * 1_000_000);
+      const caps = spendCaps(deps.ai);
       const found = await deps.asClaims(claims, async (tx) => {
         const [recipe] = await tx<RecipeRow[]>`
           select title, servings, ingredients, steps from public.recipes
@@ -52,7 +52,7 @@ export function createSubstitutionService(deps: {
           (item) => item.id === ask.ingredient_id && !item.heading,
         );
         // Reserved only for a line that exists, under the household's lock (spec §3).
-        const reserved = recipe && line ? await reserveSpend(tx, cap, AI_RESERVE_MICROUSD) : false;
+        const reserved = recipe && line ? await reserveSpend(tx, caps, AI_RESERVE_MICROUSD) : false;
         return { recipe, line, reserved };
       });
       const { line } = found;

@@ -164,7 +164,7 @@ Admins and Members log and edit; Viewers read the diary (rule 4). Every entry be
 | NFR-4 | Offline | All read, search, create, edit work with no connectivity. AI features degrade gracefully with a clear message. |
 | NFR-5 | Sync latency | Online edits visible on other household devices within ~10 s. |
 | NFR-6 | Performance | Cold start < 2 s on a mid-range phone; local search < 300 ms over 2,000 recipes; photo parse < 30 s p90. |
-| NFR-7 | AI cost | Per-household monthly AI spend tracked and capped: $2.00 by default (`AI_MONTHLY_CAP_USD`). |
+| NFR-7 | AI cost | Per-household monthly AI spend tracked and capped: $2.00 by default (`AI_MONTHLY_CAP_USD`). All households together are capped too: $10.00 by default (`AI_GLOBAL_MONTHLY_CAP_USD`, #63). |
 | NFR-8 | Availability | Best effort on the owner's always-on PC. A GCP VM is defined in OpenTofu and can take over through a restore when uptime matters (ADR-0018, ADR-0021). |
 | NFR-9 | Data durability | Nightly encrypted off-site backups kept 30 days; restore tested (ADR-0018). No data loss on device reinstall once synced. |
 | NFR-10 | Portability | Household can export all recipes (JSON + PDFs). *Not built yet.* |

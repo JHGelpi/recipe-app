@@ -135,6 +135,7 @@ services:
       LLM_PRICE_INPUT_PER_MTOK_USD: ${LLM_PRICE_INPUT_PER_MTOK_USD:-2}
       LLM_PRICE_OUTPUT_PER_MTOK_USD: ${LLM_PRICE_OUTPUT_PER_MTOK_USD:-10}
       AI_MONTHLY_CAP_USD: ${AI_MONTHLY_CAP_USD:-2}
+      AI_GLOBAL_MONTHLY_CAP_USD: ${AI_GLOBAL_MONTHLY_CAP_USD:-10}
       # FR-45: in-app feedback is filed as GitHub issues. A fine-grained token
       # scoped to Issues (read and write) on this repository only. Empty: the
       # app says feedback isn't set up.

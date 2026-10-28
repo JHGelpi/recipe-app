@@ -13,6 +13,7 @@ describe('loadConfig', () => {
       priceInputPerMTokUsd: 2,
       priceOutputPerMTokUsd: 10,
       capUsd: 2,
+      globalCapUsd: 10,
     });
     expect(config.fetchAllowHosts).toEqual([]);
   });
@@ -23,6 +24,7 @@ describe('loadConfig', () => {
       ANTHROPIC_API_KEY: 'k',
       ANTHROPIC_BASE_URL: 'http://fake-ai:4010',
       AI_MONTHLY_CAP_USD: '5',
+      AI_GLOBAL_MONTHLY_CAP_USD: '25',
       LLM_PRICE_INPUT_PER_MTOK_USD: '1',
       IMPORT_FETCH_ALLOW_HOSTS: ' Fake-AI , other ',
     });
@@ -30,6 +32,7 @@ describe('loadConfig', () => {
       apiKey: 'k',
       baseUrl: 'http://fake-ai:4010',
       capUsd: 5,
+      globalCapUsd: 25,
       priceInputPerMTokUsd: 1,
     });
     expect(config.fetchAllowHosts).toEqual(['fake-ai', 'other']);
@@ -37,6 +40,9 @@ describe('loadConfig', () => {
 
   it('refuses a cap that is not a number', () => {
     expect(() => loadConfig({ ...env, AI_MONTHLY_CAP_USD: 'lots' })).toThrow('AI_MONTHLY_CAP_USD');
+    expect(() => loadConfig({ ...env, AI_GLOBAL_MONTHLY_CAP_USD: 'lots' })).toThrow(
+      'AI_GLOBAL_MONTHLY_CAP_USD',
+    );
   });
 });
 

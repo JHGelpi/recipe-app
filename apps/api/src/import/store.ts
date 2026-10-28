@@ -6,7 +6,13 @@ import {
 } from '@recipe-app/domain';
 import type { TokenClaims } from '../auth/verify';
 import type { AsClaims } from '../db/asUser';
-import { AI_RESERVE_MICROUSD, monthSpentMicroUsd, reserveSpend, settleSpend } from '../llm/usage';
+import {
+  AI_RESERVE_MICROUSD,
+  monthSpentMicroUsd,
+  reserveSpend,
+  settleSpend,
+  type SpendCaps,
+} from '../llm/usage';
 import { json } from '../db/json';
 
 export type ClaimedImport = {
@@ -32,8 +38,8 @@ export type ParseResult =
 export type ImportStore = {
   claim(claims: TokenClaims, id: string): Promise<ClaimOutcome>;
   context(claims: TokenClaims): Promise<{ spentMicroUsd: number; tags: string[] }>;
-  /** A reservation against the monthly cap, under the household's lock (spec §3). */
-  reserve(claims: TokenClaims, capMicroUsd: number): Promise<boolean>;
+  /** A reservation against the monthly caps, under the spend locks (spec §3, #63). */
+  reserve(claims: TokenClaims, caps: SpendCaps): Promise<boolean>;
   /** Settles the spend (in its own transaction) against what was reserved, then writes the row. */
   finish(
     claims: TokenClaims,
@@ -102,8 +108,8 @@ export function createImportStore(asClaims: AsClaims): ImportStore {
         return { spentMicroUsd, tags: tags.map((row) => row.tag) };
       }),
 
-    reserve: (claims, capMicroUsd) =>
-      asClaims(claims, (tx) => reserveSpend(tx, capMicroUsd, AI_RESERVE_MICROUSD)),
+    reserve: (claims, caps) =>
+      asClaims(claims, (tx) => reserveSpend(tx, caps, AI_RESERVE_MICROUSD)),
 
     finish: async (claims, row, result, spentMicroUsd, reservedMicroUsd) => {
       // Spend first, in its own transaction: a failed row write never loses it.

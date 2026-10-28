@@ -8,6 +8,8 @@ export type AiConfig = {
   priceInputPerMTokUsd: number;
   priceOutputPerMTokUsd: number;
   capUsd: number;
+  /** All households together (issue #63). */
+  globalCapUsd: number;
 };
 export type Usage = { inputTokens: number; outputTokens: number };
 export type ToolCall = { input: unknown; usage: Usage };

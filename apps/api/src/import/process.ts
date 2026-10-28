@@ -8,7 +8,7 @@ import {
   RECORD_RECIPE_TOOL,
   type ParseRequest,
 } from '../llm/parseRecipe';
-import { AI_RESERVE_MICROUSD } from '../llm/usage';
+import { AI_RESERVE_MICROUSD, spendCaps } from '../llm/usage';
 import { jpegInfo } from '../photos/jpeg';
 import type { PhotoStore } from '../photos/store';
 import type { FetchResult } from './fetchPage';
@@ -20,7 +20,7 @@ export type ProcessDeps = {
   gateway: Gateway;
   fetchPage: (url: string) => Promise<FetchResult>;
   photos: Pick<PhotoStore, 'read'>;
-  ai: Pick<AiConfig, 'capUsd' | 'priceInputPerMTokUsd' | 'priceOutputPerMTokUsd'>;
+  ai: Pick<AiConfig, 'capUsd' | 'globalCapUsd' | 'priceInputPerMTokUsd' | 'priceOutputPerMTokUsd'>;
   log?: (event: Record<string, unknown>) => void;
 };
 
@@ -64,8 +64,8 @@ async function parse(
   }
 
   const { tags } = await deps.store.context(claims);
-  // A reservation under the household's lock, so parallel calls can't pass the cap.
-  if (!(await deps.store.reserve(claims, Math.round(deps.ai.capUsd * 1_000_000)))) {
+  // A reservation under the spend locks, so parallel calls can't pass a cap.
+  if (!(await deps.store.reserve(claims, spendCaps(deps.ai)))) {
     return { status: 'failed', error: 'quota' };
   }
   meter.reserved = AI_RESERVE_MICROUSD;

@@ -48,6 +48,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       priceInputPerMTokUsd: amount(env, 'LLM_PRICE_INPUT_PER_MTOK_USD', 2),
       priceOutputPerMTokUsd: amount(env, 'LLM_PRICE_OUTPUT_PER_MTOK_USD', 10),
       capUsd: amount(env, 'AI_MONTHLY_CAP_USD', 2),
+      globalCapUsd: amount(env, 'AI_GLOBAL_MONTHLY_CAP_USD', 10),
     },
     fetchAllowHosts: (env.IMPORT_FETCH_ALLOW_HOSTS ?? '')
       .split(',')

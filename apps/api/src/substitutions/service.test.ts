@@ -62,7 +62,7 @@ function setup(
     verify: vi.fn().mockResolvedValue(over.claims ?? member),
     asClaims: (async (_c: unknown, fn: (t: unknown) => Promise<unknown>) => fn(tx)) as never,
     gateway: { callTool },
-    ai: { capUsd: 2, priceInputPerMTokUsd: 2, priceOutputPerMTokUsd: 10 },
+    ai: { capUsd: 2, globalCapUsd: 10, priceInputPerMTokUsd: 2, priceOutputPerMTokUsd: 10 },
     log: vi.fn(),
   });
   return { service, statements, callTool };
