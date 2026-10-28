@@ -244,7 +244,7 @@ export function HouseholdScreen({ claims }: { claims: Claims }) {
                       onPress={async () => {
                         if (
                           await confirm(
-                            `Remove ${label} from the household? They'll keep their account and get an empty household of their own. Recipes they added stay here.`,
+                            `Remove ${label} from the household? They'll keep their account and get an empty household of their own. Recipes they added stay here. Anything their devices already downloaded stays on them.`,
                           )
                         ) {
                           await act(() =>
