@@ -15,6 +15,7 @@ import { isGuid } from './ids';
 import type { ImportService } from './import/service';
 import type { PhotoService } from './photos/service';
 import type { SubstitutionService } from './substitutions/service';
+import { registerCodeRoutes, type CodeRelayDeps } from './auth/codes';
 import type { RateLimiter } from './rateLimit';
 import { applyOps, parseBody } from './upload/ops';
 
@@ -41,6 +42,8 @@ export type AppDeps = {
    * files. A refused request gets 429; the app backs off and retries.
    */
   userLimits: { parse: RateLimiter; upload: RateLimiter; photos: RateLimiter };
+  /** Issue #72: email codes, relayed to GoTrue with wrong codes counted per email. */
+  codes: CodeRelayDeps;
 };
 
 const MAX_BODY_BYTES = 1024 * 1024;
@@ -244,6 +247,7 @@ export function createApp(deps: AppDeps): Hono {
     return c.json({ error: ASK_ERROR[outcome.kind] }, ASK_STATUS[outcome.kind]);
   });
 
+  registerCodeRoutes(app, deps.codes);
   registerHouseholdRoutes(app, deps);
   registerFeedbackRoutes(app, deps);
   registerSharingRoutes(app, deps);

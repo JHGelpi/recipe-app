@@ -106,6 +106,7 @@ C4Container
   Rel(api, llm, "Parse imports; suggest substitutions", "HTTPS")
   Rel(api, sites, "Fetch page HTML", "HTTPS")
   Rel(api, github, "File feedback issues (ADR-0023)", "HTTPS")
+  Rel(api, auth, "Relays email codes (ADR-0030)")
   Rel(auth, email, "Sign-in codes", "SMTP")
 ```
 
@@ -191,6 +192,7 @@ C4Component
     Component(llmGw, "LLM Gateway", "Module", "Single place for model choice, retries, timeouts, prompt versions")
     Component(writeFn, "Write Upload Handler", "Route: /api/upload", "Applies queued local writes; last-write-wins on updated_at (FR-30)")
     Component(photosFn, "Photos", "PUT/GET /api/photos/:id", "Stores page and dish photos on the volume; serves them after an RLS check on the row (ADR-0013)")
+    Component(codesFn, "Email code relay", "POST /api/auth/otp, /api/auth/verify", "Passes email-code requests to GoTrue; locks an email after 5 wrong codes until a new code (ADR-0030, FR-1)")
     Component(signupFn, "Sign-up passes", "/api/signup-pass, /api/friend-links/status", "Turns a live invite, friend or share link into a 24-hour pass for the sign-up gate (ADR-0018)")
     Component(purgeFn, "Trash purge", "POST /api/trash/purge", "Hard-deletes rows 30 days in the trash, and their photo files (FR-18)")
     Component(shareFn, "Share Service", "/api/shares", "Creates and stops links; serves snapshots to signed-out visitors through asAnonymous; saves a copy into the recipient household (FR-27, ADR-0016)")

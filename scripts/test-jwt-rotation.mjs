@@ -35,8 +35,9 @@ function writeEnv(keys) {
   writeFileSync(ENV_FILE, `${lines.join('\n')}\n`, { mode: 0o600 });
 }
 
+// Email codes go through the API's relay (issue #72).
 const post = (path, body) =>
-  fetch(`${base}/auth${path}`, {
+  fetch(`${base}/api/auth${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

@@ -1,8 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { AuthClient } from '@supabase/auth-js';
 import { afterEach, expect, it } from 'vitest';
-import { env } from '../../../../test-support/env';
-import { SEED, signInFresh } from '../../../../test-support/auth';
+import { SEED, signInFresh, authClient } from '../../../../test-support/auth';
 import { adminSql } from '../helpers/db';
 import { clearGateRows, setGate } from '../helpers/gate';
 
@@ -12,13 +10,7 @@ afterEach(async () => {
   await clearGateRows(used.splice(0));
 });
 
-const client = () =>
-  new AuthClient({
-    url: env.authUrl,
-    persistSession: false,
-    autoRefreshToken: false,
-    detectSessionInUrl: false,
-  });
+const client = authClient;
 
 it('with the gate on, GoTrue refuses an unknown email with invite_only and creates no account', async () => {
   const email = `stranger-${randomUUID()}@example.test`;

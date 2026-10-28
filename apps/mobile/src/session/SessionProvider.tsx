@@ -93,6 +93,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         try {
           const { error } = await auth.verifyOtp({ email, token, type: 'email' });
           if (!error) return { ok: true };
+          // Issue #72: five wrong codes lock the email until a new code is sent.
+          if (error.code === 'too_many_wrong_codes') {
+            return { ok: false, message: 'Too many wrong codes. Request a new code.' };
+          }
           return {
             ok: false,
             message: error.status ? 'That code is incorrect or has expired.' : UNREACHABLE,

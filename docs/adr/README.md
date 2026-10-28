@@ -32,5 +32,6 @@ Lightweight ADRs ([Michael Nygard format](https://cognitect.com/blog/2011/11/15/
 | [0026](0026-content-security-policy.md) | A strict Content-Security-Policy and security headers at the proxy | Accepted |
 | [0029](0029-pinned-supply-chain-and-audit-gate.md) | Actions and images pinned by hash; CI fails on high advisories | Accepted |
 | [0028](0028-per-person-limits-and-photo-quota.md) | Per-person limits on signed-in routes, and a photo quota per household | Accepted |
+| [0030](0030-email-code-relay-and-lockout.md) | Email codes through the API, with a per-email lockout | Accepted |
 
 Template: [`template.md`](template.md)

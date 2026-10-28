@@ -45,6 +45,11 @@ function deps(overrides: Partial<AppDeps> = {}): AppDeps {
     feedback: { send: vi.fn() },
     limits: { email: () => true, code: () => true, ip: () => true, all: () => true },
     userLimits: { parse: allowAll(), upload: allowAll(), photos: allowAll() },
+    codes: {
+      authUrl: 'http://auth:9999',
+      fetch: vi.fn(),
+      lockout: { locked: () => false, fail: vi.fn(), clear: vi.fn() },
+    },
     photos: {
       put: vi.fn().mockResolvedValue('stored'),
       get: vi.fn().mockResolvedValue(null),
