@@ -203,6 +203,19 @@ Ideas and problem reports from the app (FR-45, ADR-0023) are filed as issues in 
 
 Issues are labelled `feature` (ideas) or `bug` (problems); both labels must exist in the repository. Each issue ends with an anonymous reporter id. To see who sent one, look it up as the `postgres` login: `select user_id from public.feedback_reporters where reporter_id = 'r-…'`.
 
+## AI spend limits
+
+AI features (imports and substitutions) stop for the rest of the month at either of two limits (NFR-7). The app then says "Over this month's AI limit".
+
+- **Each household:** `AI_MONTHLY_CAP_USD`, $2 by default.
+- **All households together:** `AI_GLOBAL_MONTHLY_CAP_USD`, $10 by default (issue #63). New accounts each get their own household and $2, so without this ceiling the bill would grow with every sign-up.
+
+To change either, add the line to the `vault_prod_env: |` block as in [In-app feedback](#in-app-feedback), step 2, then run Ansible as in [Rotating secrets](#rotating-secrets). Without a line, production uses the default.
+
+**A backstop outside the app:** in the Anthropic Console, open **Settings → Limits** for the workspace that holds the API key, and set a monthly spend limit a little above `AI_GLOBAL_MONTHLY_CAP_USD`, for example $15. If the app's own count ever goes wrong, Anthropic refuses the calls and the app says AI is unavailable.
+
+To see this month's total, run `select public.ai_month_spent_all() / 1e6 as usd` as the `postgres` login.
+
 ## Switching the sender to a geltech.dev mailbox
 
 Once the mailbox exists and its DNS records are in Cloudflare:

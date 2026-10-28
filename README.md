@@ -127,7 +127,7 @@ Open the `PUBLIC_URL` from `.env`, which defaults to http://localhost:8080. If a
 
 Sign-in codes arrive in the local mail catcher at http://127.0.0.1:8025.
 
-**AI features** (imports and substitutions) need `ANTHROPIC_API_KEY` in `.env`. Everything else works without it. Each household's monthly AI spend is capped by `AI_MONTHLY_CAP_USD`, which defaults to $2.
+**AI features** (imports and substitutions) need `ANTHROPIC_API_KEY` in `.env`. Everything else works without it. Each household's monthly AI spend is capped by `AI_MONTHLY_CAP_USD`, which defaults to $2, and all households together by `AI_GLOBAL_MONTHLY_CAP_USD`, which defaults to $10.
 
 **Day to day:**
 

@@ -11,6 +11,7 @@ const config: AiConfig = {
   priceInputPerMTokUsd: 3,
   priceOutputPerMTokUsd: 15,
   capUsd: 2,
+  globalCapUsd: 10,
 };
 const request = { system: 'sys', user: 'user' };
 

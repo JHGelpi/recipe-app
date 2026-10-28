@@ -23,7 +23,7 @@ const base = {
   },
   fetchPage: vi.fn(),
   photos: { read: vi.fn() },
-  ai: { capUsd: 2, priceInputPerMTokUsd: 3, priceOutputPerMTokUsd: 15 },
+  ai: { capUsd: 2, globalCapUsd: 10, priceInputPerMTokUsd: 3, priceOutputPerMTokUsd: 15 },
 };
 
 describe('createImportService', () => {

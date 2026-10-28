@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { syntheticJpeg } from '../../../../test-support/jpeg';
 import { AI_ATTEMPTS, AI_TIMEOUT_MS, AiUnavailableError, type Gateway } from '../llm/gateway';
+import type { SpendCaps } from '../llm/usage';
 import { FETCH_DEFAULTS } from './fetchPage';
 import type { FetchResult } from './fetchPage';
 import { processImport, type ProcessDeps } from './process';
@@ -27,7 +28,7 @@ const urlRow: ClaimedImport = {
   source_text: null,
   source_url: 'https://example.com/soup',
 };
-const prices = { capUsd: 2, priceInputPerMTokUsd: 3, priceOutputPerMTokUsd: 15 };
+const prices = { capUsd: 2, globalCapUsd: 10, priceInputPerMTokUsd: 3, priceOutputPerMTokUsd: 15 };
 
 function setup(
   over: {
@@ -42,7 +43,7 @@ function setup(
     claim: vi.fn(),
     spent: vi.fn(),
     context: vi.fn().mockResolvedValue({ spentMicroUsd: over.spent ?? 0, tags: ['dinner'] }),
-    reserve: vi.fn(async (_c: unknown, cap: number) => (over.spent ?? 0) < cap),
+    reserve: vi.fn(async (_c: unknown, caps: SpendCaps) => (over.spent ?? 0) < caps.household),
     finish: vi.fn(async (_c, _r, result: ParseResult, spent: number, reserved: number) => {
       finished.push({ result, spent, reserved });
     }),
