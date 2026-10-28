@@ -1,4 +1,4 @@
-import type { HouseholdRoleName } from '@recipe-app/domain';
+import type { HouseholdRoleName, InviteRoleName } from '@recipe-app/domain';
 import type { ApiDeps } from '../imports/api';
 
 export type Result<T> = { ok: true; value: T } | { ok: false; message: string };
@@ -58,7 +58,7 @@ async function request<T>(
   }
 }
 
-export const createInvite = (role: HouseholdRoleName, deps: ApiDeps) =>
+export const createInvite = (role: InviteRoleName, deps: ApiDeps) =>
   request<{ id: string; code: string; expires_at: string }>(deps, 'POST', '/invites', { role });
 export const listInvites = (deps: ApiDeps) => request<PendingInvite[]>(deps, 'GET', '/invites');
 export const cancelInvite = (id: string, deps: ApiDeps) =>

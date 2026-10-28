@@ -25,7 +25,14 @@ export const MAX_PENDING_INVITES = 20;
 
 const roleSchema = z.enum(HOUSEHOLD_ROLES);
 
-export const inviteCreateSchema = z.strictObject({ role: roleSchema });
+/**
+ * Issue #71: an invite is a bearer link that anyone holding it can accept, so
+ * it never makes an Admin. An Admin promotes someone after they join.
+ */
+export const INVITE_ROLES = ['member', 'viewer'] as const satisfies readonly HouseholdRoleName[];
+export type InviteRoleName = (typeof INVITE_ROLES)[number];
+
+export const inviteCreateSchema = z.strictObject({ role: z.enum(INVITE_ROLES) });
 // 32 random bytes in base64url without padding.
 export const inviteTokenBodySchema = z.strictObject({
   token: z.string().regex(/^[A-Za-z0-9_-]{43}$/),

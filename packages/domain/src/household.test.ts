@@ -14,6 +14,8 @@ const CODE = 'k3J9xQ2mZb7LwP0aYc5RdT8vNf1HgE4sUo6IiKjMnBq';
 describe('household schemas', () => {
   it('accepts a role for an invite or a member, and refuses anything else', () => {
     expect(inviteCreateSchema.safeParse({ role: 'viewer' }).success).toBe(true);
+    // No Admin invites (#71); Admins are made by promotion.
+    expect(inviteCreateSchema.safeParse({ role: 'admin' }).success).toBe(false);
     expect(memberRoleBodySchema.safeParse({ role: 'admin' }).success).toBe(true);
     expect(inviteCreateSchema.safeParse({ role: 'owner' }).success).toBe(false);
     expect(inviteCreateSchema.safeParse({ role: 'member', extra: 1 }).success).toBe(false);
