@@ -29,6 +29,6 @@ Lightweight ADRs ([Michael Nygard format](https://cognitect.com/blog/2011/11/15/
 | [0023](0023-in-app-feedback-filed-as-github-issues.md) | In-app feedback filed as GitHub issues, under an anonymous reporter id | Accepted |
 | [0024](0024-weekly-dependency-updates-with-dependabot.md) | Weekly dependency updates with Dependabot, and a weekly audit | Accepted |
 | [0025](0025-bounded-sign-up-through-links.md) | Sign-up through links is bounded: one account per share link, 10 pending friend links per person | Accepted |
-| [0027](0027-sync-scoped-by-live-membership.md) | Sync scoped by live membership, not the token's household | Accepted |
+| [0026](0026-content-security-policy.md) | A strict Content-Security-Policy and security headers at the proxy | Accepted |
 
 Template: [`template.md`](template.md)
