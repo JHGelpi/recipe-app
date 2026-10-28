@@ -158,16 +158,27 @@ Test mode (`dev:backend:test`) swaps Claude for a fake and serves fixture pages.
 
 ## Testing on a phone
 
-The phone needs an HTTPS address, because browsers only allow the app's local database and workers on secure origins. The proxy serves one, signed by its own private certificate authority.
+The phone needs an HTTPS address, because browsers only allow the app's local database and workers on secure origins. The proxy serves one, signed by a private certificate authority that can sign only for that address and `localhost` (issue #70).
 
-1. In `.env`, set `LAN_HTTPS_HOST` to the address the phone uses to reach this machine (on your LAN or VPN), then run `pnpm dev:backend`.
-2. On the iPhone, trust the certificate authority:
+By default the stack listens only on this machine, so nobody else on the Wi-Fi or VPN can reach it.
+
+1. In `.env`, set `LAN_HTTPS_HOST` to the address the phone uses to reach this machine (on your LAN or VPN), and `LAN_HTTPS_BIND=0.0.0.0` to open the HTTPS port.
+2. Run `pnpm dev:ca` to make the certificate authority for that address, then `pnpm dev:backend`.
+3. On the iPhone, trust the certificate authority:
    1. Open `https://<LAN_HTTPS_HOST>:8443/local-ca.crt` in Safari. It warns that the connection isn't private; choose **Show Details**, then **visit this website**, then allow the profile download.
    2. Install the profile in **Settings**, then **General**, then **VPN & Device Management**.
    3. Turn on full trust in **Settings**, then **General**, then **About**, then **Certificate Trust Settings**.
-3. Open `https://<LAN_HTTPS_HOST>:8443` and sign in. Read the code from the mail catcher on this machine.
+4. Open `https://<LAN_HTTPS_HOST>:8443` and sign in. Read the code from the mail catcher on this machine.
 
-The certificate authority is kept in `.local/caddy/` (git-ignored), so `pnpm db:reset` keeps it and the phone stays trusted. Deleting that folder creates a new authority, which the phone must trust again.
+When you're done testing, set `LAN_HTTPS_BIND=127.0.0.1` again and run `pnpm dev:backend`.
+
+**Keep the authority safe.**
+- Its key is kept in `.local/caddy/local-ca/` (git-ignored), so `pnpm db:reset` keeps it and the phone stays trusted.
+- Keep `.local/` out of cloud-synced or shared folders. Anyone with the key could impersonate the dev stack to a trusting phone, though not any other site.
+- Changing `LAN_HTTPS_HOST` means running `pnpm dev:ca` again and reinstalling the profile.
+- To stop trusting it, delete the profile on the phone in **Settings**, then **General**, then **VPN & Device Management**.
+
+Before issue #70 the phone trusted Caddy's own root, which can sign for any domain. If your phone still has a profile named "Caddy Local Authority", delete it after installing the new one.
 
 To use it as an app, open the HTTPS address in Safari and choose **Share**, then **Add to Home Screen**. The home-screen app has its own storage, so sign in once more there. After the first load it opens with no connection, and a banner offers to reload when a new build is ready. The footer shows the build time and whether Safari granted persistent storage.
 

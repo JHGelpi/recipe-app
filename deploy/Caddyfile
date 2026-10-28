@@ -3,6 +3,10 @@
 	# The private CA below lives inside the container; there is no host trust
 	# store to install its root into.
 	skip_install_trust
+	# Dev: the name-constrained authority `pnpm dev:ca` makes, which can sign
+	# only for LAN_HTTPS_HOST and localhost (issue #70). Without it, as in
+	# production and CI, Caddy uses its own.
+	import /data/local-ca/*.caddy
 	# Safari sends no SNI when connecting to an IP address.
 	default_sni {$LAN_HTTPS_HOST:localhost}
 	# Production: the tunnel connector forwards the visitor's scheme and address.
@@ -78,10 +82,11 @@
 			respond "ok" 200
 		}
 		# The public root of the private CA, so a phone can install and trust
-		# it. Only this one file under /data is reachable.
+		# it: the name-constrained one when present. Only these files under
+		# /data are reachable.
 		handle /local-ca.crt {
-			root * /data/caddy/pki/authorities/local
-			rewrite * /root.crt
+			root * /data
+			try_files /local-ca/root.crt /caddy/pki/authorities/local/root.crt
 			header Content-Type application/x-x509-ca-cert
 			file_server
 		}
