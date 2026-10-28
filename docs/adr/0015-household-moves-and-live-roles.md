@@ -1,6 +1,6 @@
 # 15. Household moves through narrow definer functions; live role checks
 
-Date: 2026-10-17 · Status: Accepted
+Date: 2026-10-17 · Status: Accepted; the "Sync after a change" part is superseded by ADR-0027
 
 ## Context
 

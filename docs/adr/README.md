@@ -18,7 +18,7 @@ Lightweight ADRs ([Michael Nygard format](https://cognitect.com/blog/2011/11/15/
 | [0012](0012-imports-as-synced-queue.md) | Imports as a synced queue with server-side parsing | Accepted |
 | [0013](0013-photo-files-on-a-volume.md) | Photo files on a volume behind RLS-checked endpoints | Accepted |
 | [0014](0014-cook-mode-and-substitutions.md) | Cook mode on the phone; substitutions asked live and remembered | Accepted |
-| [0015](0015-household-moves-and-live-roles.md) | Household moves through narrow definer functions; live role checks | Accepted |
+| [0015](0015-household-moves-and-live-roles.md) | Household moves through narrow definer functions; live role checks | Accepted; its sync part superseded by 0027 |
 | [0016](0016-shared-recipe-snapshots.md) | Shared recipe snapshots, read anonymously through a definer function | Accepted |
 | [0017](0017-dishkept-design-system.md) | Dishkept: a small design system of our own, dark only | Accepted |
 | [0018](0018-production-on-a-home-pc.md) | Production on a home PC: Cloudflare Tunnel, nightly encrypted backups to GCS, invite-only sign-up | Accepted |
@@ -29,5 +29,6 @@ Lightweight ADRs ([Michael Nygard format](https://cognitect.com/blog/2011/11/15/
 | [0023](0023-in-app-feedback-filed-as-github-issues.md) | In-app feedback filed as GitHub issues, under an anonymous reporter id | Accepted |
 | [0024](0024-weekly-dependency-updates-with-dependabot.md) | Weekly dependency updates with Dependabot, and a weekly audit | Accepted |
 | [0025](0025-bounded-sign-up-through-links.md) | Sign-up through links is bounded: one account per share link, 10 pending friend links per person | Accepted |
+| [0027](0027-sync-scoped-by-live-membership.md) | Sync scoped by live membership, not the token's household | Accepted |
 
 Template: [`template.md`](template.md)

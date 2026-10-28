@@ -1,5 +1,8 @@
 # What each device receives. Each stream MIRRORS an RLS select policy;
 # change one, change the other (CLAUDE.md rule 6).
+# The household comes from the person's live membership, as auth_household_id()
+# does in RLS, never from the token: a removed person stops receiving the
+# household as soon as their membership changes (ADR-0027, issue #65).
 config:
   edition: 3
 
@@ -13,7 +16,9 @@ streams:
              photo_id, nutrition,
              created_at, updated_at, updated_by, deleted_at
       FROM recipes
-      WHERE household_id = auth.parameter('household_id')
+      WHERE household_id IN (
+        SELECT household_id FROM memberships
+        WHERE user_id = auth.user_id() AND deleted_at IS NULL)
 
   # Mirrors favorites_select: the user's own rows in their current household
   # (people can move between households, ADR-0015).
@@ -23,7 +28,9 @@ streams:
       SELECT id, household_id, user_id, recipe_id,
              created_at, updated_at, updated_by, deleted_at
       FROM favorites
-      WHERE user_id = auth.user_id() AND household_id = auth.parameter('household_id')
+      WHERE user_id = auth.user_id() AND household_id IN (
+        SELECT household_id FROM memberships
+        WHERE user_id = auth.user_id() AND deleted_at IS NULL)
 
   # Mirrors recipe_ratings_select: the user's own ratings in their current
   # household. Nobody's device receives another person's rating (FR-44).
@@ -33,7 +40,9 @@ streams:
       SELECT id, household_id, user_id, recipe_id, stars,
              created_at, updated_at, updated_by, deleted_at
       FROM recipe_ratings
-      WHERE user_id = auth.user_id() AND household_id = auth.parameter('household_id')
+      WHERE user_id = auth.user_id() AND household_id IN (
+        SELECT household_id FROM memberships
+        WHERE user_id = auth.user_id() AND deleted_at IS NULL)
 
   # Mirrors recipe_rating_totals_select: household_id = auth_household_id().
   # Each rated recipe's total and count, for the household average (FR-44).
@@ -43,7 +52,9 @@ streams:
       SELECT id, household_id, stars_total, ratings_count,
              created_at, updated_at, deleted_at
       FROM recipe_rating_totals
-      WHERE household_id = auth.parameter('household_id')
+      WHERE household_id IN (
+        SELECT household_id FROM memberships
+        WHERE user_id = auth.user_id() AND deleted_at IS NULL)
 
   # Mirrors imports_select: household_id = auth_household_id(), narrowed to
   # rows not dismissed, so a dismissed or saved import leaves the phone.
@@ -54,7 +65,9 @@ streams:
              error, parse_started_at, recipe_id,
              created_at, updated_at, updated_by, deleted_at
       FROM imports
-      WHERE household_id = auth.parameter('household_id') AND deleted_at IS NULL
+      WHERE household_id IN (
+        SELECT household_id FROM memberships
+        WHERE user_id = auth.user_id() AND deleted_at IS NULL) AND deleted_at IS NULL
 
   # Mirrors photos_select: household_id = auth_household_id(), narrowed to
   # rows not deleted, so dismissed and replaced photos leave the phone.
@@ -65,7 +78,9 @@ streams:
              bytes, width, height, uploaded_at,
              created_at, updated_at, updated_by, deleted_at
       FROM photos
-      WHERE household_id = auth.parameter('household_id') AND deleted_at IS NULL
+      WHERE household_id IN (
+        SELECT household_id FROM memberships
+        WHERE user_id = auth.user_id() AND deleted_at IS NULL) AND deleted_at IS NULL
 
   # Mirrors substitutions_select: household_id = auth_household_id(), narrowed
   # to rows not deleted.
@@ -75,7 +90,9 @@ streams:
       SELECT id, household_id, recipe_id, ingredient_id, ingredient_raw, options, note,
              created_at, updated_at, updated_by, deleted_at
       FROM substitutions
-      WHERE household_id = auth.parameter('household_id') AND deleted_at IS NULL
+      WHERE household_id IN (
+        SELECT household_id FROM memberships
+        WHERE user_id = auth.user_id() AND deleted_at IS NULL) AND deleted_at IS NULL
 
   # Mirrors memberships_select's household branch.
   household_members:
@@ -83,7 +100,9 @@ streams:
     query: >-
       SELECT id, household_id, user_id, email, role, created_at
       FROM memberships
-      WHERE household_id = auth.parameter('household_id') AND deleted_at IS NULL
+      WHERE household_id IN (
+        SELECT household_id FROM memberships
+        WHERE user_id = auth.user_id() AND deleted_at IS NULL) AND deleted_at IS NULL
 
   # Mirrors memberships_select's own-row branch. Keyed by user, so it keeps
   # arriving after a change of household; the phone refreshes on a change.
@@ -98,7 +117,10 @@ streams:
   household_info:
     auto_subscribe: true
     query: >-
-      SELECT id, name FROM households WHERE id = auth.parameter('household_id')
+      SELECT id, name FROM households
+      WHERE id IN (
+        SELECT household_id FROM memberships
+        WHERE user_id = auth.user_id() AND deleted_at IS NULL)
 
   # A subset of shares_select: the household's live shares, without the
   # snapshot or the code hash, so the recipe screen can count links.
@@ -107,7 +129,9 @@ streams:
     query: >-
       SELECT id, household_id, recipe_id, created_at, deleted_at
       FROM shares
-      WHERE household_id = auth.parameter('household_id') AND deleted_at IS NULL
+      WHERE household_id IN (
+        SELECT household_id FROM memberships
+        WHERE user_id = auth.user_id() AND deleted_at IS NULL) AND deleted_at IS NULL
 
   # Mirrors shopping_items_select: household_id = auth_household_id(),
   # narrowed to rows not deleted, so cleared items leave the phone.
@@ -118,7 +142,9 @@ streams:
              recipe_id, recipe_title, checked_at,
              created_at, updated_at, updated_by, deleted_at
       FROM shopping_items
-      WHERE household_id = auth.parameter('household_id') AND deleted_at IS NULL
+      WHERE household_id IN (
+        SELECT household_id FROM memberships
+        WHERE user_id = auth.user_id() AND deleted_at IS NULL) AND deleted_at IS NULL
 
   # Mirrors aisle_choices_select.
   household_aisle_choices:
@@ -126,7 +152,9 @@ streams:
     query: >-
       SELECT id, household_id, item_key, aisle, created_at, updated_at, updated_by, deleted_at
       FROM aisle_choices
-      WHERE household_id = auth.parameter('household_id') AND deleted_at IS NULL
+      WHERE household_id IN (
+        SELECT household_id FROM memberships
+        WHERE user_id = auth.user_id() AND deleted_at IS NULL) AND deleted_at IS NULL
 
   # Mirrors cook_logs_select: household_id = auth_household_id(). Trashed
   # entries sync too, so the Trash can list and restore them (FR-37).
@@ -136,4 +164,6 @@ streams:
       SELECT id, household_id, recipe_id, recipe_title, cooked_on, cooked_by, notes,
              created_at, updated_at, updated_by, deleted_at
       FROM cook_logs
-      WHERE household_id = auth.parameter('household_id')
+      WHERE household_id IN (
+        SELECT household_id FROM memberships
+        WHERE user_id = auth.user_id() AND deleted_at IS NULL)
