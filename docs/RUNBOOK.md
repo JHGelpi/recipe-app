@@ -143,6 +143,25 @@ Both emails are branded (FR-46), and the logo loads from `https://dishkept.gelte
 
 If the logo is missing, open its address in a browser. It should load without signing in.
 
+### Sign-in email limits
+
+GoTrue counts sign-in emails for the whole site, not per person (issue #61). If the budget runs out, nobody can get a code until the hour rolls over, and the app says "Could not send a code". Production sets these in `docker-compose.prod.yml`:
+
+| Limit | Production | Setting |
+|---|---|---|
+| Sign-in emails per hour, whole site | 60 | `AUTH_RATE_LIMIT_EMAIL` |
+| Code requests per address, per 5 minutes (after a burst of 30) | 2 | `AUTH_RATE_LIMIT_OTP` |
+| Code checks and token refreshes per address, per 5 minutes | 10 | `AUTH_RATE_LIMIT` |
+| Emails to one person | 1 a minute | `AUTH_EMAIL_MAX_FREQUENCY` |
+
+One address can make at most 54 code requests in its first hour and 24 an hour after that, so it can't use up the 60 on its own. Many addresses together still can; the Cloudflare rule in issue #72 is the answer to that.
+
+**Zoho's limit must stay above the budget.** Zoho caps how many emails the `noreply@geltech.dev` mailbox may send per hour and per day, and that cap is also shared by the whole site. Check it in the Zoho Mail admin console for your plan. If it's below 60 an hour, or below about 1,500 a day, lower `AUTH_RATE_LIMIT_EMAIL` to match, so GoTrue refuses before Zoho blocks the mailbox. Backup alerts go through the same mailbox.
+
+To change a limit, add its line to the `vault_prod_env: |` block as in [In-app feedback](#in-app-feedback), step 2, then run Ansible as in [Rotating secrets](#rotating-secrets). `pnpm test:prod-config` expects the defaults above, so change it too.
+
+**If nobody can sign in:** `pnpm prod:logs auth | grep over_email_send_rate_limit` shows the budget running out. The count resets within the hour.
+
 ### Dependency updates
 
 Dependabot opens pull requests on Mondays (ADR-0024): one grouped PR per ecosystem for minor and patch updates, and one PR for each major update. Nothing reaches production until you deploy.
