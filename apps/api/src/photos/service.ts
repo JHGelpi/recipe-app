@@ -3,7 +3,8 @@ import type { AsClaims, AsUser } from '../db/asUser';
 import { jpegInfo } from './jpeg';
 import type { PhotoStore } from './store';
 
-export type PutOutcome = 'stored' | 'missing' | 'gone' | 'forbidden' | 'not_jpeg' | 'wrong_size';
+export type PutOutcome =
+  'stored' | 'missing' | 'gone' | 'forbidden' | 'not_jpeg' | 'wrong_size' | 'storage_full';
 export type PhotoService = {
   put(claims: TokenClaims, id: string, bytes: Uint8Array): Promise<PutOutcome>;
   get(token: string, id: string): Promise<Uint8Array | null>;
@@ -28,6 +29,8 @@ export function createPhotoService(deps: {
   asClaims: AsClaims;
   asUser: AsUser;
   store: PhotoStore;
+  /** Issue #67: the photo files a household may keep, in bytes. */
+  quotaBytes: number;
 }): PhotoService {
   return {
     async put(claims, id, bytes) {
@@ -42,11 +45,22 @@ export function createPhotoService(deps: {
         // Dismissed while uploading: the phone stops retrying on 410.
         if (row.deleted) return 'gone';
         if (row.width !== info.width || row.height !== info.height) return 'wrong_size';
+        // Issue #67: the household's uploaded files, by the sizes recorded
+        // below, may not pass the quota. Locked so two uploads at once cannot
+        // both fit in the last of it.
+        await tx`select pg_advisory_xact_lock(hashtext(${`photos:${row.household_id}`}))`;
+        const [usage] = await tx<{ used: string }[]>`
+          select coalesce(sum(bytes), 0) as used from public.photos
+          where household_id = ${row.household_id} and uploaded_at is not null
+            and deleted_at is null and id <> ${id}`;
+        if (Number(usage?.used ?? 0) + bytes.byteLength > deps.quotaBytes) return 'storage_full';
         // RLS checks the member's live role here (rule 4): a demoted member
         // updates nothing, and no file is written. A second upload keeps the
-        // first stamp (coalesce), which the uploaded_at guard allows.
+        // first stamp (coalesce), which the uploaded_at guard allows. The size
+        // is the file's own, not the one the phone declared.
         const stamped = await tx`
-          update public.photos set uploaded_at = coalesce(uploaded_at, now())
+          update public.photos
+          set uploaded_at = coalesce(uploaded_at, now()), bytes = ${bytes.byteLength}
           where id = ${id} returning id`;
         if (stamped.length === 0) return 'forbidden';
         await deps.store.put(row.household_id, id, bytes);

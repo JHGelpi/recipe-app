@@ -136,6 +136,11 @@ services:
       LLM_PRICE_OUTPUT_PER_MTOK_USD: ${LLM_PRICE_OUTPUT_PER_MTOK_USD:-10}
       AI_MONTHLY_CAP_USD: ${AI_MONTHLY_CAP_USD:-2}
       AI_GLOBAL_MONTHLY_CAP_USD: ${AI_GLOBAL_MONTHLY_CAP_USD:-10}
+      # Issue #67: per person, and each household's photo storage.
+      API_PARSES_PER_HOUR: ${API_PARSES_PER_HOUR:-30}
+      API_UPLOADS_PER_MINUTE: ${API_UPLOADS_PER_MINUTE:-120}
+      API_PHOTOS_PER_HOUR: ${API_PHOTOS_PER_HOUR:-200}
+      PHOTO_QUOTA_MB: ${PHOTO_QUOTA_MB:-2048}
       # FR-45: in-app feedback is filed as GitHub issues. A fine-grained token
       # scoped to Issues (read and write) on this repository only. Empty: the
       # app says feedback isn't set up.

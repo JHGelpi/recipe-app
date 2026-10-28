@@ -13,6 +13,10 @@ export type Config = {
   photosDir: string;
   /** FR-45: where feedback is filed; null until a token is set. */
   github: GitHubConfig | null;
+  /** Issue #67: per person, on the signed-in routes that fetch pages or write files. */
+  limits: { parsesPerHour: number; uploadsPerMinute: number; photosPerHour: number };
+  /** Issue #67: the photo files a household may keep, in bytes. */
+  photoQuotaBytes: number;
 };
 
 function required(env: NodeJS.ProcessEnv, name: string): string {
@@ -63,6 +67,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
           apiUrl: (env.GITHUB_API_URL || 'https://api.github.com').replace(/\/+$/, ''),
         }
       : null,
+    limits: {
+      parsesPerHour: amount(env, 'API_PARSES_PER_HOUR', 30),
+      uploadsPerMinute: amount(env, 'API_UPLOADS_PER_MINUTE', 120),
+      photosPerHour: amount(env, 'API_PHOTOS_PER_HOUR', 200),
+    },
+    photoQuotaBytes: amount(env, 'PHOTO_QUOTA_MB', 2048) * 1024 * 1024,
   };
 }
 

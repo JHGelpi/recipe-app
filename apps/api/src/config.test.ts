@@ -18,6 +18,21 @@ describe('loadConfig', () => {
     expect(config.fetchAllowHosts).toEqual([]);
   });
 
+  it('defaults the per-person limits and the photo quota (#67), and reads overrides', () => {
+    expect(loadConfig(env).limits).toEqual({
+      parsesPerHour: 30,
+      uploadsPerMinute: 120,
+      photosPerHour: 200,
+    });
+    expect(loadConfig(env).photoQuotaBytes).toBe(2048 * 1024 * 1024);
+    const config = loadConfig({ ...env, API_PARSES_PER_HOUR: '5', PHOTO_QUOTA_MB: '1' });
+    expect(config.limits.parsesPerHour).toBe(5);
+    expect(config.photoQuotaBytes).toBe(1024 * 1024);
+    expect(() => loadConfig({ ...env, API_PHOTOS_PER_HOUR: 'many' })).toThrow(
+      'API_PHOTOS_PER_HOUR',
+    );
+  });
+
   it('reads the cap, prices, base URL and test hosts', () => {
     const config = loadConfig({
       ...env,

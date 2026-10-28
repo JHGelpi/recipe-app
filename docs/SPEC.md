@@ -70,7 +70,7 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 | ID | Requirement | Pri |
 |---|---|---|
 | FR-1 | Sign up / sign in with an email one-time code (8 digits, valid for 10 minutes; the email and the sign-in screen say so). Sign-up is limited to allowed addresses and invited people (ADR-0018) | M |
-| FR-2 | Creating an account creates a household; creator becomes Admin | M |
+| FR-2 | Creating an account creates a household named "My household" (nothing from the email, since the name travels on share links; #66); creator becomes Admin | M |
 | FR-3 | Admin invites people into the household by text or email link *(built in sub-project 6)* | M |
 | FR-4 | Roles: Admin, Member, Viewer with permissions per §2 | M |
 | FR-5 | Admin can change roles and remove members *(built in sub-project 6)* | M |
@@ -171,6 +171,7 @@ Admins and Members log and edit; Viewers read the diary (rule 4). Every entry be
 | NFR-11 | Accessibility | Supports OS dynamic text size, VoiceOver/TalkBack, WCAG AA contrast in light and dark themes; the theme follows the device setting or the person's choice (ADR-0020). |
 | NFR-12 | Store compliance | Native builds only: in-app account deletion; Sign in with Apple offered on iOS if other social sign-in is offered. |
 | NFR-13 | Attribution | Imported web recipes retain source URL and author attribution. |
+| NFR-14 | Abuse limits | Per person: 30 import reads an hour, 120 upload batches a minute, 200 photo uploads an hour; each household keeps at most 2 GB of photos. The app waits and retries over a limit (#67, ADR-0028). |
 
 ## 7. Open questions
 

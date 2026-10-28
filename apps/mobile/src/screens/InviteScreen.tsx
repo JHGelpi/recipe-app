@@ -1,4 +1,5 @@
 import { usePowerSync } from '@powersync/react';
+import { householdPhrase } from '@recipe-app/domain';
 import { Link, router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator } from 'react-native';
@@ -102,7 +103,7 @@ function SignedInInvite({ code }: { code: string }) {
     router.replace('/');
   }
 
-  const name = preview?.household_name ?? 'household';
+  const name = householdPhrase(preview?.household_name, 'the household');
   const blocked = preview?.blocker === 'only_admin';
   return (
     <Screen back={{ href: '/', label: 'All recipes' }}>
@@ -110,12 +111,12 @@ function SignedInInvite({ code }: { code: string }) {
       {preview?.status === 'ok' ? (
         <Card>
           <Text variant="h2">
-            Join the {name} as a {ROLE_LABEL[preview.role ?? 'member']}
+            Join {name} as a {ROLE_LABEL[preview.role ?? 'member']}
           </Text>
           {preview.moving_recipes > 0 ? (
             <Text tone="muted">
               Your {preview.moving_recipes} {preview.moving_recipes === 1 ? 'recipe' : 'recipes'}{' '}
-              will move to the {name}
+              will move to {name}
             </Text>
           ) : null}
           {blocked ? (
@@ -133,7 +134,7 @@ function SignedInInvite({ code }: { code: string }) {
           ) : null}
         </Card>
       ) : null}
-      {preview?.status === 'already_member' ? <Text>You're already in the {name}</Text> : null}
+      {preview?.status === 'already_member' ? <Text>You're already in {name}</Text> : null}
       {preview && STATUS_TEXT[preview.status] ? (
         <Banner tone="danger" role="alert">
           {STATUS_TEXT[preview.status]}

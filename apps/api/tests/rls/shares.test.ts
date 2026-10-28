@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { DEFAULT_HOUSEHOLD_NAME } from '@recipe-app/domain';
 import { describe, expect, it } from 'vitest';
 import { SEED, signInAs, signInFresh, type Actor } from '../../../../test-support/auth';
 import { adminSql, as, refusalCode } from '../helpers/db';
@@ -145,6 +146,27 @@ describe('shares', () => {
     expect(await outcome(as(viewer, (tx) => tx`select * from public.save_share(${code})`))).toBe(
       'forbidden',
     );
+  });
+
+  it('a copy from a household with the default name says so without the name (#66)', async () => {
+    const owner = await fresh();
+    const saver = await fresh();
+    const recipeId = await recipe(owner);
+    const [row] = await as(
+      owner,
+      (tx) => tx<{ token: string }[]>`
+      select token from public.create_share(${randomUUID()}, ${recipeId}, ${tx.json({
+        ...snapshot('Shared soup'),
+        household_name: DEFAULT_HOUSEHOLD_NAME,
+      })})`,
+    );
+    const [saved] = await as(
+      saver,
+      (tx) => tx<{ recipe_id: string }[]>`select * from public.save_share(${row!.token})`,
+    );
+    const [copy] = await adminSql<{ source_text: string }[]>`
+      select source_text from public.recipes where id = ${saved!.recipe_id}`;
+    expect(copy?.source_text).toBe('Shared by another Dishkept household');
   });
 
   it('a caller with no claims cannot stop anyone’s links', async () => {

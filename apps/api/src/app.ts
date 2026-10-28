@@ -15,6 +15,7 @@ import { isGuid } from './ids';
 import type { ImportService } from './import/service';
 import type { PhotoService } from './photos/service';
 import type { SubstitutionService } from './substitutions/service';
+import type { RateLimiter } from './rateLimit';
 import { applyOps, parseBody } from './upload/ops';
 
 export type AppDeps = {
@@ -35,9 +36,15 @@ export type AppDeps = {
     ip: (key: string) => boolean;
     all: (key: string) => boolean;
   };
+  /**
+   * Issue #67: per person, on the signed-in routes that fetch pages or write
+   * files. A refused request gets 429; the app backs off and retries.
+   */
+  userLimits: { parse: RateLimiter; upload: RateLimiter; photos: RateLimiter };
 };
 
 const MAX_BODY_BYTES = 1024 * 1024;
+const LIMITED = { error: 'rate_limited' } as const;
 
 export function createApp(deps: AppDeps): Hono {
   const app = new Hono();
@@ -60,7 +67,8 @@ export function createApp(deps: AppDeps): Hono {
     const token = bearer(c.req.header('Authorization'));
     if (!token) return c.json({ error: 'unauthorized' }, 401);
     // Checked before the body is read, so a bad token is always a 401.
-    await deps.verify(token);
+    const claims = await deps.verify(token);
+    if (!deps.userLimits.upload(claims.sub)) return c.json(LIMITED, 429);
 
     // The proxy refuses anything far larger before it reaches this process;
     // this is the exact limit.
@@ -134,7 +142,14 @@ export function createApp(deps: AppDeps): Hono {
     if (!token) return c.json({ error: 'unauthorized' }, 401);
     const id = c.req.param('id');
     if (!isGuid(id)) return c.json({ error: 'not_found' }, 404);
-    const { outcome, claims } = await deps.imports.claim(token, id);
+    // Counted before the page is fetched; given back unless a parse starts.
+    const who = (await deps.verify(token)).sub;
+    if (!deps.userLimits.parse(who)) return c.json(LIMITED, 429);
+    const { outcome, claims } = await deps.imports.claim(token, id).catch((error: unknown) => {
+      deps.userLimits.parse.refund(who);
+      throw error;
+    });
+    if (outcome.kind !== 'claimed') deps.userLimits.parse.refund(who);
     if (outcome.kind === 'missing') return c.json({ error: 'not_found' }, 404);
     if (outcome.kind === 'forbidden') return c.json({ error: 'forbidden' }, 403);
     if (outcome.kind === 'photos_pending') return c.json({ error: 'photos_pending' }, 409);
@@ -158,6 +173,7 @@ export function createApp(deps: AppDeps): Hono {
     forbidden: 403,
     not_jpeg: 415,
     wrong_size: 422,
+    storage_full: 507,
   } as const;
 
   // FR-7, FR-15: a photo's file. The row must already be visible to the user.
@@ -167,6 +183,7 @@ export function createApp(deps: AppDeps): Hono {
     const claims = await deps.verify(token);
     const id = c.req.param('id');
     if (!isGuid(id)) return c.json({ error: 'not_found' }, 404);
+    if (!deps.userLimits.photos(claims.sub)) return c.json(LIMITED, 429);
     if (Number(c.req.header('Content-Length') ?? 0) > PHOTO_LIMITS.bytes) {
       return c.json({ error: 'too_large' }, 413);
     }

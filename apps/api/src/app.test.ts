@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { createApp, type AppDeps } from './app';
 import { UnauthorizedError } from './auth/verify';
 
+const allowAll = () => Object.assign(() => true, { refund: vi.fn() });
+
 function deps(overrides: Partial<AppDeps> = {}): AppDeps {
   return {
     verify: vi.fn().mockResolvedValue({ sub: 'user-1' }),
@@ -42,6 +44,7 @@ function deps(overrides: Partial<AppDeps> = {}): AppDeps {
     },
     feedback: { send: vi.fn() },
     limits: { email: () => true, code: () => true, ip: () => true, all: () => true },
+    userLimits: { parse: allowAll(), upload: allowAll(), photos: allowAll() },
     photos: {
       put: vi.fn().mockResolvedValue('stored'),
       get: vi.fn().mockResolvedValue(null),
@@ -153,6 +156,66 @@ describe('POST /api/upload', () => {
         .mockRejectedValue(new Error('connection lost')) as unknown as AppDeps['asUser'],
     });
     expect((await post(createApp(d), '{"ops":[]}')).status).toBe(500);
+  });
+});
+
+describe('per-person limits (#67)', () => {
+  const refuse = () => Object.assign(() => false, { refund: vi.fn() });
+  const counting = () =>
+    Object.assign(
+      vi.fn(() => true),
+      { refund: vi.fn() },
+    );
+  const parse = (app: ReturnType<typeof createApp>) =>
+    app.request(`/api/imports/${ID}/parse`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer jwt' },
+    });
+
+  it('answers 429 to an upload over the limit, before applying anything', async () => {
+    const d = deps({ userLimits: { parse: allowAll(), upload: refuse(), photos: allowAll() } });
+    const response = await post(createApp(d), '{"ops":[]}');
+    expect(response.status).toBe(429);
+    expect(await response.json()).toEqual({ error: 'rate_limited' });
+    expect(d.asUser).not.toHaveBeenCalled();
+  });
+
+  it('answers 429 to a parse over the limit, before claiming or fetching anything', async () => {
+    const d = deps({ userLimits: { parse: refuse(), upload: allowAll(), photos: allowAll() } });
+    expect((await parse(createApp(d))).status).toBe(429);
+    expect(d.imports.claim).not.toHaveBeenCalled();
+  });
+
+  it('counts a parse that starts, per person, and gives back one that does not', async () => {
+    const limit = counting();
+    const d = deps({ userLimits: { parse: limit, upload: allowAll(), photos: allowAll() } });
+    expect((await parse(createApp(d))).status).toBe(404);
+    expect(limit).toHaveBeenCalledWith('user-1');
+    expect(limit.refund).toHaveBeenCalledWith('user-1');
+    vi.mocked(d.imports.claim).mockResolvedValue({
+      outcome: { kind: 'claimed', row: {} },
+      claims: { sub: 'user-1' },
+    } as never);
+    limit.refund.mockClear();
+    expect((await parse(createApp(d))).status).toBe(202);
+    expect(limit.refund).not.toHaveBeenCalled();
+  });
+
+  it('answers 429 to a photo over the limit without storing it, and 507 when storage is full', async () => {
+    const jpeg = () =>
+      createApp(d).request(`/api/photos/${ID}`, {
+        method: 'PUT',
+        headers: { Authorization: 'Bearer jwt', 'Content-Type': 'image/jpeg' },
+        body: new Uint8Array([1, 2, 3]),
+      });
+    let d = deps({ userLimits: { parse: allowAll(), upload: allowAll(), photos: refuse() } });
+    expect((await jpeg()).status).toBe(429);
+    expect(d.photos.put).not.toHaveBeenCalled();
+    d = deps();
+    vi.mocked(d.photos.put).mockResolvedValue('storage_full');
+    const response = await jpeg();
+    expect(response.status).toBe(507);
+    expect(await response.json()).toEqual({ error: 'storage_full' });
   });
 });
 

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { DEFAULT_HOUSEHOLD_NAME } from '@recipe-app/domain';
 import { describe, expect, it } from 'vitest';
 import { signInFresh, type Actor } from '../../../../test-support/auth';
 import { adminSql, as } from '../helpers/db';
@@ -238,6 +239,9 @@ describe('roles, removing and leaving', () => {
     const after = await membership(member);
     expect(after.household_id).not.toBe(admin.householdId);
     expect(after.role).toBe('admin');
+    const [home] = await adminSql<{ name: string }[]>`
+      select name from public.households where id = ${after.household_id}`;
+    expect(home?.name).toBe(DEFAULT_HOUSEHOLD_NAME);
   });
 
   it('only Admins act, only on their own household, and never on themselves by removal', async () => {

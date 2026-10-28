@@ -45,7 +45,8 @@ test('a link shows the recipe signed out, and saves a copy after sign-in (FR-27)
   page,
   browser,
 }) => {
-  await signIn(page, freshEmail('share-owner'));
+  const owner = freshEmail('share-owner');
+  await signIn(page, owner);
   const title = unique('Linked soup');
   await soup(page, title);
   await page.getByRole('button', { name: 'Share' }).click();
@@ -55,7 +56,9 @@ test('a link shows the recipe signed out, and saves a copy after sign-in (FR-27)
   const visitor = await (await browser.newContext()).newPage();
   await visitor.goto(url);
   await expect(visitor.getByRole('heading', { name: title })).toBeVisible();
-  await expect(visitor.getByText(/^Shared from the /)).toBeVisible();
+  // Nothing on the public page comes from the sender's email (#66).
+  await expect(visitor.getByText('Shared from another Dishkept household')).toBeVisible();
+  await expect(visitor.getByText(owner.split('@')[0]!, { exact: false })).toHaveCount(0);
   await visitor.getByRole('button', { name: 'Save to my recipes' }).click();
   await expect(visitor.getByText(`Sign in or create an account to save ${title}`)).toBeVisible();
   // Not signIn(): after sign-in the visitor lands back on the shared page, not the list.
@@ -67,7 +70,7 @@ test('a link shows the recipe signed out, and saves a copy after sign-in (FR-27)
   await expect(visitor.getByRole('heading', { name: title, level: 1 })).toBeVisible();
   // The copy keeps where it came from as its original text (FR-12).
   await visitor.getByRole('button', { name: 'Original text ▸' }).click();
-  await expect(visitor.getByText(/^Shared by the /)).toBeVisible();
+  await expect(visitor.getByText('Shared by another Dishkept household')).toBeVisible();
 
   await page.getByRole('button', { name: 'Stop sharing' }).click();
   await visitor.goto(url);
