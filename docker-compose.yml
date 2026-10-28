@@ -189,9 +189,11 @@ services:
       CORS_DEV_ORIGIN: ${CORS_DEV_ORIGIN:-http://cors-disabled.invalid}
       # Who may set X-Forwarded-*: only this host in dev; the tunnel's network in production.
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-127.0.0.1/32}
+    # This machine only, unless .env opens a port (issue #70): set
+    # LAN_HTTPS_BIND=0.0.0.0 while testing on a phone.
     ports:
-      - '${PROXY_PORT:-8080}:8080'
-      - '${LAN_HTTPS_PORT:-8443}:8443'
+      - '${PROXY_BIND:-127.0.0.1}:${PROXY_PORT:-8080}:8080'
+      - '${LAN_HTTPS_BIND:-127.0.0.1}:${LAN_HTTPS_PORT:-8443}:8443'
     volumes:
       # A bind mount, not a named volume, so `down -v` (db:reset) keeps the
       # private CA and phones that trust it.

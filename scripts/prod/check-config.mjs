@@ -1,5 +1,6 @@
 // CI: the production overlay publishes no ports, keeps the tunnel out of drills,
-// and keeps one address from using up the sign-in email budget.
+// and keeps one address from using up the sign-in email budget. The dev stack,
+// with .env.example's defaults, listens on this machine only (issue #70).
 import { execFileSync } from 'node:child_process';
 import { composeArgs, DRILL_PROFILES, PROD_PROFILES } from './lib.mjs';
 
@@ -51,9 +52,32 @@ for (const [name, value] of Object.entries(expected)) {
     throw new Error(`Production auth ${name} is ${auth[name]}, expected ${value}`);
   }
 }
+// Issue #70: by default the dev stack is reachable only from this machine.
+const dev = JSON.parse(
+  execFileSync(
+    'docker',
+    [
+      'compose',
+      '-f',
+      'docker-compose.yml',
+      '--env-file',
+      '.env.example',
+      '--profile',
+      'dev',
+      'config',
+      '--format',
+      'json',
+    ],
+    { encoding: 'utf8', env: { ...process.env, ...filler } },
+  ),
+);
+const open = Object.entries(dev.services).flatMap(([name, s]) =>
+  (s.ports ?? []).filter((p) => p.host_ip !== '127.0.0.1').map((p) => `${name}:${p.published}`),
+);
+if (open.length) throw new Error(`The dev stack listens beyond this machine: ${open.join(', ')}`);
 const drill = config(DRILL_PROFILES).services;
 if (drill.cloudflared) throw new Error('A drill would start the tunnel');
 if (drill.backup) throw new Error('A drill would start the nightly backup loop');
 console.log(
-  'Production compose config: no published ports; tunnel and backup loop only in production; sign-in email limits set.',
+  'Production compose config: no published ports; tunnel and backup loop only in production; sign-in email limits set. Dev ports on 127.0.0.1 by default.',
 );
