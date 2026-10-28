@@ -1,5 +1,11 @@
 import { usePowerSync } from '@powersync/react';
-import { sourceLine, timesLine, type DuplicateMatch, type ShareSnapshot } from '@recipe-app/domain';
+import {
+  householdPhrase,
+  sourceLine,
+  timesLine,
+  type DuplicateMatch,
+  type ShareSnapshot,
+} from '@recipe-app/domain';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, View } from 'react-native';
@@ -140,7 +146,9 @@ export function SharedRecipeScreen({ code }: { code: string }) {
         <Text role="heading" aria-level={1} variant="h1">
           {recipe.title}
         </Text>
-        <Text tone="muted">Shared from the {recipe.household_name}</Text>
+        <Text tone="muted">
+          Shared from {householdPhrase(recipe.household_name, 'another Dishkept household')}
+        </Text>
       </View>
       {share.hasPhoto ? (
         <Image

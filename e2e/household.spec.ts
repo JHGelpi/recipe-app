@@ -27,9 +27,11 @@ test('an invited person joins, is made a Viewer, and is removed (FR-3, FR-4, FR-
   const joinerEmail = freshEmail('hh-joiner');
   const joiner = await session(browser, joinerEmail);
   await joiner.goto(link);
-  await expect(joiner.getByText(/^Join the .+ as a Member$/)).toBeVisible();
+  await expect(joiner.getByText('Join the household as a Member', { exact: true })).toBeVisible();
   await joiner.getByRole('button', { name: 'Join' }).click();
-  await expect(joiner.getByText(/^You've joined the /)).toBeVisible({ timeout: 30_000 });
+  await expect(joiner.getByText("You've joined the household", { exact: true })).toBeVisible({
+    timeout: 30_000,
+  });
   await expect(await findRecipe(joiner, title)).toBeVisible({ timeout: 30_000 });
 
   await page.reload();
@@ -39,7 +41,9 @@ test('an invited person joins, is made a Viewer, and is removed (FR-3, FR-4, FR-
   await expect(joiner.getByRole('button', { name: 'Edit' })).toHaveCount(0, { timeout: 60_000 });
 
   await page.getByRole('button', { name: `Remove ${joinerEmail}` }).click();
-  await expect(joiner.getByText(/^You were moved to the /)).toBeVisible({ timeout: 60_000 });
+  await expect(joiner.getByText('You were moved to a new household', { exact: true })).toBeVisible({
+    timeout: 60_000,
+  });
   await expect(joiner.getByText('No recipes yet')).toBeVisible();
   await joiner.context().close();
 });
@@ -53,15 +57,21 @@ test('a person with recipes brings them, then leaves (FR-3, FR-5)', async ({ pag
   const mine = unique('Brought pie');
   await addRecipe(joiner, mine);
   await joiner.goto(link);
-  await expect(joiner.getByText('Your 1 recipe will move to the', { exact: false })).toBeVisible();
+  await expect(
+    joiner.getByText('Your 1 recipe will move to the household', { exact: true }),
+  ).toBeVisible();
   await joiner.getByRole('button', { name: 'Join' }).click();
-  await expect(joiner.getByText(/^You've joined the /)).toBeVisible({ timeout: 30_000 });
+  await expect(joiner.getByText("You've joined the household", { exact: true })).toBeVisible({
+    timeout: 30_000,
+  });
   await page.getByRole('link', { name: 'All recipes' }).click();
   await expect(await findRecipe(page, mine)).toBeVisible({ timeout: 30_000 });
 
   await joiner.getByRole('link', { name: 'Household' }).click();
   await joiner.getByRole('button', { name: 'Leave household' }).click();
-  await expect(joiner.getByText(/^You were moved to the /)).toBeVisible({ timeout: 60_000 });
+  await expect(joiner.getByText('You were moved to a new household', { exact: true })).toBeVisible({
+    timeout: 60_000,
+  });
   await expect(joiner.getByText('No recipes yet')).toBeVisible();
   await joiner.context().close();
 });
@@ -76,7 +86,9 @@ test('a used link says so, and leaves Pending for Accepted (FR-3, FR-42)', async
   const first = await session(browser, firstEmail);
   await first.goto(link);
   await first.getByRole('button', { name: 'Join' }).click();
-  await expect(first.getByText(/^You've joined the /)).toBeVisible({ timeout: 30_000 });
+  await expect(first.getByText("You've joined the household", { exact: true })).toBeVisible({
+    timeout: 30_000,
+  });
   const second = await session(browser, freshEmail('hh-second'));
   await second.goto(link);
   await expect(
@@ -129,7 +141,9 @@ test('an invite opened signed out resumes after sign-in, and a double tap on Joi
     if (request.url().endsWith('/api/invites/accept')) accepts += 1;
   });
   await join.dblclick();
-  await expect(guest.getByText(/^You've joined the /)).toBeVisible({ timeout: 30_000 });
+  await expect(guest.getByText("You've joined the household", { exact: true })).toBeVisible({
+    timeout: 30_000,
+  });
   expect(accepts).toBe(1);
   await guest.context().close();
 });

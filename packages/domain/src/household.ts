@@ -4,6 +4,21 @@ import { z } from 'zod';
 export const HOUSEHOLD_ROLES = ['admin', 'member', 'viewer'] as const;
 export type HouseholdRoleName = (typeof HOUSEHOLD_ROLES)[number];
 
+/**
+ * A new household's name (issue #66). Nothing derived from an email address:
+ * the name travels on share links to people outside the household. The
+ * database functions that create households use the same literal.
+ */
+export const DEFAULT_HOUSEHOLD_NAME = 'My household';
+
+/**
+ * "the Gelpi household" for a chosen name. The default name, or none, gives
+ * `otherwise`, since "the My household" reads as the reader's own.
+ */
+export function householdPhrase(name: string | null | undefined, otherwise: string): string {
+  return name && name !== DEFAULT_HOUSEHOLD_NAME ? `the ${name}` : otherwise;
+}
+
 /** FR-3: invites (spec §3). */
 export const INVITE_DAYS = 7;
 export const MAX_PENDING_INVITES = 20;
