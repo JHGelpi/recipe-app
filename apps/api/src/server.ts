@@ -31,6 +31,7 @@ const photos = createPhotoService({
   asClaims: createAsClaims(sql),
   asUser: createAsUser(sql, verify),
   store: photoStore,
+  quotaBytes: config.photoQuotaBytes,
 });
 const gateway = createGateway(config.ai);
 const imports = createImportService({
@@ -76,6 +77,12 @@ const limits = {
   ip: createRateLimiter({ limit: 30, windowMs: 3_600_000 }),
   all: createRateLimiter({ limit: 300, windowMs: 3_600_000 }),
 };
+// Issue #67: per person, on the routes that fetch pages or write files.
+const userLimits = {
+  parse: createRateLimiter({ limit: config.limits.parsesPerHour, windowMs: 3_600_000 }),
+  upload: createRateLimiter({ limit: config.limits.uploadsPerMinute, windowMs: 60_000 }),
+  photos: createRateLimiter({ limit: config.limits.photosPerHour, windowMs: 3_600_000 }),
+};
 const app = createApp({
   verify,
   asUser: createAsUser(sql, verify),
@@ -88,6 +95,7 @@ const app = createApp({
   signup,
   feedback,
   limits,
+  userLimits,
 });
 
 const server = serve({ fetch: app.fetch, port: config.port, hostname: '0.0.0.0' });

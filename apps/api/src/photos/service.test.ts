@@ -12,11 +12,16 @@ function setup(
   row: { household_id: string; width: number; height: number; deleted: boolean } | null,
   // False: RLS refuses the update (the member's live role can no longer write).
   updated = true,
+  // The household's other uploaded files, and its quota (#67).
+  used = 0,
+  quotaBytes = 1_000_000,
 ) {
   const statements: string[] = [];
   const tx = vi.fn(async (strings: TemplateStringsArray) => {
     statements.push(strings.join('?'));
     const text = strings.join('');
+    if (text.includes('sum(bytes)')) return [{ used: String(used) }];
+    if (text.includes('pg_advisory_xact_lock')) return [];
     if (text.includes('update')) return updated ? [{ id: ID }] : [];
     return text.includes('select') && row ? [row] : [];
   });
@@ -34,6 +39,7 @@ function setup(
     asClaims: run as unknown as AsClaims,
     asUser: run as unknown as AsUser,
     store,
+    quotaBytes,
   });
   return { service, store, statements };
 }
@@ -49,6 +55,19 @@ describe('photo service', () => {
     expect(await service.put(member, ID, syntheticJpeg(10, 20))).toBe('stored');
     expect(store.put).toHaveBeenCalledWith(H, ID, expect.any(Uint8Array));
     expect(statements.at(-1)).toContain('uploaded_at = coalesce(uploaded_at, now())');
+    // The size recorded is the file's own, which the quota counts.
+    expect(statements.at(-1)).toContain('bytes = ?');
+  });
+
+  it("refuses a file that would take the household past its quota, under the household's lock (#67)", async () => {
+    const jpeg = syntheticJpeg(10, 20);
+    const row = { household_id: H, width: 10, height: 20, deleted: false };
+    const full = setup(row, true, 1_000 - jpeg.byteLength + 1, 1_000);
+    expect(await full.service.put(member, ID, jpeg)).toBe('storage_full');
+    expect(full.store.put).not.toHaveBeenCalled();
+    expect(full.statements.some((s) => s.includes('pg_advisory_xact_lock'))).toBe(true);
+    const fits = setup(row, true, 1_000 - jpeg.byteLength, 1_000);
+    expect(await fits.service.put(member, ID, jpeg)).toBe('stored');
   });
 
   it('writes no file when the database says the member can no longer write (spec §3)', async () => {

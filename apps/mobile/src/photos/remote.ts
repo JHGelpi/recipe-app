@@ -3,11 +3,13 @@ import type {
   AttachmentRecord,
   RemoteStorageAdapter,
 } from '@powersync/web';
+import { setPhotoStorageFull } from './storageFull';
 
 let generation = 0;
 /** Sign-out moves this on; a download started before it is dropped, not written. */
 export function bumpPhotoGeneration(): void {
   generation += 1;
+  setPhotoStorageFull(false);
 }
 
 /** The server will never take this file (refused, too big, or dismissed meanwhile). */
@@ -35,7 +37,9 @@ export function createRemoteStorage(deps: RemoteDeps): RemoteStorageAdapter {
     });
     if (FINAL.has(response.status))
       throw new PermanentPhotoError(`photo ${id}: ${response.status}`);
-    // 401 (token refreshing), 404 (row not uploaded yet), 5xx: the queue retries.
+    // 401 (token refreshing), 404 (row not uploaded yet), 429 (too many at
+    // once), 507 (storage full, #67), 5xx: the queue retries.
+    if (response.status === 507) setPhotoStorageFull(true);
     if (!response.ok) throw new Error(`photo ${id}: ${response.status}`);
     return response;
   }
@@ -46,6 +50,7 @@ export function createRemoteStorage(deps: RemoteDeps): RemoteStorageAdapter {
         headers: { 'Content-Type': 'image/jpeg' },
         body: data,
       });
+      setPhotoStorageFull(false);
     },
     async downloadFile(attachment: AttachmentRecord) {
       const started = generation;

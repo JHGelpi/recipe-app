@@ -235,6 +235,23 @@ To change either, add the line to the `vault_prod_env: |` block as in [In-app fe
 
 To see this month's total, run `select public.ai_month_spent_all() / 1e6 as usd` as the `postgres` login.
 
+## Per-person limits and photo storage
+
+The signed-in routes that fetch pages or write files are limited per person (issue #67, ADR-0028). Over a limit the API answers 429, and the app waits and tries again: an import stays waiting, changes stay queued, and photos keep retrying.
+
+| Variable | Default | What it limits |
+|---|---|---|
+| `API_PARSES_PER_HOUR` | 30 | Imports read (each URL import fetches the page) |
+| `API_UPLOADS_PER_MINUTE` | 120 | Batches of synced changes |
+| `API_PHOTOS_PER_HOUR` | 200 | Photo files uploaded |
+| `PHOTO_QUOTA_MB` | 2048 | Each household's uploaded photos, by their real size |
+
+When a household's photos reach the quota, the API answers 507 and the status line under the recipe list says "Photo storage is full". Photos wait on the phone and go up once trash is purged or the quota is raised. The limits are counted in the API's memory, so a restart starts them afresh.
+
+To change one, add the line to the `vault_prod_env: |` block as in [In-app feedback](#in-app-feedback), step 2, then run Ansible as in [Rotating secrets](#rotating-secrets). Without a line, production uses the default.
+
+To see a household's usage, run `select household_id, sum(bytes) / 1048576 as mb from public.photos where uploaded_at is not null and deleted_at is null group by 1 order by 2 desc` as the `postgres` login.
+
 ## Switching the sender to a geltech.dev mailbox
 
 Once the mailbox exists and its DNS records are in Cloudflare:

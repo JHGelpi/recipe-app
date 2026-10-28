@@ -1,8 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 import { env } from '../../../../test-support/env';
 import { SEED, signInAs, signInFresh, type Actor } from '../../../../test-support/auth';
 import { syntheticJpeg } from '../../../../test-support/jpeg';
+import { createVerifier } from '../../src/auth/verify';
+import { connect, createAsClaims } from '../../src/db/asUser';
+import { createPhotoService } from '../../src/photos/service';
+import type { PhotoStore } from '../../src/photos/store';
 import { adminSql } from '../helpers/db';
 
 const fresh = () =>
@@ -123,5 +127,46 @@ describe('photo files', () => {
     await adminSql`insert into public.photos (id, household_id, kind, import_id, position, media_type, bytes, width, height)
       values (${id}, ${cook.householdId}, 'page', ${importId}, 1, 'image/jpeg', 100, 10, 10)`;
     expect((await getFile(cook, id)).status).toBe(404);
+  });
+});
+
+describe('the photo quota (#67)', () => {
+  const apiSql = connect(env.apiDbUrl);
+  afterAll(() => apiSql.end());
+
+  it('records the file’s real size, whatever the phone declared', async () => {
+    const cook = await fresh();
+    const id = await pageRow(cook);
+    const jpeg = syntheticJpeg(10, 10);
+    expect((await putFile(cook, id, jpeg)).status).toBe(204);
+    const [row] = await adminSql<
+      { bytes: number }[]
+    >`select bytes from public.photos where id = ${id}`;
+    expect(row?.bytes).toBe(jpeg.byteLength);
+  });
+
+  it('refuses a file that would take the household past its quota, as the member under RLS', async () => {
+    const cook = await fresh();
+    const jpeg = syntheticJpeg(10, 10);
+    const store = { put: vi.fn().mockResolvedValue(undefined) } as unknown as PhotoStore;
+    // The API's own service and login, with room for one file and a bit.
+    const service = createPhotoService({
+      asClaims: createAsClaims(apiSql),
+      asUser: (() => {
+        throw new Error('not used');
+      }) as never,
+      store,
+      quotaBytes: jpeg.byteLength + 10,
+    });
+    const claims = await createVerifier({ audience: 'authenticated', jwksUrl: env.jwksUrl })(
+      cook.accessToken,
+    );
+    const first = await pageRow(cook);
+    const second = await pageRow(cook);
+    expect(await service.put(claims, first, jpeg)).toBe('stored');
+    expect(await service.put(claims, second, jpeg)).toBe('storage_full');
+    // A file already counted may be sent again (a retried upload).
+    expect(await service.put(claims, first, jpeg)).toBe('stored');
+    expect(store.put).toHaveBeenCalledTimes(2);
   });
 });
