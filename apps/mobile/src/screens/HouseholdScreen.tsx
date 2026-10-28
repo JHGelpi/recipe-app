@@ -1,4 +1,10 @@
-import { householdPhrase, type HouseholdRoleName, type UnitSystem } from '@recipe-app/domain';
+import {
+  householdPhrase,
+  INVITE_ROLES,
+  type HouseholdRoleName,
+  type InviteRoleName,
+  type UnitSystem,
+} from '@recipe-app/domain';
 import { usePowerSync } from '@powersync/react';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
@@ -56,6 +62,10 @@ const ROLES: [HouseholdRoleName, string][] = [
   ['member', 'Member'],
   ['viewer', 'Viewer'],
 ];
+// Issue #71: invites never make an Admin; promote someone after they join.
+const INVITE_CHIPS = ROLES.filter((entry): entry is [InviteRoleName, string] =>
+  (INVITE_ROLES as readonly string[]).includes(entry[0]),
+);
 const days = (iso: string) => Math.max(0, Math.ceil((Date.parse(iso) - Date.now()) / 86_400_000));
 
 const UNITS_TABS: readonly { value: UnitSystem; label: string }[] = [
@@ -100,7 +110,7 @@ export function HouseholdScreen({ claims }: { claims: Claims }) {
   const [invites, setInvites] = useState<PendingInvite[]>([]);
   const [acceptedInvites, setAcceptedInvites] = useState<AcceptedInvite[]>([]);
   const [acceptedFriends, setAcceptedFriends] = useState<AcceptedInvite[]>([]);
-  const [inviteRole, setInviteRole] = useState<HouseholdRoleName>('member');
+  const [inviteRole, setInviteRole] = useState<InviteRoleName>('member');
   const [shared, setShared] = useState<string | null>(null);
   const [newName, setNewName] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -264,7 +274,7 @@ export function HouseholdScreen({ claims }: { claims: Claims }) {
       {admin && online ? (
         <Card title="Invite someone">
           <View style={{ flexDirection: 'row', gap: space.sm }}>
-            {ROLES.map(([role, text]) => (
+            {INVITE_CHIPS.map(([role, text]) => (
               <Chip
                 key={role}
                 label={text}
@@ -274,6 +284,9 @@ export function HouseholdScreen({ claims }: { claims: Claims }) {
               />
             ))}
           </View>
+          <Text variant="small" tone="muted">
+            To add an Admin, invite them as a Member, then change their role once they join.
+          </Text>
           <Button full icon="share-outline" label="Share invite" onPress={() => void invite()} />
           {shared ? (
             <Text

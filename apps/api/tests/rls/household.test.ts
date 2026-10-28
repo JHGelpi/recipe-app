@@ -27,6 +27,11 @@ async function invite(admin: Actor, role = 'member'): Promise<string> {
 }
 const accept = (actor: Actor, token: string) =>
   as(actor, (tx) => tx`select * from public.accept_invite(${token})`);
+/** Joins as a Member, then is made an Admin: the only way to a second Admin (#71). */
+async function joinAsAdmin(admin: Actor, person: Actor): Promise<void> {
+  await accept(person, await invite(admin));
+  await as(admin, (tx) => tx`select public.set_member_role(${person.userId}, 'admin')`);
+}
 const preview = async (actor: Actor, token: string) =>
   (
     await as(
@@ -41,6 +46,15 @@ const membership = async (actor: Actor) =>
   )[0]!;
 
 describe('invites', () => {
+  it('never for the Admin role, and pending Admin invites were cancelled (#71)', async () => {
+    const admin = await fresh();
+    expect(await outcome(invite(admin, 'admin'))).toBe('forbidden');
+    const [pending] = await adminSql<{ n: number }[]>`
+      select count(*)::int as n from public.invites
+      where role = 'admin' and accepted_at is null and deleted_at is null`;
+    expect(pending?.n).toBe(0);
+  });
+
   it('only an Admin creates one; the code is 43 characters and only its hash is stored', async () => {
     const admin = await fresh();
     const token = await invite(admin);
@@ -279,7 +293,7 @@ describe('roles, removing and leaving', () => {
   it('two Admins demoting each other at once leave one Admin (Review Focus 2)', async () => {
     const one = await fresh();
     const two = await fresh();
-    await accept(two, await invite(one, 'admin'));
+    await joinAsAdmin(one, two);
     const results = await Promise.all([
       outcome(as(one, (tx) => tx`select public.set_member_role(${two.userId}, 'member')`)),
       outcome(as(two, (tx) => tx`select public.set_member_role(${one.userId}, 'member')`)),
@@ -296,7 +310,7 @@ describe('review fixes', () => {
     const a = await fresh();
     const b = await fresh();
     const c = await fresh();
-    await accept(b, await invite(a, 'admin'));
+    await joinAsAdmin(a, b);
     await accept(c, await invite(a, 'member'));
     let blocked: Promise<string> | null = null;
     await adminSql.begin(async (sql) => {
@@ -394,7 +408,8 @@ describe('removed memberships do not count (bug batch §4)', () => {
   // A person who joined and whose membership was then soft-deleted.
   async function ghost(admin: Actor, role = 'admin'): Promise<Actor> {
     const person = await fresh();
-    await accept(person, await invite(admin, role));
+    if (role === 'admin') await joinAsAdmin(admin, person);
+    else await accept(person, await invite(admin, role));
     await adminSql`update public.memberships set deleted_at = now() where user_id = ${person.userId}`;
     return person;
   }

@@ -71,7 +71,7 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 |---|---|---|
 | FR-1 | Sign up / sign in with an email one-time code (8 digits, valid for 10 minutes; the email and the sign-in screen say so). Sign-up is limited to allowed addresses and invited people (ADR-0018) | M |
 | FR-2 | Creating an account creates a household named "My household" (nothing from the email, since the name travels on share links; #66); creator becomes Admin | M |
-| FR-3 | Admin invites people into the household by text or email link *(built in sub-project 6)* | M |
+| FR-3 | Admin invites people into the household by text or email link, as a Member or Viewer; an Admin is made by promotion after joining, since anyone holding a link can accept it (#71) *(built in sub-project 6)* | M |
 | FR-4 | Roles: Admin, Member, Viewer with permissions per §2 | M |
 | FR-5 | Admin can change roles and remove members *(built in sub-project 6)* | M |
 | FR-6 | Any user can invite someone to create their own household. Admins see and can revoke all of the household's friend links; everyone else sees and can revoke only the links they made. Each person may have at most 10 pending friend links *(built in sub-project 6; friend links in the production sub-project; revoking in the bug batch; visibility in #33; cap in #62)* | S |
