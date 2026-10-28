@@ -4,7 +4,7 @@ name: recipe-app
 
 services:
   db:
-    image: postgres:17.11
+    image: postgres:17.11@sha256:31ba9c94a03ada9988f2bb493a22a75eef3a185884533e5cdbcd498ea835b08f
     restart: unless-stopped
     command: ['postgres', '-c', 'wal_level=logical']
     environment:
@@ -30,7 +30,7 @@ services:
       retries: 60
 
   auth:
-    image: supabase/gotrue:v2.197.0
+    image: supabase/gotrue:v2.197.0@sha256:1736a63078f5922b198c4cbe50f80ab9a2d3b54fe8b7b6cfb2e9dc5dbbc12c6b
     restart: unless-stopped
     depends_on:
       db:
@@ -90,7 +90,7 @@ services:
       retries: 60
 
   migrate:
-    image: ghcr.io/amacneil/dbmate:2.37.0
+    image: ghcr.io/amacneil/dbmate:2.37.0@sha256:0101fcc9999596f4a6930e5627296cd91f3bfa225e3e8c1699fc00881e439cc6
     restart: 'no'
     depends_on:
       db:
@@ -151,7 +151,7 @@ services:
       - photos:/data/photos
 
   sync:
-    image: journeyapps/powersync-service:1.27.1
+    image: journeyapps/powersync-service:1.27.1@sha256:4b5b7d70f63c5cb5afdc680f5cdbacdcbc33cbf5f8fb55b001da263d7da75866
     restart: unless-stopped
     command: ['start', '-r', 'unified']
     depends_on:
@@ -242,7 +242,7 @@ services:
       - backups:/backups
 
   mail:
-    image: axllent/mailpit:v1.32.0
+    image: axllent/mailpit:v1.32.0@sha256:0790692be935ea4420d085694f7985b1f692ca6a8771ab0e0bd8ba75ac180498
     profiles: [dev]
     restart: unless-stopped
     ports:

@@ -173,7 +173,11 @@ Dependabot opens pull requests on Mondays (ADR-0024): one grouped PR per ecosyst
 
 Never proposed here: a Postgres major (it needs a data upgrade), a Node major, an OpenTofu provider major (it needs code changes and a `tofu plan`), and Expo SDK upgrades (`npx expo install --fix`). Plan each as its own change.
 
-When the "Dependency audit: high or critical advisories" issue is open, a transitive package has an advisory that no bump fixed. Upgrade the parent, or add a `pnpm.overrides` entry. The next Monday's audit closes the issue once the advisory is gone; to check sooner, run the "Dependency audit" workflow by hand in the Actions tab.
+When the "Dependency audit: high or critical advisories" issue is open, a transitive package has an advisory that no bump fixed. Upgrade the parent, or add an entry under `overrides:` in `pnpm-workspace.yaml`. The next Monday's audit closes the issue once the advisory is gone; to check sooner, run the "Dependency audit" workflow by hand in the Actions tab.
+
+CI also runs `pnpm audit --prod --audit-level high` on every PR (ADR-0029), so a new high or critical advisory turns CI red. Fix it the same way. Only if the package is build-time tooling with no fix in its major, add its GHSA id to `auditConfig.ignoreGhsas` in `pnpm-workspace.yaml`, with a comment saying why. Remove the entry once the parent updates.
+
+Actions are pinned to commit SHAs, and images to `tag@sha256:digest`. Dependabot's PRs update both the pin and the version beside it. When editing a pin by hand, take the digest from `docker buildx imagetools inspect <image:tag>`, and an action's SHA from its release tag.
 
 ## Restore
 
