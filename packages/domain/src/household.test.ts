@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DEFAULT_HOUSEHOLD_NAME,
   householdErrorOf,
+  householdPhrase,
   householdRenameSchema,
   inviteCreateSchema,
   inviteTokenBodySchema,
@@ -38,5 +40,14 @@ describe('household schemas', () => {
     expect(householdErrorOf('invite_expired')).toBe('invite_expired');
     expect(householdErrorOf('relation "x" does not exist')).toBeNull();
     expect(householdErrorOf(undefined)).toBeNull();
+  });
+});
+
+describe('householdPhrase (#66)', () => {
+  it('names a chosen household, and says `otherwise` for the default or no name', () => {
+    expect(householdPhrase('Gelpi household', 'a household')).toBe('the Gelpi household');
+    expect(householdPhrase(DEFAULT_HOUSEHOLD_NAME, 'a household')).toBe('a household');
+    expect(householdPhrase(null, 'the household')).toBe('the household');
+    expect(householdPhrase('', 'the household')).toBe('the household');
   });
 });

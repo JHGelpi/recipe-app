@@ -1,3 +1,4 @@
+import { householdPhrase } from '@recipe-app/domain';
 import { useEffect, useState } from 'react';
 import { useHouseholdName } from '../household/hooks';
 import { takeNoticeFor, type HouseholdNotice } from '../household/notice';
@@ -15,10 +16,12 @@ export function HouseholdNoticeBanner({ claims }: { claims: Claims }) {
   }, [claims.householdId]);
   const synced = useHouseholdName(claims.householdId);
   if (!notice) return null;
-  const name = notice.name ?? synced ?? 'new household';
+  const name = notice.name ?? synced;
   return (
     <Banner>
-      {notice.kind === 'joined' ? `You've joined the ${name}` : `You were moved to the ${name}`}
+      {notice.kind === 'joined'
+        ? `You've joined ${householdPhrase(name, 'the household')}`
+        : `You were moved to ${householdPhrase(name, 'a new household')}`}
     </Banner>
   );
 }

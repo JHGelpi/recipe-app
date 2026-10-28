@@ -1,4 +1,4 @@
-import type { HouseholdRoleName, UnitSystem } from '@recipe-app/domain';
+import { householdPhrase, type HouseholdRoleName, type UnitSystem } from '@recipe-app/domain';
 import { usePowerSync } from '@powersync/react';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
@@ -137,7 +137,10 @@ export function HouseholdScreen({ claims }: { claims: Claims }) {
       async (created) => {
         const url = inviteUrl(created.code);
         setShared(url);
-        const how = await shareLink(`Join the ${name ?? 'household'} on Dishkept: ${url}`, url);
+        const how = await shareLink(
+          `Join ${householdPhrase(name, 'my household')} on Dishkept: ${url}`,
+          url,
+        );
         if (how === 'copied') setMessage('Link copied');
         void refresh();
       },
