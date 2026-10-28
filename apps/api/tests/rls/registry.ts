@@ -47,6 +47,7 @@ export const TENANT_COLUMN: Record<(typeof TENANT_TABLES)[number], string> = {
  */
 export const SYSTEM_TABLES = [
   'feedback_reporters',
+  'share_signups',
   'signup_allowed',
   'signup_passes',
   'signup_settings',

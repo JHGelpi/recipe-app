@@ -43,6 +43,21 @@ async function friendCode(actor: Actor): Promise<string> {
   return row!.token;
 }
 
+async function shareCode(admin: Actor): Promise<string> {
+  const recipe = randomUUID();
+  await as(
+    admin,
+    (tx) => tx`insert into public.recipes (id, household_id, title)
+      values (${recipe}, ${admin.householdId}, 'Pass soup')`,
+  );
+  const [share] = await as(
+    admin,
+    (tx) => tx<{ token: string }[]>`
+      select token from public.create_share(${randomUUID()}, ${recipe}, ${tx.json({ title: 'Pass soup' })})`,
+  );
+  return share!.token;
+}
+
 async function outcome(run: Promise<unknown>): Promise<string> {
   try {
     await run;
@@ -105,18 +120,7 @@ describe('passes from links', () => {
     expect(row?.email).toBe(email.toLowerCase());
     expect(Number(row!.hours)).toBeGreaterThan(23.9);
 
-    const recipe = randomUUID();
-    await as(
-      admin,
-      (tx) => tx`insert into public.recipes (id, household_id, title)
-      values (${recipe}, ${admin.householdId}, 'Pass soup')`,
-    );
-    const [share] = await as(
-      admin,
-      (tx) => tx<{ token: string }[]>`
-      select token from public.create_share(${randomUUID()}, ${recipe}, ${tx.json({ title: 'Pass soup' })})`,
-    );
-    expect(await grant('share', share!.token, email)).toBe(true);
+    expect(await grant('share', await shareCode(admin), email)).toBe(true);
     expect(await grant('friend', await friendCode(admin), email)).toBe(true);
   });
 
@@ -155,7 +159,7 @@ describe('passes from links', () => {
 describe('who can reach the gate tables', () => {
   it('nobody signed in, and no anonymous caller, can read or write them', async () => {
     const admin = await signInAs(SEED.adminA);
-    for (const table of ['signup_settings', 'signup_allowed', 'signup_passes']) {
+    for (const table of ['signup_settings', 'signup_allowed', 'signup_passes', 'share_signups']) {
       expect(await refusalCode(as(admin, (tx) => tx`select * from public.${tx(table)}`))).toBe(
         '42501',
       );
@@ -171,7 +175,79 @@ describe('who can reach the gate tables', () => {
   });
 });
 
+describe('share links (#62)', () => {
+  it('make one account: the first address holds the share, and its new account uses it up', async () => {
+    const admin = await signInFresh(address('share-admin'));
+    const code = await shareCode(admin);
+    const first = address('first-reader');
+    const second = address('second-reader');
+    used.push(first, second);
+    expect(await grant('share', code, first)).toBe(true);
+    expect(await grant('share', code, second)).toBe(false);
+    // Asking again (a second code email) keeps the hold.
+    expect(await grant('share', code, first)).toBe(true);
+
+    const reader = await signInFresh(first);
+    const [row] = await adminSql<{ accepted_by: string }[]>`
+      select u.accepted_by from public.share_signups u
+      join public.shares s on s.id = u.share_id
+      where s.token_hash = sha256(convert_to(${code}, 'UTF8'))`;
+    expect(row?.accepted_by).toBe(reader.userId);
+    expect(await grant('share', code, second)).toBe(false);
+    // The share still reads, and people with accounts still get a pass.
+    const [read] = await asAnonymous(
+      (tx) => tx<{ status: string }[]>`select status from public.read_share(${code})`,
+    );
+    expect(read?.status).toBe('ok');
+    used.push(SEED.memberA);
+    expect(await grant('share', code, SEED.memberA)).toBe(true);
+  });
+
+  it('two addresses asking at once: exactly one gets the pass', async () => {
+    const admin = await signInFresh(address('share-race'));
+    const code = await shareCode(admin);
+    const a = address('share-race-a');
+    const b = address('share-race-b');
+    used.push(a, b);
+    const results = await Promise.all([grant('share', code, a), grant('share', code, b)]);
+    expect(results.filter(Boolean)).toHaveLength(1);
+  });
+
+  it('a hold lapses with its pass; a pass from another link releases it', async () => {
+    const admin = await signInFresh(address('share-lapse'));
+    const code = await shareCode(admin);
+    const typo = address('share-typo');
+    const real = address('share-real');
+    const other = address('share-other');
+    used.push(typo, real, other);
+    expect(await grant('share', code, typo)).toBe(true);
+    await adminSql`update public.signup_passes set expires_at = now() - interval '1 second'
+      where email = ${typo}`;
+    expect(await grant('share', code, real)).toBe(true);
+    expect(await grant('friend', await friendCode(admin), real)).toBe(true);
+    expect(await grant('share', code, other)).toBe(true);
+  });
+});
+
 describe('friend links', () => {
+  it('one person may have 10 pending; others in the household may still make theirs (#62)', async () => {
+    const admin = await signInFresh(address('cap-admin'));
+    const ids: string[] = [];
+    for (let i = 0; i < 10; i++) ids.push(await linkId(await friendCode(admin)));
+    expect(await outcome(friendCode(admin))).toBe('too_many_invites');
+
+    const [invite] = await as(
+      admin,
+      (tx) => tx<{ token: string }[]>`select token from public.create_invite('viewer')`,
+    );
+    const viewer = await signInFresh(address('cap-viewer'));
+    await as(viewer, (tx) => tx`select * from public.accept_invite(${invite!.token})`);
+    expect(await outcome(friendCode(await signInAs(viewer.email)))).toBe('ok');
+
+    await as(admin, (tx) => tx`select public.revoke_friend_link(${ids[0]!}::uuid)`);
+    expect(await outcome(friendCode(admin))).toBe('ok');
+  });
+
   it('any member, viewers included, can make, list and revoke one; another household cannot revoke it', async () => {
     const viewer = await signInAs(SEED.viewerA);
     const adminB = await signInAs(SEED.adminB);

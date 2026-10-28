@@ -74,7 +74,7 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 | FR-3 | Admin invites people into the household by text or email link *(built in sub-project 6)* | M |
 | FR-4 | Roles: Admin, Member, Viewer with permissions per §2 | M |
 | FR-5 | Admin can change roles and remove members *(built in sub-project 6)* | M |
-| FR-6 | Any user can invite someone to create their own household. Admins see and can revoke all of the household's friend links; everyone else sees and can revoke only the links they made *(built in sub-project 6; friend links in the production sub-project; revoking in the bug batch; visibility in #33)* | S |
+| FR-6 | Any user can invite someone to create their own household. Admins see and can revoke all of the household's friend links; everyone else sees and can revoke only the links they made. Each person may have at most 10 pending friend links *(built in sub-project 6; friend links in the production sub-project; revoking in the bug batch; visibility in #33; cap in #62)* | S |
 | FR-42 | Invitation links work once: a household invite once accepted, a friend link once an account is made with it (the first address to ask holds it for 24 hours). Used links leave the pending list for a short history ("Accepted by Sam · Oct 22"); a used, revoked or expired link says so and asks for a new one *(built)* | S |
 | FR-46 | Sign-in code and backup alert emails are branded: Dishkept logo and wordmark, light layout, footer link to the app. The code email shows the code large, says it expires in 10 minutes and can be ignored if not requested; subject "Your Dishkept sign-in code" *(built)* | S |
 
@@ -121,7 +121,7 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 | ID | Requirement | Pri |
 |---|---|---|
 | FR-26 | Share recipe as formatted PDF or plain text via OS share sheet *(built in sub-project 7)* | M |
-| FR-27 | Share import link; recipient saves a copy into own household (sign-up prompt if needed) *(built in sub-project 7)* | M |
+| FR-27 | Share import link; recipient saves a copy into own household (sign-up prompt if needed; one share link makes at most one new account, held for the first address to ask for 24 hours, while people with accounts can always use it) *(built in sub-project 7; one account per link in #62)* | M |
 
 ### Offline & sync
 | ID | Requirement | Pri |
