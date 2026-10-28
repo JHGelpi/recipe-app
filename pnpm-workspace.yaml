@@ -20,3 +20,12 @@ minimumReleaseAgeExclude:
   - expo@57.0.28
   - '@expo/ui@57.0.23'
   - expo-router@57.0.26
+# Issue #69: advisories in Expo's build tooling, fixed within the same major.
+overrides:
+  node-forge@<1.4.1: ^1.4.1
+# Known advisories that `pnpm audit` in CI ignores (ADR-0029). Each is in
+# build-time tooling only, with no fix inside its major yet; recheck when
+# Expo updates. GHSA-mrhx-c7xc-m3w5: zod 3 in @expo/cli (memory exhaustion).
+auditConfig:
+  ignoreGhsas:
+    - GHSA-mrhx-c7xc-m3w5

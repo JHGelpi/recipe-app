@@ -30,5 +30,6 @@ Lightweight ADRs ([Michael Nygard format](https://cognitect.com/blog/2011/11/15/
 | [0024](0024-weekly-dependency-updates-with-dependabot.md) | Weekly dependency updates with Dependabot, and a weekly audit | Accepted |
 | [0025](0025-bounded-sign-up-through-links.md) | Sign-up through links is bounded: one account per share link, 10 pending friend links per person | Accepted |
 | [0026](0026-content-security-policy.md) | A strict Content-Security-Policy and security headers at the proxy | Accepted |
+| [0029](0029-pinned-supply-chain-and-audit-gate.md) | Actions and images pinned by hash; CI fails on high advisories | Accepted |
 
 Template: [`template.md`](template.md)
