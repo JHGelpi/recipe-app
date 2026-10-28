@@ -171,6 +171,7 @@ Admins and Members log and edit; Viewers read the diary (rule 4). Every entry be
 | NFR-11 | Accessibility | Supports OS dynamic text size, VoiceOver/TalkBack, WCAG AA contrast in light and dark themes; the theme follows the device setting or the person's choice (ADR-0020). |
 | NFR-12 | Store compliance | Native builds only: in-app account deletion; Sign in with Apple offered on iOS if other social sign-in is offered. |
 | NFR-13 | Attribution | Imported web recipes retain source URL and author attribution. |
+| NFR-14 | Abuse limits | Per person: 30 import reads an hour, 120 upload batches a minute, 200 photo uploads an hour; each household keeps at most 2 GB of photos. The app waits and retries over a limit (#67, ADR-0028). |
 
 ## 7. Open questions
 

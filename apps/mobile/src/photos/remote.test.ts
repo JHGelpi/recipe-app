@@ -5,6 +5,7 @@ import {
   PermanentPhotoError,
   photoErrorHandler,
 } from './remote';
+import { isPhotoStorageFull } from './storageFull';
 
 const attachment = { id: 'p1', filename: 'p1.jpg', state: 0 } as never;
 
@@ -32,7 +33,7 @@ describe('photo remote storage', () => {
         remote(status).storage.uploadFile(new ArrayBuffer(1), attachment),
       ).rejects.toBeInstanceOf(PermanentPhotoError);
     }
-    for (const status of [401, 404, 500]) {
+    for (const status of [401, 404, 429, 500, 507]) {
       const error = await remote(status)
         .storage.uploadFile(new ArrayBuffer(1), attachment)
         .catch((e) => e);
@@ -77,5 +78,14 @@ describe('sign-out during a download (bug batch spec §2)', () => {
     bumpPhotoGeneration();
     release();
     await expect(pending).rejects.toThrow('signed out');
+  });
+
+  it('says storage is full on a 507, and clears it once an upload goes through (#67)', async () => {
+    await remote(507)
+      .storage.uploadFile(new ArrayBuffer(1), attachment)
+      .catch(() => {});
+    expect(isPhotoStorageFull()).toBe(true);
+    await remote(204).storage.uploadFile(new ArrayBuffer(1), attachment);
+    expect(isPhotoStorageFull()).toBe(false);
   });
 });

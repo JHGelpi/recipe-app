@@ -11,4 +11,8 @@ describe('the sync status line', () => {
     expect(statusLabel(true, undefined)).toBe('Online');
     expect(statusLabel(false, undefined)).toBe('Offline');
   });
+
+  it('says when photos wait because the household’s photo storage is full (#67)', () => {
+    expect(statusLabel(true, 1, true)).toBe('Online · 1 unsynced · Photo storage is full');
+  });
 });
