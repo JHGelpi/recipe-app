@@ -23,7 +23,7 @@ Lightweight ADRs ([Michael Nygard format](https://cognitect.com/blog/2011/11/15/
 | [0017](0017-dishkept-design-system.md) | Dishkept: a small design system of our own, dark only | Accepted |
 | [0018](0018-production-on-a-home-pc.md) | Production on a home PC: Cloudflare Tunnel, nightly encrypted backups to GCS, invite-only sign-up | Accepted |
 | [0019](0019-shopping-list.md) | Shopping list: added rows merged on screen, aisles by word list and household choices | Accepted |
-| [0020](0020-light-mode-with-css-variables.md) | Light mode with CSS variables, chosen per device | Accepted |
+| [0020](0020-light-mode-with-css-variables.md) | Light mode with CSS variables, chosen per device | Accepted; storage per person since 0031 |
 | [0021](0021-infrastructure-as-code.md) | Infrastructure as code: OpenTofu for the cloud, Ansible for the hosts, secrets in Ansible Vault | Accepted |
 | [0022](0022-private-ratings-with-household-totals.md) | Private ratings, with household totals kept by a trigger | Accepted |
 | [0023](0023-in-app-feedback-filed-as-github-issues.md) | In-app feedback filed as GitHub issues, under an anonymous reporter id | Accepted |
@@ -33,5 +33,6 @@ Lightweight ADRs ([Michael Nygard format](https://cognitect.com/blog/2011/11/15/
 | [0029](0029-pinned-supply-chain-and-audit-gate.md) | Actions and images pinned by hash; CI fails on high advisories | Accepted |
 | [0028](0028-per-person-limits-and-photo-quota.md) | Per-person limits on signed-in routes, and a photo quota per household | Accepted |
 | [0030](0030-email-code-relay-and-lockout.md) | Email codes through the API, with a per-email lockout | Accepted |
+| [0031](0031-settings-belong-to-the-person.md) | Units and Appearance belong to the person, in a per-person table | Accepted |
 
 Template: [`template.md`](template.md)

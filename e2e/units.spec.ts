@@ -1,5 +1,13 @@
 import { expect, test } from './fixtures';
-import { createRecipe, findRecipe, freshEmail, settled, signIn, unique } from './helpers';
+import {
+  createRecipe,
+  findRecipe,
+  freshEmail,
+  settingSaved,
+  settled,
+  signIn,
+  unique,
+} from './helpers';
 
 async function openUnits(page: import('@playwright/test').Page) {
   await page.getByRole('link', { name: 'Household', exact: true }).click();
@@ -31,6 +39,7 @@ test('recipes open in the units chosen on Household; a recipe’s own choice and
     'true',
   );
   await page.getByRole('tab', { name: 'Metric' }).click();
+  await settingSaved(page, 'units', 'metric');
   await page.reload();
   await expect(page.getByRole('tab', { name: 'Metric' })).toHaveAttribute('aria-selected', 'true');
 
@@ -51,6 +60,26 @@ test('recipes open in the units chosen on Household; a recipe’s own choice and
   await openRecipe(page, fresh);
   await page.getByRole('button', { name: 'Edit' }).click();
   await expect(page.getByLabel('Ingredients', { exact: true })).toHaveValue('2 cups flour');
+});
+
+test('the units choice follows the person to another device (FR-23, ADR-0031)', async ({
+  page,
+  browser,
+}) => {
+  const email = freshEmail('units-device');
+  await signIn(page, email);
+  await openUnits(page);
+  await page.getByRole('tab', { name: 'Metric' }).click();
+  const device = await browser.newContext();
+  const other = await device.newPage();
+  await signIn(other, email);
+  await openUnits(other);
+  await expect(other.getByRole('tab', { name: 'Metric' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+    { timeout: 30_000 },
+  );
+  await device.close();
 });
 
 test('a units choice reaches the other open tabs (FR-23)', async ({ page, context }) => {

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from './fixtures';
-import { createRecipe, freshEmail, settled, signIn, unique } from './helpers';
+import { createRecipe, freshEmail, settingSaved, settled, signIn, unique } from './helpers';
 
 const LIGHT_BG = 'rgb(246, 247, 249)';
 const DARK_BG = 'rgb(14, 18, 26)';
@@ -49,21 +49,42 @@ test.describe('under a dark system setting', () => {
     expect(await look(page)).toEqual(DARK);
   });
 
-  test('a saved Light is painted before the app’s code runs', async ({ page, context }) => {
-    await context.addInitScript(() => localStorage.setItem('dishkept.appearance', 'light'));
+  // A saved session and the person's cached settings, as the app leaves them (ADR-0031).
+  const signedInAs = (cached: { owner: string; appearance: string }) => {
+    localStorage.setItem('supabase.auth.token', JSON.stringify({ user: { id: 'ann' } }));
+    localStorage.setItem(
+      'dishkept.personSettings',
+      JSON.stringify({ userId: cached.owner, units: 'as_written', appearance: cached.appearance }),
+    );
+  };
+
+  test('the person’s cached Light is painted before the app’s code runs', async ({
+    page,
+    context,
+  }) => {
+    await context.addInitScript(signedInAs, { owner: 'ann', appearance: 'light' });
     // With the bundle blocked, only index.html's own script can set the theme.
     await page.route('**/_expo/static/js/**', (route) => route.abort());
     await page.goto('/');
     expect(await look(page)).toEqual(LIGHT);
   });
 
-  test('an unknown saved value is treated as System (Review Focus 2)', async ({
+  test('someone else’s cached choice, an unknown value, or the old device setting is System (Review Focus 2)', async ({
     page,
     context,
   }) => {
-    await context.addInitScript(() => localStorage.setItem('dishkept.appearance', 'Light'));
     await page.route('**/_expo/static/js/**', (route) => route.abort());
+    await context.addInitScript(signedInAs, { owner: 'bob', appearance: 'light' });
     await page.goto('/');
+    expect(await look(page)).toEqual(DARK);
+    await context.addInitScript(signedInAs, { owner: 'ann', appearance: 'Light' });
+    await page.reload();
+    expect(await look(page)).toEqual(DARK);
+    await context.addInitScript(() => {
+      localStorage.removeItem('dishkept.personSettings');
+      localStorage.setItem('dishkept.appearance', 'light');
+    });
+    await page.reload();
     expect(await look(page)).toEqual(DARK);
   });
 });
@@ -84,10 +105,14 @@ async function openAppearance(page: Page) {
 test.describe('the Appearance setting', () => {
   test.use({ colorScheme: 'light' });
 
-  test('Dark is kept after a reload and after signing out (NFR-11, Review Focus 4)', async ({
+  test('Dark follows the person: kept after a reload, System when signed out, back on sign-in and on another device (NFR-11, ADR-0031)', async ({
     page,
+    browser,
   }) => {
-    await signIn(page, freshEmail('appearance'));
+    const email = freshEmail('appearance');
+    // A device setting from before is not carried over.
+    await page.addInitScript(() => localStorage.setItem('dishkept.appearance', 'dark'));
+    await signIn(page, email);
     await openAppearance(page);
     await expect(page.getByRole('tab', { name: 'System' })).toHaveAttribute(
       'aria-selected',
@@ -98,6 +123,7 @@ test.describe('the Appearance setting', () => {
     await page.getByRole('tab', { name: 'Dark' }).click();
     await expect.poll(() => look(page)).toEqual(DARK);
     expect(await cssBg(page)).toBe('#0E121A');
+    await settingSaved(page, 'appearance', 'dark');
 
     await page.reload();
     await expect(page.getByRole('tab', { name: 'Dark' })).toHaveAttribute('aria-selected', 'true');
@@ -105,7 +131,18 @@ test.describe('the Appearance setting', () => {
 
     await page.getByRole('button', { name: 'Sign out' }).click();
     await expect(page.getByLabel('Email')).toBeVisible();
-    expect(await look(page)).toEqual(DARK);
+    await expect.poll(() => look(page)).toEqual(LIGHT);
+
+    await signIn(page, email);
+    await expect.poll(() => look(page)).toEqual(DARK);
+
+    const device = await browser.newContext({ colorScheme: 'light' });
+    const other = await device.newPage();
+    await signIn(other, email);
+    await expect.poll(() => look(other)).toEqual(DARK);
+    await openAppearance(other);
+    await expect(other.getByRole('tab', { name: 'Dark' })).toHaveAttribute('aria-selected', 'true');
+    await device.close();
   });
 
   test('a choice reaches every open tab, and System follows the device live (Review Focus 3)', async ({

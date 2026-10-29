@@ -26,6 +26,7 @@ export * from './ratings';
 export * from './duplicates';
 export * from './feedback';
 export * from './codeRelay';
+export * from './personSettings';
 export { RECIPE_LIMITS, TITLE_MAX } from './limits';
 
 const timestampSchema = z.iso.datetime({ offset: true });

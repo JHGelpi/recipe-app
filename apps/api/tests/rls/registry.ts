@@ -42,6 +42,12 @@ export const TENANT_COLUMN: Record<(typeof TENANT_TABLES)[number], string> = {
 };
 
 /**
+ * Tables of one person's own rows, across households (ADR-0031): no
+ * household_id, RLS on user_id. person-settings.test.ts covers them.
+ */
+export const PERSON_TABLES = ['person_settings'] as const;
+
+/**
  * Public tables that hold no household data (production spec §4): RLS on,
  * no policies, no grants. Only security definer functions and postgres reach them.
  */
