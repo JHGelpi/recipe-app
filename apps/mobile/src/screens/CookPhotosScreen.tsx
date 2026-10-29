@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ScrollView, useWindowDimensions, View } from 'react-native';
+import { ScrollView, useWindowDimensions, View, type ScrollViewInstance } from 'react-native';
 import { PhotoImage } from '../components/PhotoImage';
 import { useEntryPhotos } from '../cooklog/hooks';
 import { colors, space } from '../theme';
@@ -10,7 +10,7 @@ import { Button, Text } from '../ui';
 export function CookPhotosScreen({ entryId, start }: { entryId: string; start: number }) {
   const photos = useEntryPhotos(entryId);
   const { width } = useWindowDimensions();
-  const ref = useRef<ScrollView>(null);
+  const ref = useRef<ScrollViewInstance>(null);
   const [at, setAt] = useState(start);
   const shown = Math.min(Math.max(at, 0), Math.max(photos.length - 1, 0));
 

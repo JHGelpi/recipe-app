@@ -7,31 +7,15 @@ allowBuilds:
   # core-js (from jsPDF) only prints a donation message on install.
   core-js: false
   esbuild: false
-minimumReleaseAgeExclude:
-  - '@expo/cli@57.0.29'
-  - '@expo/fingerprint@0.20.14'
-  - '@expo/inline-modules@0.1.8'
-  - '@expo/local-build-cache-provider@57.0.9'
-  - '@expo/prebuild-config@57.0.18'
-  - babel-preset-expo@57.0.15
-  - expo-modules-autolinking@57.0.15
-  - expo-modules-core@57.0.22
-  - expo-modules-jsi@57.1.2
-  - expo@57.0.28
-  - '@expo/ui@57.0.23'
-  - expo-router@57.0.26
 # Issue #69: advisories in Expo's build tooling, fixed within the same major.
 overrides:
   node-forge@<1.4.1: ^1.4.1
+  # react-native-worklets accepts any version and pnpm picked 0.87.1; React
+  # Native 0.88's CLI wants its own. Native tooling only; move with react-native.
+  '@react-native/metro-config': 0.88.1
 # Known advisories that `pnpm audit` in CI ignores (ADR-0029). Each is in
 # build-time tooling only, with no fix inside its major yet; recheck when
 # Expo updates. GHSA-mrhx-c7xc-m3w5: zod 3 in @expo/cli (memory exhaustion).
 auditConfig:
   ignoreGhsas:
     - GHSA-mrhx-c7xc-m3w5
-    # Runtime exception (ADR-0029 amendment, issue #108): decode-uri-component
-    # <=0.5.0 under expo-router > query-string@7 (quadratic decode of a crafted
-    # query string; it can stall only the visitor's own tab). The fix, 0.5.1, is
-    # ESM-only and query-string 7 cannot load it. Remove with Expo SDK 58, whose
-    # router drops query-string.
-    - GHSA-qr28-fpjm-wq7f
