@@ -20,3 +20,5 @@ FROM caddy:2.11.7@sha256:5e5286cb37d44086d651a5363f05f43a692ce4d649d88fb1bd84457
 COPY deploy/Caddyfile /etc/caddy/Caddyfile
 COPY deploy/email-templates /srv/email-templates
 COPY --from=web /repo/apps/mobile/dist /srv/web
+# Outside every served root: prod:deploy reads the running version from it (FR-47).
+COPY RELEASE_NOTES.md /etc/dishkept/RELEASE_NOTES.md

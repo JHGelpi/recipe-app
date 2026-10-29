@@ -14,6 +14,9 @@ import { settingsStorage } from '../src/settings/start';
 import { AppearanceSync, colors, installTheme } from '../src/theme';
 import { FONT_FILES } from '../src/theme/fonts';
 import { IONICONS_FONT } from '../src/ui/Icon';
+import { APP_VERSION } from '../src/whatsNew/releases';
+import { recordStartingSeen } from '../src/whatsNew/seen';
+import { WhatsNewPopup } from '../src/whatsNew/WhatsNewPopup';
 
 // The color variables must exist before anything renders with them (ADR-0020).
 installTheme();
@@ -21,6 +24,13 @@ installTheme();
 dropLegacySettings(settingsStorage());
 // FR-45: problem reports say whether the device was offline lately.
 startOfflineTracking();
+// FR-47: before the worker registers, so a first visit is told apart from a
+// device that already ran the app.
+recordStartingSeen(
+  settingsStorage(),
+  typeof navigator !== 'undefined' && !!navigator.serviceWorker?.controller,
+  APP_VERSION,
+);
 
 export default function RootLayout() {
   useEffect(() => {
@@ -36,6 +46,7 @@ export default function RootLayout() {
         <DatabaseSessionBridge>
           <View style={{ flex: 1, backgroundColor: colors.bg }}>
             <UpdateBanner />
+            <WhatsNewPopup />
             <View style={{ flex: 1 }}>
               <Slot />
             </View>

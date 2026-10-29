@@ -121,7 +121,7 @@ The drill asks for the path to a file holding your secret key. See "Restore" for
 |---|---|
 | Health, deployed build, last backup | `pnpm prod:status` (warns if no backup in 26 hours) |
 | Logs | `pnpm prod:logs` or `pnpm prod:logs api` |
-| Update to the latest `main` | `cd ~/dishkept && git pull && pnpm prod:deploy` |
+| Update to the latest `main` | When the release has changes people will notice, first add an entry to `RELEASE_NOTES.md` (see below). Then `cd ~/dishkept && git pull && pnpm prod:deploy` |
 | Let someone sign up without an invite | `pnpm prod:allow them@example.com` |
 | Remove them from the list | `pnpm prod:disallow them@example.com` |
 | See the list | `pnpm prod:allowed` |
@@ -131,6 +131,8 @@ The drill asks for the path to a file holding your secret key. See "Restore" for
 | Stop production (for example before a long e2e run) | `pnpm prod:stop`; start it again with `pnpm prod:start` (needs a clean, current `main` in `~/dishkept`) |
 
 People with an invite, share or friend link don't need to be on the list. The app gets them a 24-hour pass. People who already have an account can always sign in.
+
+**Release notes (FR-47).** The newest entry in `RELEASE_NOTES.md` is the app's version, and each device shows new entries once in a "What's new" sheet after it updates. Add an entry (a higher version, today's date, a few everyday bullets) in the PR that ships user-visible changes, run `pnpm release-notes`, and commit both files; CI checks them. A deploy without a new entry shows no popup, and `pnpm prod:deploy` says so: "No new release notes since 1.1.0. This deploy won't show a What's new popup." That's fine for fixes nobody would notice.
 
 Phones pick up a new build on their own. A phone at the home screen may take it silently the next time the app is closed and reopened.
 

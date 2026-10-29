@@ -66,6 +66,22 @@ export function deployBlockers({ branch, dirty, head, originMain }) {
   return blockers;
 }
 
+/** The newest release in a RELEASE_NOTES.md (FR-47): the app version. */
+export function newestReleaseVersion(text) {
+  return /^## (\d+\.\d+\.\d+) · /m.exec(text ?? '')?.[1] ?? null;
+}
+
+/**
+ * FR-47: a deploy whose newest release is the one already running shows no
+ * What's new popup. A warning, not a blocker: fixes nobody would notice need
+ * no entry.
+ */
+export function releaseNotesWarning(local, running) {
+  return local && local === running
+    ? `No new release notes since ${local}. This deploy won't show a What's new popup.`
+    : null;
+}
+
 export function backupAge(lastSuccessIso, now) {
   const at = lastSuccessIso ? Date.parse(lastSuccessIso) : NaN;
   if (Number.isNaN(at)) return { hours: null, stale: true };
