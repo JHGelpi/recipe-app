@@ -24,6 +24,17 @@
       "output": "single"
     },
     "scheme": "recipeapp",
-    "plugins": ["expo-router", "expo-status-bar", "expo-font"]
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "asyncRoutes": {
+            "web": false
+          }
+        }
+      ],
+      "expo-status-bar",
+      "expo-font"
+    ]
   }
 }

@@ -1,6 +1,6 @@
 // apps/mobile/src/ui/ChipBar.tsx
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Platform, ScrollView, View, type ViewStyle } from 'react-native';
+import { Platform, ScrollView, View, type ScrollViewInstance, type ViewStyle } from 'react-native';
 import { colors, space } from '../theme';
 import { chipBarEdges, chipBarPage } from './chipBarScroll';
 import { IconButton } from './IconButton';
@@ -19,7 +19,7 @@ const fade = (to: 'left' | 'right') =>
  * vertical mouse wheel, so it works where swiping does not.
  */
 export function ChipBar({ label, children }: { label: string; children: ReactNode }) {
-  const ref = useRef<ScrollView>(null);
+  const ref = useRef<ScrollViewInstance>(null);
   const [size, setSize] = useState<Size>({ offset: 0, viewport: 0, content: 0 });
   const edges = chipBarEdges(size.offset, size.viewport, size.content);
 

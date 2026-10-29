@@ -8,6 +8,9 @@ test('a long title wraps and the heart stays on screen (Review Focus 1)', async 
   const title = unique('A very long recipe title '.repeat(5));
   await createRecipe(page, { title, tags: 'a-really-long-tag-name-that-goes-on-on' });
   await page.getByRole('link', { name: 'Recipes', exact: true }).click();
+  // Expo Router 58 navigates after the next commit: wait for the list, or the
+  // recipe screen's own heart (about to unmount) is the first match.
+  await expect(page.getByRole('heading', { name: 'Recipes', level: 1 })).toBeVisible();
   const heart = page.getByRole('button', { name: 'Favorite', exact: true }).first();
   const box = (await heart.boundingBox())!;
   expect(box.x + box.width).toBeLessThanOrEqual(390);
@@ -22,6 +25,7 @@ test('a long tag and a total time stay clear of the heart (Final 3)', async ({ p
     tags: 'a-really-long-tag-name-that-goes-on-on',
   });
   await page.getByRole('link', { name: 'Recipes', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Recipes', level: 1 })).toBeVisible();
   const time = page.getByText('1 h 35 min');
   const heart = page.getByRole('button', { name: 'Favorite', exact: true }).first();
   const [t, s] = [(await time.boundingBox())!, (await heart.boundingBox())!];

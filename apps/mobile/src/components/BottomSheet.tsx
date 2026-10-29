@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react';
-import { Modal, Pressable, ScrollView, View } from 'react-native';
+import { Modal, Pressable, ScrollView, View, type ViewInstance } from 'react-native';
 import { colors, radius, shadow, space } from '../theme';
 
 /** A sheet over a dimmed screen; closes on Escape or a tap outside (as AddSheet). */
@@ -25,7 +25,7 @@ export function BottomSheet({
   }, [open, onClose]);
   // react-native-web's Modal keeps focus inside once it is there but doesn't
   // move it in: a screen reader would stay on the page behind (NFR-11).
-  const dialog = useRef<View>(null);
+  const dialog = useRef<ViewInstance>(null);
   useEffect(() => {
     if (!open) return;
     const frame = requestAnimationFrame(() => (dialog.current as HTMLElement | null)?.focus?.());
