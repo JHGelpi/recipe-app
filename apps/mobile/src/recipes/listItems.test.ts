@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { ratingsByRecipe, tagsForTab, toListItems } from './listItems';
+import {
+  countForTab,
+  orderListItems,
+  ratingsByRecipe,
+  sortLabel,
+  tagsForTab,
+  toListItems,
+  type ListItem,
+} from './listItems';
 import type { ListRow } from './rows';
 
 const row = (id: string, tags: string[] = []): ListRow => ({
@@ -10,6 +18,7 @@ const row = (id: string, tags: string[] = []): ListRow => ({
   starred: false,
   photoId: null,
   totalMinutes: id === 'a' ? 45 : null,
+  addedAt: null,
 });
 const rows = new Map([
   ['a', row('a', ['dinner'])],
@@ -29,6 +38,7 @@ describe('toListItems', () => {
         starred: false,
         photoId: null,
         totalMinutes: null,
+        addedAt: null,
         rating: unrated,
       },
       {
@@ -38,6 +48,7 @@ describe('toListItems', () => {
         starred: true,
         photoId: null,
         totalMinutes: 45,
+        addedAt: null,
         rating: unrated,
       },
     ]);
@@ -75,5 +86,43 @@ describe('tagsForTab', () => {
   it('lists the distinct tags of the tab’s recipes, alphabetically', () => {
     expect(tagsForTab(rows, new Set(['b']), false)).toEqual(['dinner', 'quick', 'snack']);
     expect(tagsForTab(rows, new Set(['b']), true)).toEqual(['dinner', 'quick']);
+  });
+});
+
+describe('countForTab', () => {
+  it('counts the tab’s recipes before any search or filter', () => {
+    expect(countForTab(rows, new Set(['b']), false)).toBe(3);
+    expect(countForTab(rows, new Set(['b', 'gone']), true)).toBe(1);
+  });
+});
+
+describe('orderListItems (FR-49)', () => {
+  const item = (id: string, title: string, average: number | null): ListItem => ({
+    id,
+    title,
+    tags: [],
+    starred: false,
+    photoId: null,
+    totalMinutes: null,
+    addedAt: null,
+    rating: average === null ? unrated : { average, count: 1 },
+  });
+  // Best match first, as search returned them.
+  const results = [item('b', 'Bread', 3), item('a', 'Apple', null), item('c', 'Cake', 5)];
+
+  it('applies the chosen sort when there is no search text', () => {
+    expect(orderListItems(results, '', 'highest').map((i) => i.id)).toEqual(['c', 'b', 'a']);
+    expect(orderListItems(results, '  ', 'az').map((i) => i.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('keeps best match while there is search text, whatever the sort', () => {
+    expect(orderListItems(results, 'bread', 'highest')).toBe(results);
+    expect(orderListItems(results, 'bread', 'za')).toBe(results);
+  });
+
+  it('labels the button with the sort, or Best match while searching', () => {
+    expect(sortLabel('', 'az')).toBe('Sort: A–Z');
+    expect(sortLabel('', 'highest')).toBe('Sort: Highest rated');
+    expect(sortLabel(' rice ', 'highest')).toBe('Sort: Best match');
   });
 });

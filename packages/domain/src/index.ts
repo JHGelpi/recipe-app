@@ -9,6 +9,7 @@ export * from './ingredients';
 export * from './steps';
 export * from './tags';
 export * from './search';
+export * from './recipeSort';
 export * from './importDraft';
 export * from './html';
 export * from './jsonLd';

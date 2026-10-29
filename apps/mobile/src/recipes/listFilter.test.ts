@@ -1,5 +1,13 @@
-import { beforeEach, expect, it, vi } from 'vitest';
-import { clearFilter, getFilter, setFilter, subscribeFilter, toggleTag } from './listFilter';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  clearFilter,
+  getFilter,
+  getSort,
+  setFilter,
+  setSort,
+  subscribeFilter,
+  toggleTag,
+} from './listFilter';
 
 beforeEach(() => clearFilter());
 
@@ -19,4 +27,25 @@ it('tells listeners, and clears on sign out', () => {
   expect(listener).toHaveBeenCalledTimes(2);
   expect(getFilter()).toEqual({ query: '', selected: [] });
   stop();
+});
+
+describe('sort (FR-49)', () => {
+  it('is one choice for both tabs, and clearing the filter keeps it', () => {
+    const listener = vi.fn();
+    const stop = subscribeFilter(listener);
+    setSort('highest');
+    expect(listener).toHaveBeenCalledTimes(1);
+    setFilter({ query: 'rice' });
+    clearFilter();
+    expect(getSort()).toBe('highest');
+    stop();
+    setSort('az');
+  });
+
+  it('starts at A–Z every time the app loads', async () => {
+    setSort('quickest');
+    vi.resetModules();
+    const fresh = await import('./listFilter');
+    expect(fresh.getSort()).toBe('az');
+  });
 });

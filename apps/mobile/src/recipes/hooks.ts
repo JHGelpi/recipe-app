@@ -1,8 +1,10 @@
 import { useQuery } from '@powersync/react';
-import { buildSearchIndex, searchRecipes } from '@recipe-app/domain';
+import { buildSearchIndex, searchRecipes, type RecipeSort } from '@recipe-app/domain';
 import { useMemo, useRef } from 'react';
 import { RATING_TOTALS_LIST_SQL } from '../ratings/repository';
 import {
+  countForTab,
+  orderListItems,
   ratingsByRecipe,
   tagsForTab,
   toListItems,
@@ -37,17 +39,18 @@ function tagsOf(value: unknown): string[] {
 export type { ListItem } from './listItems';
 
 /**
- * The current tab's recipes matching the search, best first, live from the
- * local database. The index is rebuilt only when recipes change: favorites
- * and rating totals are separate queries, so a tap on either recomputes only
- * the visible items (NFR-6).
+ * The current tab's recipes matching the search, best first (otherwise in
+ * the chosen sort, FR-49), live from the local database. The index is rebuilt
+ * only when recipes change: favorites and rating totals are separate queries,
+ * so a tap on either recomputes only the visible items (NFR-6).
  */
 export function useRecipeSearch(
   userId: string,
   favoritesOnly: boolean,
   query: string,
   selectedTags: string[],
-): { items: ListItem[]; tags: string[] } {
+  sort: RecipeSort,
+): { items: ListItem[]; tags: string[]; total: number } {
   const { data: recipeRows } = useQuery<Record<string, unknown>>(LIST_RECIPES_SQL);
   const { data: starredRows } = useQuery<{ recipe_id: string }>(STARRED_IDS_SQL, [userId]);
   const { data: totalsRows } = useQuery<RatingTotalsRow>(RATING_TOTALS_LIST_SQL);
@@ -61,15 +64,20 @@ export function useRecipeSearch(
     () => searchRecipes(index, query, selectedTags),
     [index, query, selectedTags],
   );
+  // Sorted after ratings join in, so a changed rating moves the recipe at once (FR-49).
   const items = useMemo(
-    () => toListItems(ids, rows, starred, favoritesOnly, ratings),
-    [ids, rows, starred, favoritesOnly, ratings],
+    () => orderListItems(toListItems(ids, rows, starred, favoritesOnly, ratings), query, sort),
+    [ids, rows, starred, favoritesOnly, ratings, query, sort],
   );
   const tags = useMemo(
     () => tagsForTab(rows, starred, favoritesOnly),
     [rows, starred, favoritesOnly],
   );
-  return { items, tags };
+  const total = useMemo(
+    () => countForTab(rows, starred, favoritesOnly),
+    [rows, starred, favoritesOnly],
+  );
+  return { items, tags, total };
 }
 
 /** undefined while loading; null when missing or unreadable. */

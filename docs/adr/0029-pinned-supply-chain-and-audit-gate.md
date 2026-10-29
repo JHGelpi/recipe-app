@@ -23,3 +23,9 @@ CI used Actions by moving tags (`actions/checkout@v7`) and declared no `permissi
 - A new high advisory makes every PR red until it is fixed or deliberately listed. Dependabot's own PRs can be red for the same reason.
 - Pins are unreadable without their comments. Edits by hand must update both; the RUNBOOK says how.
 - The ignore list must shrink when Expo updates. The weekly audit run is the place to notice.
+
+## Amendment (2026-10-29): a time-limited runtime exception
+GHSA-qr28-fpjm-wq7f (high, published 2026-10-29) covers `decode-uri-component` 0.5.0 and older, which ships in the web app through `expo-router` → `query-string@7`. The only fixed version, 0.5.1, is ESM-only. `query-string` 7 `require`s it and calls the result, so an override would break the router's query parsing. Expo SDK 57's latest router still uses `query-string` 7; SDK 58's no longer does.
+
+- **A runtime advisory may be ignored when** no fixed version works with its parent package, and the worst case stays in the visitor's own browser: here a crafted link can stall that tab, and the server is not affected. It needs a comment in `pnpm-workspace.yaml` and an open issue for the upgrade that removes it.
+- **This one ends with the Expo SDK 58 upgrade (issue #108).** The entry is removed in that PR.
