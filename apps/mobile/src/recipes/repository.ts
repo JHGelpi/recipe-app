@@ -8,7 +8,7 @@ type Db = Pick<AbstractPowerSyncDatabase, 'execute' | 'getOptional'>;
 // The list reads recipes and favorites separately, so a star tap does not
 // re-read every recipe or rebuild the search index.
 export const LIST_RECIPES_SQL =
-  'select id, title, tags, ingredients, photo_id, prep_minutes, cook_minutes from recipes where deleted_at is null';
+  'select id, title, tags, ingredients, photo_id, prep_minutes, cook_minutes, created_at from recipes where deleted_at is null';
 
 // Only the signed-in user's favorites are on this device (user_favorites stream).
 export const STARRED_IDS_SQL =

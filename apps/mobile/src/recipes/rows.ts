@@ -176,6 +176,8 @@ export type ListRow = SearchSource & {
   starred: boolean;
   photoId: string | null;
   totalMinutes: number | null;
+  /** FR-49: when the server stamped it (ms); null until the row has synced. */
+  addedAt: number | null;
 };
 
 /** A JSON list column, or [] when it is empty or unreadable. */
@@ -220,5 +222,6 @@ export function listRowFrom(row: Record<string, unknown>): ListRow {
     starred: Boolean(row.starred),
     photoId: typeof row.photo_id === 'string' ? row.photo_id : null,
     totalMinutes: totalOf(row.prep_minutes, row.cook_minutes),
+    addedAt: parseTimestamp(typeof row.created_at === 'string' ? row.created_at : null),
   };
 }

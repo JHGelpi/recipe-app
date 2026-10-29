@@ -108,6 +108,7 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 |---|---|---|
 | FR-19 | Search by title, ingredient, tag; combinable filters. Steps and notes are not searched yet | M |
 | FR-20 | Search works offline | M |
+| FR-49 | Sort Recipes and Favorites from a "Sort" menu: A–Z (default), Z–A, Highest rated, Lowest rated (ties: more ratings, then A–Z; unrated last), Recently added, Quickest (no time last). One choice for both tabs, back to A–Z each time the app opens; best match while there's search text; works offline *(built)* | S |
 
 ### Cooking
 | ID | Requirement | Pri |

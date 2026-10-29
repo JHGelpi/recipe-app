@@ -1,3 +1,4 @@
+import { DEFAULT_RECIPE_SORT, type RecipeSort } from '@recipe-app/domain';
 import { useSyncExternalStore } from 'react';
 
 // The list's search and tag filter, shared by Recipes and Favorites so that
@@ -35,4 +36,21 @@ export function clearFilter(): void {
 
 export function useListFilter(): ListFilter {
   return useSyncExternalStore(subscribeFilter, getFilter, getFilter);
+}
+
+// FR-49: one sort for both tabs. Kept in memory only, so every open or reload
+// starts at A–Z; clearing the filter leaves it alone.
+let sort: RecipeSort = DEFAULT_RECIPE_SORT;
+
+export function getSort(): RecipeSort {
+  return sort;
+}
+
+export function setSort(next: RecipeSort): void {
+  sort = next;
+  listeners.forEach((listener) => listener());
+}
+
+export function useListSort(): RecipeSort {
+  return useSyncExternalStore(subscribeFilter, getSort, getSort);
 }

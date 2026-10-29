@@ -1,19 +1,28 @@
-import { useDeferredValue } from 'react';
+import { useDeferredValue, useState } from 'react';
 import { FlatList, View } from 'react-native';
 import { BuildFooter } from '../components/BuildFooter';
 import { HouseholdNoticeBanner } from '../components/HouseholdNoticeBanner';
 import { FavoriteButton } from '../components/FavoriteButton';
+import { SortSheet } from '../components/SortSheet';
 import { StatusLine } from '../components/StatusLine';
 import { RatingMeta } from '../components/Rating';
 import { durationLabel } from '../recipes/duration';
 import { useRecipeSearch } from '../recipes/hooks';
-import { clearFilter, setFilter, toggleTag, useListFilter } from '../recipes/listFilter';
+import {
+  clearFilter,
+  setFilter,
+  setSort,
+  toggleTag,
+  useListFilter,
+  useListSort,
+} from '../recipes/listFilter';
+import { isSearching, sortLabel } from '../recipes/listItems';
 import type { Claims } from '../session/claims';
 import { Thumb } from '../components/Thumb';
 import { colors, space } from '../theme';
 import { Button, Chip, ChipBar, Icon, IconButton, RowCard, Screen, Text, TextField } from '../ui';
 
-/** FR-15, FR-19, FR-20: the household's recipes, or the user's favorites. */
+/** FR-15, FR-19, FR-20, FR-49: the household's recipes, or the user's favorites. */
 export function RecipeListScreen({
   claims,
   favoritesOnly = false,
@@ -22,9 +31,18 @@ export function RecipeListScreen({
   favoritesOnly?: boolean;
 }) {
   const { query, selected } = useListFilter();
+  const sort = useListSort();
+  const [sorting, setSorting] = useState(false);
   // Typing stays smooth even when the results take a moment to re-render.
   const deferredQuery = useDeferredValue(query);
-  const { items, tags } = useRecipeSearch(claims.userId, favoritesOnly, deferredQuery, selected);
+  const { items, tags, total } = useRecipeSearch(
+    claims.userId,
+    favoritesOnly,
+    deferredQuery,
+    selected,
+    sort,
+  );
+  const sortText = sortLabel(deferredQuery, sort);
   // From the query the results used, so clearing a no-match search never
   // flashes the empty-list text before the results catch up.
   const filtering = deferredQuery.trim() !== '' || selected.length > 0;
@@ -75,14 +93,33 @@ export function RecipeListScreen({
           ))}
         </ChipBar>
       ) : null}
-      {/* Always mounted, so screen readers announce each change. */}
-      <Text variant="small" tone="muted" aria-live="polite">
-        {filtering && items.length > 0
-          ? items.length === 1
-            ? '1 recipe'
-            : `${items.length} recipes`
-          : ''}
-      </Text>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: space.sm,
+        }}
+      >
+        {/* Always mounted, so screen readers announce each change. */}
+        <Text variant="small" tone="muted" aria-live="polite" style={{ flexShrink: 1 }}>
+          {filtering && items.length > 0
+            ? items.length === 1
+              ? '1 recipe'
+              : `${items.length} recipes`
+            : ''}
+        </Text>
+        {total >= 2 ? (
+          <Button
+            variant="ghost"
+            label={`${sortText} ▾`}
+            aria-label={sortText}
+            aria-haspopup="menu"
+            disabled={isSearching(deferredQuery)}
+            onPress={() => setSorting(true)}
+          />
+        ) : null}
+      </View>
       <FlatList
         style={{ flex: 1 }}
         data={items}
@@ -137,6 +174,7 @@ export function RecipeListScreen({
         }
         ListFooterComponent={<BuildFooter />}
       />
+      <SortSheet open={sorting} sort={sort} onPick={setSort} onClose={() => setSorting(false)} />
     </Screen>
   );
 }

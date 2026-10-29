@@ -118,6 +118,7 @@ describe('listRowFrom', () => {
       starred: true,
       photoId: null,
       totalMinutes: null,
+      addedAt: null,
     });
   });
 
@@ -138,6 +139,13 @@ describe('listRowFrom', () => {
     expect(listRowFrom({ id: 'r1', title: 'x' }).totalMinutes).toBeNull();
   });
 
+  it('reads when the server added it, from either timestamp form; null before sync (FR-49)', () => {
+    expect(
+      listRowFrom({ id: 'r1', title: 'x', created_at: '2026-10-01 12:00:00.123456Z' }).addedAt,
+    ).toBe(Date.parse('2026-10-01T12:00:00.123Z'));
+    expect(listRowFrom({ id: 'r1', title: 'x', created_at: null }).addedAt).toBeNull();
+  });
+
   it('keeps the title and drops what it cannot read', () => {
     expect(
       listRowFrom({
@@ -155,6 +163,7 @@ describe('listRowFrom', () => {
       starred: false,
       photoId: null,
       totalMinutes: null,
+      addedAt: null,
     });
     expect(listRowFrom({ id: 'r2', title: 'Old', tags: null, ingredients: null })).toMatchObject({
       tags: [],

@@ -1,7 +1,15 @@
 // apps/mobile/src/recipes/listRows.ts
 import { listRowFrom, type ListRow } from './rows';
 
-const COLUMNS = ['title', 'tags', 'ingredients', 'photo_id', 'prep_minutes', 'cook_minutes'];
+const COLUMNS = [
+  'title',
+  'tags',
+  'ingredients',
+  'photo_id',
+  'prep_minutes',
+  'cook_minutes',
+  'created_at',
+];
 
 /**
  * List rows by id, reading only rows whose columns changed since the last
