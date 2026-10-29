@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { SEED, signInAs, signInFresh, type Actor } from '../../../../test-support/auth';
+import { signInFresh, type Actor } from '../../../../test-support/auth';
 import { adminSql, as, refusalCode } from '../helpers/db';
 
 // ADR-0031: a person's Units and Appearance, their own row whatever their
@@ -23,8 +23,16 @@ const read = (actor: Actor) =>
 
 describe('person settings (#60)', () => {
   it('each person reads and writes only their own row, even within one household', async () => {
-    const admin = await signInAs(SEED.adminA);
-    const member = await signInAs(SEED.memberA);
+    // Fresh people, not the seed users: their settings would change how the
+    // e2e suite's recipes open.
+    const admin = await fresh();
+    const joiner = await fresh();
+    const [invite] = await as(
+      admin,
+      (tx) => tx<{ token: string }[]>`select token from public.create_invite('member')`,
+    );
+    await as(joiner, (tx) => tx`select * from public.accept_invite(${invite!.token})`);
+    const member = await signInFresh(joiner.email);
     await save(admin, 'us', 'light');
     await save(member, 'metric', 'dark');
     expect([...(await read(member))]).toEqual([{ user_id: member.userId, units: 'metric' }]);
@@ -51,7 +59,15 @@ describe('person settings (#60)', () => {
   });
 
   it('a Viewer saves their own (rule 4’s exception)', async () => {
-    const viewer = await signInAs(SEED.viewerA);
+    const admin = await fresh();
+    const joiner = await fresh();
+    const [invite] = await as(
+      admin,
+      (tx) => tx<{ token: string }[]>`select token from public.create_invite('viewer')`,
+    );
+    await as(joiner, (tx) => tx`select * from public.accept_invite(${invite!.token})`);
+    const viewer = await signInFresh(joiner.email);
+    expect(viewer.role).toBe('viewer');
     await save(viewer, 'us', 'system');
     expect([...(await read(viewer))]).toEqual([{ user_id: viewer.userId, units: 'us' }]);
   });
