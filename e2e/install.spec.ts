@@ -64,10 +64,10 @@ test('the page is revalidated and hashed bundles are cached for good', async ({
   );
 });
 
-test('the footer shows the build time and the storage status', async ({ page }) => {
+test('the footer shows the version, the build time and the storage status', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByLabel('Build')).toHaveText(
-    /^Build \d{4}-\d{2}-\d{2} \d{2}:\d{2} · Storage: (persistent|best effort|unknown)$/,
+    /^Version \d+\.\d+\.\d+ · Build \d{4}-\d{2}-\d{2} \d{2}:\d{2} · Storage: (persistent|best effort|unknown)$/,
   );
 });
 

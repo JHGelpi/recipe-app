@@ -19,7 +19,8 @@ export function activeTab(path: string): Tab | null {
   if (path === '/') return 'recipes';
   if (path === '/favorites') return 'favorites';
   if (path === '/list') return 'list';
-  if (path === '/household' || path === '/trash' || path.startsWith('/diary')) return 'household';
+  if (['/household', '/trash', '/whats-new'].includes(path) || path.startsWith('/diary'))
+    return 'household';
   return null;
 }
 

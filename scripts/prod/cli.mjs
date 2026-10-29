@@ -13,6 +13,8 @@ import {
   composeArgs,
   deployBlockers,
   deploySequence,
+  newestReleaseVersion,
+  releaseNotesWarning,
   ENV_FILE,
   LIST_BACKUPS_SH,
   newSigningKeys,
@@ -77,6 +79,15 @@ function deployedBuild() {
     { stdio: ['ignore', 'pipe', 'ignore'], encoding: 'utf8' },
   );
   return build.stdout?.trim() || 'unknown';
+}
+
+/** The running proxy image's newest release (FR-47); null before the first deploy that has one. */
+function deployedVersion() {
+  const notes = compose(['exec', '-T', 'proxy', 'cat', '/etc/dishkept/RELEASE_NOTES.md'], {
+    stdio: ['ignore', 'pipe', 'ignore'],
+    encoding: 'utf8',
+  });
+  return notes.status === 0 ? newestReleaseVersion(notes.stdout) : null;
 }
 
 const [command, ...args] = process.argv.slice(2);
@@ -178,6 +189,11 @@ const commands = {
 
   deploy() {
     requireCurrentMain('deploying');
+    // Read before the new image replaces the running one; said last, after the build output.
+    const warning = releaseNotesWarning(
+      newestReleaseVersion(readFileSync('RELEASE_NOTES.md', 'utf8')),
+      deployedVersion(),
+    );
     // The site goes public only once the gate is on (deploySequence).
     for (const step of deploySequence({ tunnel: flags.tunnel })) {
       if (step.args) {
@@ -198,6 +214,7 @@ const commands = {
         'Started without the tunnel or the backup loop: the site is not reachable from outside.',
       );
     commands.status();
+    if (warning) console.warn(warning);
   },
 
   status() {

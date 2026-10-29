@@ -54,6 +54,7 @@ import {
   Text,
   TextField,
 } from '../ui';
+import { APP_VERSION } from '../whatsNew/releases';
 
 const GITHUB_URL = 'https://github.com/JHGelpi/recipe-app';
 
@@ -443,6 +444,14 @@ export function HouseholdScreen({ claims }: { claims: Claims }) {
           trailing={<Icon name="chevron-forward" color={colors.muted} />}
         />
       ) : null}
+      {/* FR-47: bundled with the app, so it works offline; everyone has it. */}
+      <RowCard
+        title="What’s new"
+        subtitle={`Version ${APP_VERSION} · see what changed`}
+        href="/whats-new"
+        leading={<Icon name="sparkles-outline" color={colors.muted} />}
+        trailing={<Icon name="chevron-forward" color={colors.muted} />}
+      />
       {/* FR-45: anyone signed in, Viewers too; both need a connection. */}
       <RowCard
         title="Send feedback"

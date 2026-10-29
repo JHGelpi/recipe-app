@@ -52,6 +52,7 @@ describe('the tab bar (UI spec §4)', () => {
     expect(activeTab('/favorites')).toBe('favorites');
     expect(activeTab('/household')).toBe('household');
     expect(activeTab('/trash')).toBe('household');
+    expect(activeTab('/whats-new')).toBe('household');
     expect(activeTab('/recipe/abc')).toBeNull();
   });
 

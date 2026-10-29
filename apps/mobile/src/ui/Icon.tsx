@@ -40,6 +40,7 @@ const GLYPHS = {
   'restaurant-outline': 62774,
   search: 62815,
   'share-outline': 62834,
+  'sparkles-outline': 62861,
   star: 62869,
   'star-outline': 62873,
   'time-outline': 62942,

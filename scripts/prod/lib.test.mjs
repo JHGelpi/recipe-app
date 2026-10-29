@@ -4,6 +4,8 @@ import {
   buildProdEnv,
   composeArgs,
   deployBlockers,
+  newestReleaseVersion,
+  releaseNotesWarning,
   DRILL_PROFILES,
   drillCounts,
   newSigningKeys,
@@ -57,6 +59,24 @@ describe('deploy preconditions', () => {
     expect(deployBlockers({ ...ok, branch: 'feat/x' })).toHaveLength(1);
     expect(deployBlockers({ ...ok, dirty: true })).toHaveLength(1);
     expect(deployBlockers({ ...ok, head: 'old' })).toHaveLength(1);
+  });
+});
+
+describe('release notes on deploy (FR-47)', () => {
+  const notes =
+    '# Release notes\n\nIntro.\n\n## 1.2.0 · 2026-11-05\n- a\n\n## 1.1.0 · 2026-10-28\n- b\n';
+  it('reads the newest version', () => {
+    expect(newestReleaseVersion(notes)).toBe('1.2.0');
+    expect(newestReleaseVersion('nothing here')).toBeNull();
+    expect(newestReleaseVersion(null)).toBeNull();
+  });
+  it('warns only when the newest version is the one running', () => {
+    expect(releaseNotesWarning('1.1.0', '1.1.0')).toBe(
+      "No new release notes since 1.1.0. This deploy won't show a What's new popup.",
+    );
+    expect(releaseNotesWarning('1.2.0', '1.1.0')).toBeNull();
+    // A running build from before FR-47 has no version to compare.
+    expect(releaseNotesWarning('1.1.0', null)).toBeNull();
   });
 });
 

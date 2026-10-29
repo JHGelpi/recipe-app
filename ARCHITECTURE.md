@@ -116,7 +116,7 @@ Photo files live on the API's `photos` volume, served only after an RLS check on
 
 | Container | Owns | Notes |
 |---|---|---|
-| **Web App** (`apps/mobile`) | All UI; cook mode; scaling & unit conversion (pure functions, offline); PDF/text rendering for sharing (FR-26); offline import queue (FR-29) | Never holds AI or service-role keys (NFR-3); a service worker precaches the app's files so it opens offline (ADR-0009) |
+| **Web App** (`apps/mobile`) | All UI; cook mode; scaling & unit conversion (pure functions, offline); PDF/text rendering for sharing (FR-26); offline import queue (FR-29); release notes bundled from `RELEASE_NOTES.md`, shown once after an update (FR-47, ADR-0032) | Never holds AI or service-role keys (NFR-3); a service worker precaches the app's files so it opens offline (ADR-0009) |
 | **On-device DB** | Local copy of the household's data; source for the in-memory search index (FR-19/20, ADR-0011) | Writes go here first, then upload queue → API |
 | **Sync Service** | Change streaming, per-household sync rules | Sync rules mirror RLS; a device only receives the household its live membership names (ADR-0027) |
 | **API** | Business logic that must be server-side: import pipeline, AI and its monthly cap, photo files, invites and friend links, share links, sign-up passes, write validation, the trash purge | Stateless; verifies the JWT, then runs every statement as the user through asUser |

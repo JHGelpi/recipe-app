@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, View } from 'react-native';
 import { colors, radius, shadow, space } from '../theme';
 
@@ -23,6 +23,14 @@ export function BottomSheet({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
+  // react-native-web's Modal keeps focus inside once it is there but doesn't
+  // move it in: a screen reader would stay on the page behind (NFR-11).
+  const dialog = useRef<View>(null);
+  useEffect(() => {
+    if (!open) return;
+    const frame = requestAnimationFrame(() => (dialog.current as HTMLElement | null)?.focus?.());
+    return () => cancelAnimationFrame(frame);
+  }, [open]);
   return (
     <Modal visible={open} transparent animationType="slide" onRequestClose={onClose}>
       <View style={{ flex: 1, justifyContent: 'flex-end' }}>
@@ -40,8 +48,11 @@ export function BottomSheet({
           }}
         />
         <View
+          ref={dialog}
           role="dialog"
           aria-label={label}
+          aria-modal
+          tabIndex={-1}
           style={{
             backgroundColor: colors.raised,
             borderTopLeftRadius: radius.card,
