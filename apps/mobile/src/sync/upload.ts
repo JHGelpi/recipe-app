@@ -3,6 +3,7 @@ import {
   COOK_LOG_CLIENT_FIELDS,
   FAVORITE_CLIENT_FIELDS,
   IMPORT_CLIENT_FIELDS,
+  PERSON_SETTINGS_CLIENT_FIELDS,
   PHOTO_CLIENT_FIELDS,
   RECIPE_CLIENT_FIELDS,
   RECIPE_RATING_CLIENT_FIELDS,
@@ -41,6 +42,7 @@ const CLIENT_FIELDS: Record<string, readonly string[]> = {
   aisle_choices: AISLE_CHOICE_CLIENT_FIELDS,
   cook_logs: COOK_LOG_CLIENT_FIELDS,
   recipe_ratings: RECIPE_RATING_CLIENT_FIELDS,
+  person_settings: PERSON_SETTINGS_CLIENT_FIELDS,
 };
 
 // The local database stores these as JSON text; the API expects arrays.

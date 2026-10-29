@@ -1,25 +1,22 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
+import { saveSetting, startingSettings } from '../settings/start';
 import {
-  APPEARANCE_KEY,
   applyTheme,
   DARK_QUERY,
-  deviceStorage,
   installThemeCss,
-  readAppearance,
   resolveTheme,
-  saveAppearance,
   systemPrefersDark,
   type Appearance,
 } from './appearance';
 
-const store = deviceStorage;
-
-// The page's current choice. Held here too, so a choice storage refused still lasts the visit.
+// NFR-11: the person's Appearance (ADR-0031). PersonSettingsSync sets it from
+// the synced row; until then it starts from the cached copy index.html also
+// painted from, so the theme does not flash.
 let current: Appearance | undefined;
 const listeners = new Set<() => void>();
 
 function appearanceNow(): Appearance {
-  return (current ??= readAppearance(store()));
+  return (current ??= startingSettings().appearance);
 }
 
 function apply(): void {
@@ -27,7 +24,9 @@ function apply(): void {
   applyTheme(document, resolveTheme(appearanceNow(), systemPrefersDark()));
 }
 
-function choose(next: Appearance): void {
+/** From the person's synced row, or System on sign-out. */
+export function setAppearanceNow(next: Appearance): void {
+  if (current === next) return;
   current = next;
   apply();
   listeners.forEach((listener) => listener());
@@ -40,7 +39,7 @@ export function installTheme(): void {
   apply();
 }
 
-/** The setting on the Household screen: the device's choice, saved at once. */
+/** The setting on the Household screen: the person's choice, saved to their row. */
 export function useAppearance(): { appearance: Appearance; setAppearance(next: Appearance): void } {
   const appearance = useSyncExternalStore(
     (listener) => {
@@ -51,26 +50,19 @@ export function useAppearance(): { appearance: Appearance; setAppearance(next: A
     appearanceNow,
   );
   const setAppearance = useCallback((next: Appearance) => {
-    saveAppearance(store(), next);
-    choose(next);
+    setAppearanceNow(next);
+    saveSetting('appearance', next);
   }, []);
   return { appearance, setAppearance };
 }
 
-/** Mounted once in the root layout: follows the system setting and choices made in other tabs. */
+/** Mounted once in the root layout: follows the device's light or dark setting live. */
 export function AppearanceSync(): null {
   useEffect(() => {
     const media = globalThis.matchMedia?.(DARK_QUERY);
     const onSystem = () => apply();
-    const onStorage = (event: StorageEvent) => {
-      if (event.key === APPEARANCE_KEY) choose(readAppearance(store()));
-    };
     media?.addEventListener('change', onSystem);
-    globalThis.addEventListener?.('storage', onStorage);
-    return () => {
-      media?.removeEventListener('change', onSystem);
-      globalThis.removeEventListener?.('storage', onStorage);
-    };
+    return () => media?.removeEventListener('change', onSystem);
   }, []);
   return null;
 }

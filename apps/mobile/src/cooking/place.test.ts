@@ -75,3 +75,12 @@ describe('the cook place', () => {
     });
   });
 });
+
+describe('a fresh place and the person’s default units (FR-23)', () => {
+  it('starts at the default, As written when none is given', () => {
+    expect(freshPlace(4, 0).units).toBe('as_written');
+    for (const units of ['as_written', 'us', 'metric'] as const) {
+      expect(freshPlace(4, 0, units)).toMatchObject({ units, servings: 4, step: 0, ticked: [] });
+    }
+  });
+});

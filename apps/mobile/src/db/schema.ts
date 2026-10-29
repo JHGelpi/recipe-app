@@ -208,6 +208,18 @@ const recipe_rating_totals = new Table({
   deleted_at: column.text,
 });
 
+// ADR-0031: the signed-in person's own Units and Appearance (my_settings
+// stream). id is the person's id; no household_id, so it survives a move.
+const person_settings = new Table({
+  user_id: column.text,
+  units: column.text,
+  appearance: column.text,
+  created_at: column.text,
+  updated_at: column.text,
+  updated_by: column.text,
+  deleted_at: column.text,
+});
+
 // attachments is PowerSync's local-only queue table: never uploaded.
 export const AppSchema = new Schema({
   recipes,
@@ -223,6 +235,7 @@ export const AppSchema = new Schema({
   cook_logs,
   recipe_ratings,
   recipe_rating_totals,
+  person_settings,
   attachments: new AttachmentTable(),
 });
 

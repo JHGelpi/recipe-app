@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { APPEARANCE_KEY } from './appearance';
+import { SETTINGS_CACHE_KEY } from '../settings/cache';
+import { AUTH_STORAGE_KEY } from '../session/storageKey';
 import { palettes, type Theme } from './palettes';
 
 // index.html paints before the bundle loads, so it repeats a few palette values.
@@ -20,8 +21,9 @@ describe('index.html before the bundle (light mode spec §3)', () => {
     expect([map?.[1], map?.[2]]).toEqual([palettes.dark.bg, palettes.light.bg]);
   });
 
-  it('reads the key the app saves to', () => {
-    expect(html).toContain(`localStorage.getItem('${APPEARANCE_KEY}')`);
+  it('reads the keys the app saves to: the session and the person’s cached settings', () => {
+    expect(html).toContain(`localStorage.getItem('${AUTH_STORAGE_KEY}')`);
+    expect(html).toContain(`localStorage.getItem('${SETTINGS_CACHE_KEY}')`);
   });
 
   it('outlines focus with the theme accent, falling back to the dark one', () => {

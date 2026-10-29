@@ -1,6 +1,6 @@
 # 0020. Light mode with CSS variables, chosen per device
 
-- **Status:** Accepted
+- **Status:** Accepted; where the choice is stored is amended by ADR-0031
 - **Date:** 2026-10-20
 
 ## Context

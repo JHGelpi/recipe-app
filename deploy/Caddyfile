@@ -63,7 +63,7 @@
 	# - img-src blob: data:: photos are shown from local storage.
 	# - worker-src blob:: what the PowerSync and Workbox workers may spawn.
 	header {
-		Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-25JebiLIP2H8T0uCnNh/i9YjgtHC8p6Xy3/7rsyaDNs='; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; manifest-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'"
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-vZzXfdHeq6q7vbueeA+/ytDWt07C0I6PVTod+MWpdeE='; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; manifest-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'"
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "strict-origin-when-cross-origin"
 		Permissions-Policy "camera=(self), microphone=(), geolocation=()"

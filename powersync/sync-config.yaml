@@ -167,3 +167,13 @@ streams:
       WHERE household_id IN (
         SELECT household_id FROM memberships
         WHERE user_id = auth.user_id() AND deleted_at IS NULL)
+
+  # Mirrors person_settings_select: the person's own Units and Appearance
+  # (FR-23, NFR-11, ADR-0031). Keyed by person, not household, so it keeps
+  # arriving after a household move.
+  my_settings:
+    auto_subscribe: true
+    query: >-
+      SELECT id, user_id, units, appearance, created_at, updated_at, updated_by, deleted_at
+      FROM person_settings
+      WHERE user_id = auth.user_id()

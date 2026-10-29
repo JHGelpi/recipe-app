@@ -197,3 +197,13 @@ export async function settled(page: Page): Promise<void> {
   await expect(page.getByText(/ household$/)).toBeVisible();
   await expect(page.getByText(/\(you\)$/)).toBeVisible();
 }
+
+/**
+ * Waits until a Units or Appearance choice is in the local database: the app
+ * copies the person's synced row to this cache only then (ADR-0031).
+ */
+export async function settingSaved(page: Page, key: 'units' | 'appearance', value: string) {
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('dishkept.personSettings') ?? ''))
+    .toContain(`"${key}":"${value}"`);
+}

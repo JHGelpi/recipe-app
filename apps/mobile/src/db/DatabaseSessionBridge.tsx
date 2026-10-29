@@ -18,6 +18,11 @@ import { createConnector } from '../sync/connector';
 import { purgeTrashIfDue } from '../sync/purge';
 import { dbOwner } from './dbOwner';
 import { clearFilter } from '../recipes/listFilter';
+import { setUnitsNow } from '../cooking/useUnitsPreference';
+import { clearCachedSettings } from '../settings/cache';
+import { PersonSettingsSync } from '../settings/PersonSettingsSync';
+import { settingsStorage, startingSettings } from '../settings/start';
+import { setAppearanceNow } from '../theme/useAppearance';
 import { useNetworkOnline } from './useNetworkOnline';
 
 const connector = createConnector();
@@ -53,6 +58,17 @@ export function DatabaseSessionBridge({ children }: { children: ReactNode }) {
   const [readyFor, setReadyFor] = useState<string | null>(null);
   // Serialise transitions so a wipe always finishes before the next connect.
   const queue = useRef<Promise<void>>(Promise.resolve());
+
+  // ADR-0031: the stores follow whoever is signed in, starting from their
+  // cached settings; signed out, As written and System. Signing out clears
+  // the cache, so the next person's first frame never shows these choices.
+  useEffect(() => {
+    if (status === 'loading') return;
+    if (byUser) clearCachedSettings(settingsStorage());
+    const start = startingSettings(userId);
+    setUnitsNow(start.units);
+    setAppearanceNow(start.appearance);
+  }, [status, userId, byUser]);
 
   // The dependencies are primitives on purpose: a token refresh creates a new
   // state object, and reconnecting on every refresh would restart sync.
@@ -119,5 +135,10 @@ export function DatabaseSessionBridge({ children }: { children: ReactNode }) {
   );
 
   if (status === 'signedIn' && readyFor !== owner) return null;
-  return <>{children}</>;
+  return (
+    <>
+      {userId !== null ? <PersonSettingsSync userId={userId} /> : null}
+      {children}
+    </>
+  );
 }

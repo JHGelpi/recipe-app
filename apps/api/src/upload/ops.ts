@@ -7,6 +7,8 @@ import {
   favoriteSchema,
   importPatchSchema,
   importPutSchema,
+  personSettingsPatchSchema,
+  personSettingsSchema,
   photoPatchSchema,
   photoPutSchema,
   recipePatchSchema,
@@ -31,6 +33,7 @@ const ALLOWED_TABLES = new Set([
   'aisle_choices',
   'cook_logs',
   'recipe_ratings',
+  'person_settings',
 ]);
 // jsonb columns: sent with tx.json so postgres.js does not build an array literal.
 const JSON_COLUMNS = new Set(['ingredients', 'steps', 'nutrition']);
@@ -154,6 +157,29 @@ async function applyRating(
   if (Object.keys(fields).length === 0) return applied(op);
   const rows = await tx`
     update public.recipe_ratings set ${tx(fields)} where id = ${id} returning id`;
+  return rows.length === 0 ? rejected(op, 'not_found_or_forbidden') : applied(op);
+}
+
+// ADR-0031: the person's own settings row. Someone else's row is hidden by
+// RLS, so the DO UPDATE raises 42501 and the op is rejected.
+async function applyPersonSettings(
+  tx: UserTx,
+  op: Op,
+  candidate: Record<string, unknown>,
+): Promise<Result> {
+  if (op.op === 'put') {
+    const parsed = personSettingsSchema.safeParse(candidate);
+    if (!parsed.success) return rejected(op, 'invalid');
+    await tx`
+      insert into public.person_settings ${tx(parsed.data)}
+      on conflict (id) do update set units = excluded.units, appearance = excluded.appearance`;
+    return applied(op);
+  }
+  const parsed = personSettingsPatchSchema.safeParse(candidate);
+  if (!parsed.success) return rejected(op, 'invalid');
+  const { id, ...fields } = parsed.data;
+  const rows = await tx`
+    update public.person_settings set ${tx(fields)} where id = ${id} returning id`;
   return rows.length === 0 ? rejected(op, 'not_found_or_forbidden') : applied(op);
 }
 
@@ -296,6 +322,7 @@ const APPLY: Record<string, Apply> = {
   aisle_choices: applyAisleChoice,
   cook_logs: applyCookLog,
   recipe_ratings: applyRating,
+  person_settings: applyPersonSettings,
 };
 
 async function applyOne(tx: UserTx, op: Op): Promise<Result> {

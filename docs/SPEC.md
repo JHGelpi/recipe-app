@@ -113,7 +113,7 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 |---|---|---|
 | FR-21 | Cook mode: screen awake, large text, step-by-step, checkable ingredients | M |
 | FR-22 | Scale servings | S |
-| FR-23 | US ↔ metric conversion (same kind only: volume ↔ volume, weight ↔ weight), for display; the saved recipe doesn't change. Each person can set a default (As written / US / Metric) on this device that recipes open in *(built)* | C |
+| FR-23 | US ↔ metric conversion (same kind only: volume ↔ volume, weight ↔ weight), for display; the saved recipe doesn't change. Each person can set a default (As written / US / Metric) that recipes open in; it follows them across devices (ADR-0031) *(built)* | C |
 | FR-24 | AI substitutions per ingredient, with amounts and effect on dish | M |
 | FR-25 | Save a substitution to the recipe as a note *(built: Add to notes)* | C |
 
@@ -168,7 +168,7 @@ Admins and Members log and edit; Viewers read the diary (rule 4). Every entry be
 | NFR-8 | Availability | Best effort on the owner's always-on PC. A GCP VM is defined in OpenTofu and can take over through a restore when uptime matters (ADR-0018, ADR-0021). |
 | NFR-9 | Data durability | Nightly encrypted off-site backups kept 30 days; restore tested (ADR-0018). No data loss on device reinstall once synced. |
 | NFR-10 | Portability | Household can export all recipes (JSON + PDFs). *Not built yet.* |
-| NFR-11 | Accessibility | Supports OS dynamic text size, VoiceOver/TalkBack, WCAG AA contrast in light and dark themes; the theme follows the device setting or the person's choice (ADR-0020). |
+| NFR-11 | Accessibility | Supports OS dynamic text size, VoiceOver/TalkBack, WCAG AA contrast in light and dark themes; the theme follows the device setting or the person's choice, saved to the person (ADR-0020, ADR-0031). |
 | NFR-12 | Store compliance | Native builds only: in-app account deletion; Sign in with Apple offered on iOS if other social sign-in is offered. |
 | NFR-13 | Attribution | Imported web recipes retain source URL and author attribution. |
 | NFR-14 | Abuse limits | Per person: 30 import reads an hour, 120 upload batches a minute, 200 photo uploads an hour; each household keeps at most 2 GB of photos. The app waits and retries over a limit (#67, ADR-0028). |

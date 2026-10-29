@@ -23,18 +23,25 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
     <meta name="theme-color" content="#0E121A" />
     <meta name="color-scheme" content="dark" />
-    <!-- The saved appearance, or the system's, before anything paints (ADR-0020).
-         Plain ES5; the app keeps it in step from here (src/theme/useAppearance.ts). -->
+    <!-- The signed-in person's appearance, or the system's, before anything paints
+         (ADR-0020, ADR-0031). The cached copy counts only for the person whose
+         session is saved. Plain ES5; the app keeps it in step from here
+         (src/settings/cache.ts, src/theme/useAppearance.ts). Editing this script
+         changes its hash in deploy/Caddyfile's Content-Security-Policy. -->
     <script>
       (function () {
         var theme = 'dark';
         try {
           theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         } catch (e) {}
-        // Apart, so blocked storage still leaves the system's theme.
+        // Apart, so blocked storage or a broken value still leaves the system's theme.
         try {
-          var saved = localStorage.getItem('dishkept.appearance');
-          if (saved === 'light' || saved === 'dark') theme = saved;
+          var session = JSON.parse(localStorage.getItem('supabase.auth.token'));
+          var saved = JSON.parse(localStorage.getItem('dishkept.personSettings'));
+          if (session && session.user && saved && saved.userId === session.user.id) {
+            if (saved.appearance === 'light' || saved.appearance === 'dark')
+              theme = saved.appearance;
+          }
         } catch (e) {}
         document.documentElement.setAttribute('data-theme', theme);
         var bg = { dark: '#0E121A', light: '#F6F7F9' }[theme];
