@@ -29,3 +29,9 @@ overrides:
 auditConfig:
   ignoreGhsas:
     - GHSA-mrhx-c7xc-m3w5
+    # Runtime exception (ADR-0029 amendment, issue #108): decode-uri-component
+    # <=0.5.0 under expo-router > query-string@7 (quadratic decode of a crafted
+    # query string; it can stall only the visitor's own tab). The fix, 0.5.1, is
+    # ESM-only and query-string 7 cannot load it. Remove with Expo SDK 58, whose
+    # router drops query-string.
+    - GHSA-qr28-fpjm-wq7f
