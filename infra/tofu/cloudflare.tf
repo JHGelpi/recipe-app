@@ -62,3 +62,27 @@ resource "cloudflare_ruleset" "sign_in_rate_limit" {
     }
   }
 }
+
+# Caddy sends sw.js with "no-cache", but Cloudflare caches .js files and
+# replaces the header with its 4-hour Browser Cache TTL. Keep Caddy's header
+# so browsers revalidate the service worker like every other app file.
+resource "cloudflare_ruleset" "cache_settings" {
+  zone_id     = cloudflare_zone.site.id
+  name        = "Cache settings"
+  description = "Keep the origin's Cache-Control on the service worker"
+  kind        = "zone"
+  phase       = "http_request_cache_settings"
+
+  rules {
+    description = "sw.js: respect the origin's browser cache headers"
+    expression  = "(http.host eq \"${var.hostname}.${var.domain}\" and http.request.uri.path eq \"/sw.js\")"
+    action      = "set_cache_settings"
+    enabled     = true
+    action_parameters {
+      cache = true
+      browser_ttl {
+        mode = "respect_origin"
+      }
+    }
+  }
+}
