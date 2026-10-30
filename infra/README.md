@@ -27,7 +27,7 @@ If you have no key yet, `ssh-keygen -t ed25519 -f ~/.ssh/google_compute_engine` 
 
 ```sh
 gcloud auth application-default login
-export CLOUDFLARE_API_TOKEN=...       # Zone:Edit, DNS:Edit, Cloudflare Tunnel:Edit on your account
+export CLOUDFLARE_API_TOKEN=...       # Zone:Edit, DNS:Edit, Cache Rules:Edit, Cloudflare Tunnel:Edit on your account
 export TF_VAR_project=...             # your GCP project id
 export TF_VAR_cloudflare_account_id=...
 export TF_VAR_backup_bucket=...       # e.g. dishkept-backups-<something>; globally unique
