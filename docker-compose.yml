@@ -151,7 +151,7 @@ services:
       - photos:/data/photos
 
   sync:
-    image: journeyapps/powersync-service:1.27.1@sha256:4b5b7d70f63c5cb5afdc680f5cdbacdcbc33cbf5f8fb55b001da263d7da75866
+    image: journeyapps/powersync-service:1.27.2@sha256:d7a99817057a42dae9e6d8fe0c70b49d99105dcac8b8ab0e9ed3cf1ff0978b8b
     restart: unless-stopped
     command: ['start', '-r', 'unified']
     depends_on:
