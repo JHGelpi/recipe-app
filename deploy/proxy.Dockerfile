@@ -16,7 +16,7 @@ COPY apps/mobile apps/mobile
 ENV METRO_MAX_WORKERS=2
 RUN EXPO_PUBLIC_BUILD_TIME="$(date -u '+%Y-%m-%d %H:%M')" pnpm --filter mobile run build:web
 
-FROM caddy:2.11.7@sha256:5e5286cb37d44086d651a5363f05f43a692ce4d649d88fb1bd844579f45fa9e8
+FROM caddy:2.11.7@sha256:36c24ad91a7ff7bc4c87fe22bfa8df3c4b18da0773d73fc12ee2c52b98c0bb7e
 COPY deploy/Caddyfile /etc/caddy/Caddyfile
 COPY deploy/email-templates /srv/email-templates
 COPY --from=web /repo/apps/mobile/dist /srv/web
