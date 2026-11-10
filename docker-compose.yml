@@ -90,7 +90,7 @@ services:
       retries: 60
 
   migrate:
-    image: ghcr.io/amacneil/dbmate:2.37.0@sha256:0101fcc9999596f4a6930e5627296cd91f3bfa225e3e8c1699fc00881e439cc6
+    image: ghcr.io/amacneil/dbmate:2.38.0@sha256:3937d2826e8189ed1f8cd58331f1f0711721ee10ac4c3d5d5f754fbe37e851ff
     restart: 'no'
     depends_on:
       db:
@@ -244,7 +244,7 @@ services:
       - backups:/backups
 
   mail:
-    image: axllent/mailpit:v1.32.0@sha256:0790692be935ea4420d085694f7985b1f692ca6a8771ab0e0bd8ba75ac180498
+    image: axllent/mailpit:v1.33.0@sha256:9b3a463be15354c0f0eba91697d80e3e0d8a5623ef0e627cacc836bc17fd5231
     profiles: [dev]
     restart: unless-stopped
     ports:
