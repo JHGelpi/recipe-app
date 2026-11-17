@@ -273,7 +273,7 @@ C4Deployment
     ContainerDb(localDb, "SQLite", "On the device (OPFS or IndexedDB)")
   }
 
-  Deployment_Node(host, "Owner's Windows PC", "Docker Desktop on WSL; Compose project dishkept") {
+  Deployment_Node(host, "Owner's Windows PC", "Rootless Podman in WSL (ADR-0033); Compose project dishkept") {
     Container(tunnel, "cloudflared", "Cloudflare Tunnel")
     Container(backupSvc, "backup", "pg_dump, age, rclone")
     Container(proxy, "proxy", "Caddy")

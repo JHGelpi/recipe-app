@@ -21,7 +21,7 @@ Lightweight ADRs ([Michael Nygard format](https://cognitect.com/blog/2011/11/15/
 | [0015](0015-household-moves-and-live-roles.md) | Household moves through narrow definer functions; live role checks | Accepted; its sync part superseded by 0027 |
 | [0016](0016-shared-recipe-snapshots.md) | Shared recipe snapshots, read anonymously through a definer function | Accepted |
 | [0017](0017-dishkept-design-system.md) | Dishkept: a small design system of our own, dark only | Accepted |
-| [0018](0018-production-on-a-home-pc.md) | Production on a home PC: Cloudflare Tunnel, nightly encrypted backups to GCS, invite-only sign-up | Accepted |
+| [0018](0018-production-on-a-home-pc.md) | Production on a home PC: Cloudflare Tunnel, nightly encrypted backups to GCS, invite-only sign-up | Accepted, amended by 0033 |
 | [0019](0019-shopping-list.md) | Shopping list: added rows merged on screen, aisles by word list and household choices | Accepted |
 | [0020](0020-light-mode-with-css-variables.md) | Light mode with CSS variables, chosen per device | Accepted; storage per person since 0031 |
 | [0021](0021-infrastructure-as-code.md) | Infrastructure as code: OpenTofu for the cloud, Ansible for the hosts, secrets in Ansible Vault | Accepted |
@@ -35,5 +35,6 @@ Lightweight ADRs ([Michael Nygard format](https://cognitect.com/blog/2011/11/15/
 | [0030](0030-email-code-relay-and-lockout.md) | Email codes through the API, with a per-email lockout | Accepted |
 | [0031](0031-settings-belong-to-the-person.md) | Units and Appearance belong to the person, in a per-person table | Accepted |
 | [0032](0032-release-notes-in-the-app.md) | Release notes in one file that sets the version, bundled into the app | Accepted |
+| [0033](0033-podman-on-the-pc.md) | Production on the PC runs on rootless Podman in its own WSL distro | Accepted |
 
 Template: [`template.md`](template.md)

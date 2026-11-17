@@ -109,11 +109,14 @@ The drill asks for the path to a file holding your secret key. See "Restore" for
 
 ### 8. Keep the PC serving
 
-- **Docker Desktop:** in Settings, under General, turn on **Start Docker Desktop when you sign in to your computer**. Ansible warns if it's off.
-- **Windows:** in Settings, under System, then Power, set **When plugged in, put my device to sleep after** to **Never**.
-- **Windows sign-in:** Docker Desktop starts at *sign-in*, so after a reboot the stack comes back only once you've signed in to Windows.
+Production runs on rootless Podman in the WSL distro `Ubuntu-24.04` (ADR-0033). Run `prod:*` and `ansible-playbook site.yml -l pc` there, with `corepack pnpm`.
 
-**Check:** after a reboot and sign-in, `pnpm prod:status` shows every service running, without you doing anything.
+- **The distro:** run `scripts/podman/setup-host.sh` from the dev checkout inside `Ubuntu-24.04`. The first run changes `/etc/wsl.conf` and stops; run `wsl --terminate Ubuntu-24.04` in PowerShell, then run the script again. Ansible warns if the restart setup is missing.
+- **Start at boot:** in Task Scheduler, create a task **Dishkept Podman** that runs `wsl.exe` with arguments `-d Ubuntu-24.04 --exec sleep infinity`, with triggers **At startup** and **At log on**. Ansible warns if it's missing.
+- **Windows:** in Settings, under System, then Power, set **When plugged in, put my device to sleep after** to **Never**.
+- **Windows sign-in:** starting at boot without anyone signed in isn't proven yet. If the site is down after a reboot, sign in to Windows.
+
+**Check:** after a reboot and sign-in, `corepack pnpm prod:status` in `Ubuntu-24.04` shows every service running, without you doing anything.
 
 ## Everyday
 

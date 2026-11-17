@@ -1,27 +1,22 @@
-# The PC only serves while Docker Desktop runs (RUNBOOK "Keep the PC serving").
-- name: Find Docker Desktop's settings file
+# The PC serves only while Podman brings the stack back after a reboot (ADR-0033;
+# RUNBOOK "Keep the PC serving"). scripts/podman/setup-host.sh sets this up.
+- name: Check Podman's restart setup and the start-at-boot task
   ansible.builtin.shell: |
-    set -o pipefail
-    wslpath "$(cmd.exe /c 'echo %APPDATA%' 2>/dev/null | tr -d '\r')"
+    set -eo pipefail
+    systemctl --user is-enabled podman-restart.service podman.socket
+    test -f ~/.config/systemd/user/podman-restart.service.d/unless-stopped.conf
+    loginctl show-user "$USER" -p Linger | grep -qx Linger=yes
+    /mnt/c/Windows/System32/schtasks.exe /query /tn 'Dishkept Podman'
   args:
     executable: /bin/bash
-  register: serve_appdata
+  register: serve_check
   changed_when: false
   check_mode: false
   failed_when: false
 
-- name: Read Docker Desktop's settings
-  ansible.builtin.slurp:
-    src: '{{ serve_appdata.stdout }}/Docker/settings-store.json'
-  register: serve_docker_settings
-  failed_when: false
-  when: serve_appdata.rc == 0
-
-- name: Warn if Docker Desktop doesn't start at sign-in
+- name: Warn if production won't come back after a reboot
   ansible.builtin.debug:
     msg: >-
-      WARNING: Docker Desktop doesn't start when you sign in, so production stops after a
-      reboot. Turn on Settings > General > "Start Docker Desktop when you sign in".
-  when: >-
-    serve_docker_settings.content is not defined
-    or not ((serve_docker_settings.content | b64decode | from_json).AutoStart | default(false))
+      WARNING: production may not come back after a reboot. Run scripts/podman/setup-host.sh
+      and create the "Dishkept Podman" scheduled task (RUNBOOK "Keep the PC serving").
+  when: serve_check.rc != 0
