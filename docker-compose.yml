@@ -90,7 +90,7 @@ services:
       retries: 60
 
   migrate:
-    image: ghcr.io/amacneil/dbmate:2.38.0@sha256:3937d2826e8189ed1f8cd58331f1f0711721ee10ac4c3d5d5f754fbe37e851ff
+    image: ghcr.io/amacneil/dbmate:2.38.1@sha256:b0c8a87bfef4f2819fdb0a68ca357a44d12fb90d23eca695fcfc3b7e159cb1c5
     restart: 'no'
     depends_on:
       db:
@@ -151,7 +151,7 @@ services:
       - photos:/data/photos
 
   sync:
-    image: journeyapps/powersync-service:1.27.2@sha256:d7a99817057a42dae9e6d8fe0c70b49d99105dcac8b8ab0e9ed3cf1ff0978b8b
+    image: journeyapps/powersync-service:1.28.2@sha256:2f156289e30f3da496ba604f279929ae1bb9a0fffb930ce925633072a1a44512
     restart: unless-stopped
     command: ['start', '-r', 'unified']
     depends_on:
@@ -244,7 +244,7 @@ services:
       - backups:/backups
 
   mail:
-    image: axllent/mailpit:v1.33.0@sha256:9b3a463be15354c0f0eba91697d80e3e0d8a5623ef0e627cacc836bc17fd5231
+    image: axllent/mailpit:v1.33.1@sha256:aef2aacc11f075ec0fb6874275ee4a421e688e11a96ebb296134d1735c7761ce
     profiles: [dev]
     restart: unless-stopped
     ports:
