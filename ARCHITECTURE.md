@@ -183,7 +183,7 @@ C4Component
 
   Container_Boundary(api, "API") {
     Component(guard, "Auth Guard", "Middleware", "Verifies JWT; resolves household_id and role; rejects Viewer writes")
-    Component(importFn, "Import Orchestrator", "Route: /api/imports/:id/parse", "Claims the import as the user; reads JSON-LD or asks the AI parser; writes the draft to the row (ADR-0012)")
+    Component(importFn, "Import Orchestrator", "Routes: /api/imports/:id/parse, /api/imports/:id/image", "Claims the import as the user; reads JSON-LD or asks the AI parser; writes the draft to the row (ADR-0012). Fetches the draft's picture link behind the address guard for the app to re-encode (#116)")
     Component(urlX, "URL Extractor", "Module", "Fetches HTML with address checks after DNS and on redirects; schema.org Recipe JSON-LD when present; else cleaned text → LLM")
     Component(parser, "AI Parser", "Module", "Prompts LLM with image(s)/text; validates against Recipe JSON schema; flags low-confidence fields (FR-10/11)")
     Component(subs, "Substitutions", "POST /api/substitutions", "Asks Claude per ingredient; remembers answers in substitutions (FR-24)")
