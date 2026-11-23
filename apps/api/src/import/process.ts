@@ -122,7 +122,8 @@ async function parse(
 
 /** The draft with this image, validated again (rule 7), or with none. */
 function withImage(draft: ImportDraft, image: DraftImage | null): ImportDraft {
-  const { image: _ignored, ...rest } = draft;
+  const rest = { ...draft };
+  delete rest.image;
   const valid = draftImageSchema.safeParse(image);
   return valid.success ? { ...rest, image: valid.data } : rest;
 }
