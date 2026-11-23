@@ -49,6 +49,8 @@ export type ImportStore = {
     reservedMicroUsd: number,
   ): Promise<void>;
   spent(claims: TokenClaims): Promise<number>;
+  /** The picture link on a live, ready import's draft (#116), or null. */
+  imageUrl(claims: TokenClaims, id: string): Promise<string | null>;
 };
 
 export const STALE_PARSE_SECONDS = PARSE_STALE_SECONDS;
@@ -127,5 +129,13 @@ export function createImportStore(asClaims: AsClaims): ImportStore {
     },
 
     spent: (claims) => asClaims(claims, (tx) => monthSpentMicroUsd(tx)),
+
+    imageUrl: (claims, id) =>
+      asClaims(claims, async (tx) => {
+        const [row] = await tx<{ url: string | null }[]>`
+          select draft #>> '{image,url}' as url from public.imports
+          where id = ${id} and status = 'ready' and deleted_at is null`;
+        return row?.url ?? null;
+      }),
   };
 }

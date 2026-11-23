@@ -3,7 +3,7 @@ import { createApp } from './app';
 import { createVerifier } from './auth/verify';
 import { aiMode, loadConfig } from './config';
 import { connect, createAsAnonymous, createAsClaims, createAsUser, createPing } from './db/asUser';
-import { fetchPage, FETCH_DEFAULTS } from './import/fetchPage';
+import { fetchImage, fetchPage, FETCH_DEFAULTS } from './import/fetchPage';
 import { createImportService } from './import/service';
 import { createImportStore } from './import/store';
 import { createHouseholdService } from './household/service';
@@ -40,6 +40,7 @@ const imports = createImportService({
   store: createImportStore(createAsClaims(sql)),
   gateway,
   fetchPage: (url) => fetchPage(url, { ...FETCH_DEFAULTS, allowHosts: config.fetchAllowHosts }),
+  fetchImage: (url) => fetchImage(url, { ...FETCH_DEFAULTS, allowHosts: config.fetchAllowHosts }),
   photos: photoStore,
   ai: config.ai,
   log: (event) => console.log(JSON.stringify(event)),

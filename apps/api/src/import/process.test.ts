@@ -43,6 +43,7 @@ function setup(
   const store: ImportStore = {
     claim: vi.fn(),
     spent: vi.fn(),
+    imageUrl: vi.fn(),
     context: vi.fn().mockResolvedValue({ spentMicroUsd: over.spent ?? 0, tags: ['dinner'] }),
     reserve: vi.fn(async (_c: unknown, caps: SpendCaps) => (over.spent ?? 0) < caps.household),
     finish: vi.fn(async (_c, _r, result: ParseResult, spent: number, reserved: number) => {

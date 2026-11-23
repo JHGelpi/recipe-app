@@ -170,6 +170,25 @@ export function createApp(deps: AppDeps): Hono {
     return c.json(await deps.imports.usage(token));
   });
 
+  // #116: an import's picture, fetched from its site for the app to re-encode.
+  // Counted as a photo: each call is an outside fetch.
+  app.get('/api/imports/:id/image', async (c) => {
+    const token = bearer(c.req.header('Authorization'));
+    if (!token) return c.json({ error: 'unauthorized' }, 401);
+    const id = c.req.param('id');
+    if (!isGuid(id)) return c.json({ error: 'not_found' }, 404);
+    if (!deps.userLimits.photos((await deps.verify(token)).sub)) return c.json(LIMITED, 429);
+    const result = await deps.imports.image(token, id);
+    if (result.kind === 'missing') return c.json({ error: 'not_found' }, 404);
+    if (result.kind === 'forbidden') return c.json({ error: 'forbidden' }, 403);
+    if (result.kind !== 'ok') return c.json({ error: 'fetch_failed' }, 502);
+    return c.body(result.bytes as Uint8Array<ArrayBuffer>, 200, {
+      'Content-Type': result.type,
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
+    });
+  });
+
   const PUT_STATUS = {
     missing: 404,
     gone: 410,
