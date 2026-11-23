@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extractJsonLd, pageText } from './html';
+import { extractJsonLd, metaImage, pageText } from './html';
 
 // Linear parsing of a 3 MB hostile page takes tens of milliseconds; the
 // quadratic regexes these tests guard against take many seconds. A second
@@ -78,5 +78,19 @@ describe('final review', () => {
       pageText(page);
       expect(performance.now() - start).toBeLessThan(BUDGET_MS);
     }
+  });
+});
+
+describe('metaImage', () => {
+  it('reads og:image in either attribute order, entities decoded', () => {
+    expect(metaImage('<meta property="og:image" content="https://a/b.jpg?x=1&amp;y=2">')).toBe(
+      'https://a/b.jpg?x=1&y=2',
+    );
+    expect(metaImage("<META content='/c.jpg' property='og:image' />")).toBe('/c.jpg');
+  });
+
+  it('is null without the tag or with an empty one', () => {
+    expect(metaImage('<meta property="og:title" content="Soup">')).toBeNull();
+    expect(metaImage('<meta property="og:image" content="  ">')).toBeNull();
   });
 });

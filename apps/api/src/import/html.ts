@@ -111,3 +111,15 @@ export function pageText(html: string, max = PAGE_TEXT_MAX): string {
     .join('\n');
   return text.length > max ? text.slice(0, max) : text;
 }
+
+/** The page's og:image link as written (maybe relative), or null (#116). */
+export function metaImage(html: string): string | null {
+  // Bounded runs keep this linear on a hostile page.
+  for (const tag of html.matchAll(/<meta\b[^<>]{0,1000}>/gi)) {
+    if (!/\bproperty\s*=\s*["']og:image["']/i.test(tag[0])) continue;
+    const content = /\bcontent\s*=\s*(["'])([^"'<>]{0,2000})\1/i.exec(tag[0]);
+    const url = content ? decodeEntities(content[2]!).trim() : '';
+    return url === '' ? null : url;
+  }
+  return null;
+}

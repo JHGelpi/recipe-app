@@ -15,16 +15,28 @@ export type FetchOptions = {
   resolve?: (host: string) => Promise<string[]>;
 };
 
-export type FetchResult =
-  | { ok: true; html: string; url: string }
-  | { ok: false; error: 'fetch_failed' | 'blocked_address' };
+type FetchFailure = { ok: false; error: 'fetch_failed' | 'blocked_address' };
+export type FetchResult = { ok: true; html: string; url: string } | FetchFailure;
+export type ImageResult = { ok: true; bytes: Uint8Array; type: string } | FetchFailure;
+
+/** What a fetch accepts: the Accept header and the content types it keeps. */
+type Want = { accept: string; type: RegExp };
+const HTML: Want = {
+  accept: 'text/html,application/xhtml+xml',
+  type: /^(text\/html|application\/xhtml\+xml)$/,
+};
+// Never SVG: the app shows what this returns, and SVG can carry script.
+const IMAGE: Want = {
+  accept: 'image/jpeg,image/png,image/webp,image/gif,image/avif',
+  type: /^image\/(jpeg|png|webp|gif|avif)$/,
+};
 
 export const FETCH_DEFAULTS = { timeoutMs: 10_000, maxBytes: 3 * 1024 * 1024, maxRedirects: 5 };
 
 const USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
-const FAILED: FetchResult = { ok: false, error: 'fetch_failed' };
-const BLOCKED: FetchResult = { ok: false, error: 'blocked_address' };
+const FAILED: FetchFailure = { ok: false, error: 'fetch_failed' };
+const BLOCKED: FetchFailure = { ok: false, error: 'blocked_address' };
 
 class Blocked extends Error {}
 
@@ -42,13 +54,14 @@ async function checkedAddress(hostname: string, options: FetchOptions): Promise<
   return addresses[0]!;
 }
 
-type Answer = { status: number; location?: string; body?: string };
+type Answer = { status: number; location?: string; body?: Buffer; type?: string };
 
 function requestOnce(
   url: URL,
   address: string,
   options: FetchOptions,
   signal: AbortSignal,
+  want: Want,
 ): Promise<Answer> {
   // The socket goes to the address checked above, so a second DNS answer
   // (rebinding) cannot send it anywhere else.
@@ -71,7 +84,7 @@ function requestOnce(
         signal,
         headers: {
           'User-Agent': USER_AGENT,
-          Accept: 'text/html,application/xhtml+xml',
+          Accept: want.accept,
           'Accept-Language': 'en',
         },
       },
@@ -83,12 +96,9 @@ function requestOnce(
           return;
         }
         const type = String(response.headers['content-type'] ?? '');
+        const mediaType = type.split(';')[0]!.trim().toLowerCase();
         const declared = Number(response.headers['content-length'] ?? 0);
-        if (
-          status !== 200 ||
-          !/text\/html|application\/xhtml\+xml/i.test(type) ||
-          declared > options.maxBytes
-        ) {
+        if (status !== 200 || !want.type.test(mediaType) || declared > options.maxBytes) {
           response.destroy();
           resolve({ status });
           return;
@@ -104,10 +114,7 @@ function requestOnce(
           }
           chunks.push(chunk);
         });
-        // In the page's own charset (spec §3), not always UTF-8.
-        response.on('end', () =>
-          resolve({ status, body: decodePage(Buffer.concat(chunks), type) }),
-        );
+        response.on('end', () => resolve({ status, body: Buffer.concat(chunks), type }));
         response.on('error', reject);
       },
     );
@@ -117,11 +124,14 @@ function requestOnce(
 }
 
 /**
- * Fetches a recipe page for the server (spec §4). Refuses non-public
- * addresses after DNS and on every redirect; gives up on anything slow,
- * large, or not HTML.
+ * Fetches for the server (spec §4). Refuses non-public addresses after DNS
+ * and on every redirect; gives up on anything slow, large, or not wanted.
  */
-export async function fetchPage(input: string, options: FetchOptions): Promise<FetchResult> {
+async function fetchOnce(
+  input: string,
+  options: FetchOptions,
+  want: Want,
+): Promise<{ ok: true; body: Buffer; type: string; url: string } | FetchFailure> {
   let url: URL;
   try {
     url = new URL(input);
@@ -140,7 +150,7 @@ export async function fetchPage(input: string, options: FetchOptions): Promise<F
     }
     let answer: Answer;
     try {
-      answer = await requestOnce(url, address, options, signal);
+      answer = await requestOnce(url, address, options, signal, want);
     } catch {
       return FAILED;
     }
@@ -154,7 +164,27 @@ export async function fetchPage(input: string, options: FetchOptions): Promise<F
     }
     return answer.body === undefined
       ? FAILED
-      : { ok: true, html: answer.body, url: url.toString() };
+      : { ok: true, body: answer.body, type: answer.type ?? '', url: url.toString() };
   }
   return FAILED;
+}
+
+/** A recipe page, in its own charset (spec §3), not always UTF-8. */
+export async function fetchPage(input: string, options: FetchOptions): Promise<FetchResult> {
+  const result = await fetchOnce(input, options, HTML);
+  return result.ok
+    ? { ok: true, html: decodePage(result.body, result.type), url: result.url }
+    : result;
+}
+
+/** A recipe's image (#116), as sent: the app re-encodes it. */
+export async function fetchImage(input: string, options: FetchOptions): Promise<ImageResult> {
+  const result = await fetchOnce(input, options, IMAGE);
+  return result.ok
+    ? {
+        ok: true,
+        bytes: new Uint8Array(result.body),
+        type: result.type.split(';')[0]!.trim().toLowerCase(),
+      }
+    : result;
 }
