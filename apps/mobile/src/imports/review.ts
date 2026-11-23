@@ -4,6 +4,7 @@ import {
   type DraftField,
   type ImportDraft,
 } from '@recipe-app/domain';
+import type { PhotoFile } from '../photos/repository';
 import type { RecipeForm } from '../recipes/form';
 import { NO_SOURCE, type RecipeRecord } from '../recipes/rows';
 import type { ImportRecord } from './rows';
@@ -36,6 +37,15 @@ export function draftRecord(
     photo_id: null,
     ...NO_SOURCE,
   };
+}
+
+/** FR-15, #116: a page the reviewer ticked wins over the picture found by the import. */
+export function dishPhotoChoice(
+  dishPage: string | null,
+  imported: PhotoFile | null,
+): { pageId: string } | { file: PhotoFile } | null {
+  if (dishPage) return { pageId: dishPage };
+  return imported ? { file: imported } : null;
 }
 
 /** FR-11: the editor fields to highlight. */

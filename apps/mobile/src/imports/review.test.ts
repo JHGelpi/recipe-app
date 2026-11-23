@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { formFromRecipe } from '../recipes/form';
-import { draftRecord, flaggedFields, linkHost } from './review';
+import { dishPhotoChoice, draftRecord, flaggedFields, linkHost } from './review';
 import { importFromRow } from './rows';
 
 const record = importFromRow({
@@ -71,5 +71,17 @@ describe('linkHost', () => {
     expect(linkHost('http://fake-ai:4010/pages/jsonld.html')).toBe('fake-ai');
     expect(linkHost('javascript:alert(1)')).toBeNull();
     expect(linkHost(null)).toBeNull();
+  });
+});
+
+describe('dishPhotoChoice (#116)', () => {
+  const file = { blob: new Blob(), width: 1, height: 1 };
+  it('prefers a page the reviewer ticked over the imported picture', () => {
+    expect(dishPhotoChoice('p1', file)).toEqual({ pageId: 'p1' });
+    expect(dishPhotoChoice('p1', null)).toEqual({ pageId: 'p1' });
+  });
+  it('uses the imported picture otherwise, or nothing', () => {
+    expect(dishPhotoChoice(null, file)).toEqual({ file });
+    expect(dishPhotoChoice(null, null)).toBeNull();
   });
 });

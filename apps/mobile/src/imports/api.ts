@@ -48,6 +48,18 @@ export async function fetchUsage(deps: ApiDeps): Promise<AiUsage | null> {
   }
 }
 
+/** #116: the import's picture, fetched by the server from its site; null on any failure. */
+export async function fetchImportImage(id: string, deps: ApiDeps): Promise<Blob | null> {
+  try {
+    const response = await deps.fetch(`${deps.apiUrl}/imports/${encodeURIComponent(id)}/image`, {
+      headers: { Authorization: `Bearer ${deps.token}` },
+    });
+    return response.ok ? await response.blob() : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Runs `fn` with the current session's token, or returns null when signed out. */
 export async function withSession<T>(fn: (deps: ApiDeps) => Promise<T>): Promise<T | null> {
   const { data } = await auth.getSession();

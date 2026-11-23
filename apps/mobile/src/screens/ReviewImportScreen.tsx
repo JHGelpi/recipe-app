@@ -10,13 +10,18 @@ import { RecipeEditor } from '../components/RecipeEditor';
 import { SourceView } from '../components/SourceView';
 import { useImport, usePages } from '../imports/hooks';
 import { dismissImport, saveImportedRecipe, sourceOf } from '../imports/repository';
-import { draftRecord, flaggedFields } from '../imports/review';
+import { dishPhotoChoice, draftRecord, flaggedFields } from '../imports/review';
+import { useImportedPhoto } from '../imports/useImportedPhoto';
+import { photoSaver } from '../photos/queue';
+import { setDishPhoto } from '../photos/repository';
 import { findLocalDuplicates } from '../recipes/duplicates';
 import { clearFilter } from '../recipes/listFilter';
 import { formFromRecipe } from '../recipes/form';
 import { canWrite, type Claims } from '../session/claims';
 import { colors, radius, space } from '../theme';
 import { Banner, Button, Icon, Screen, Text } from '../ui';
+
+const PICTURE_WAIT_MS = 15_000;
 
 /** FR-11: the draft in the recipe editor; nothing becomes a recipe until Save. */
 export function ReviewImportScreen({ claims, id }: { claims: Claims; id: string }) {
@@ -25,6 +30,7 @@ export function ReviewImportScreen({ claims, id }: { claims: Claims; id: string 
   const [leaving, setLeaving] = useState(false);
   const pages = usePages(id);
   const [dishPage, setDishPage] = useState<string | null>(null);
+  const imported = useImportedPhoto(record, pages);
   const draftKey = record?.draft ? JSON.stringify(record.draft) : '';
   // Built once per draft, so the editor's ids stay stable across re-renders.
   // draftKey stands for record.draft in the dependencies.
@@ -84,6 +90,11 @@ export function ReviewImportScreen({ claims, id }: { claims: Claims; id: string 
             </Text>
             <DuplicateWarning matches={duplicates} />
             <SourceView source={sourceOf(record)} />
+            {imported.state === 'failed' && !dishPage ? (
+              <Text variant="small">
+                Couldn't get the dish photo. You can add one after saving.
+              </Text>
+            ) : null}
             {pages.length > 0 ? (
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.md }}>
                 {pages.map((page, index) => (
@@ -138,7 +149,28 @@ export function ReviewImportScreen({ claims, id }: { claims: Claims; id: string 
         onSave={async (values) => {
           setLeaving(true);
           try {
-            const recipeId = await saveImportedRecipe(db, claims, record, values, dishPage);
+            // A picture still loading is waited for, briefly, rather than lost.
+            const file = dishPage
+              ? null
+              : (imported.file ??
+                (await Promise.race([
+                  imported.settled,
+                  new Promise<null>((resolve) => setTimeout(() => resolve(null), PICTURE_WAIT_MS)),
+                ])));
+            const choice = dishPhotoChoice(dishPage, file);
+            const recipeId = await saveImportedRecipe(
+              db,
+              claims,
+              record,
+              values,
+              choice && 'pageId' in choice ? choice.pageId : null,
+            );
+            if (choice && 'file' in choice) {
+              // The recipe is saved either way; Add photo on its screen still works.
+              await setDishPhoto(db, photoSaver(db), claims, recipeId, choice.file).catch(
+                (error: unknown) => console.warn('Dish photo not saved', error),
+              );
+            }
             clearFilter();
             router.replace(`/recipe/${recipeId}`);
           } catch (error) {

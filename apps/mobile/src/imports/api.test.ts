@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fetchUsage, requestParse } from './api';
+import { fetchImportImage, fetchUsage, requestParse } from './api';
 
 const deps = (response: Response | Error) => ({
   fetch: vi.fn(async () => {
@@ -46,5 +46,22 @@ describe('fetchUsage', () => {
     expect(await fetchUsage(deps(new Response('{"spentUsd":"x"}', { status: 200 })))).toBeNull();
     expect(await fetchUsage(deps(new Response(null, { status: 500 })))).toBeNull();
     expect(await fetchUsage(deps(new TypeError('offline')))).toBeNull();
+  });
+});
+
+describe('fetchImportImage (#116)', () => {
+  it('gets the import picture with the token', async () => {
+    const d = deps(new Response(new Blob([Uint8Array.from([1, 2])]), { status: 200 }));
+    const blob = await fetchImportImage('i1', d);
+    expect(blob?.size).toBe(2);
+    expect(d.fetch).toHaveBeenCalledWith('https://app.test/api/imports/i1/image', {
+      headers: { Authorization: 'Bearer jwt' },
+    });
+  });
+
+  it('is null on any failure', async () => {
+    expect(await fetchImportImage('i1', deps(new Response(null, { status: 404 })))).toBeNull();
+    expect(await fetchImportImage('i1', deps(new Response(null, { status: 502 })))).toBeNull();
+    expect(await fetchImportImage('i1', deps(new TypeError('offline')))).toBeNull();
   });
 });
