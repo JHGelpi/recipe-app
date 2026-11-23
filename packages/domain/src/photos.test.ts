@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DISH_EDGE,
+  cropRect,
   fitWithin,
   importPutSchema,
   isRetryable,
@@ -119,5 +120,20 @@ describe('photo imports and recipe photos', () => {
         .success,
     ).toBe(false);
     expect(RECIPE_CLIENT_FIELDS).toContain('photo_id');
+  });
+});
+
+describe('cropRect', () => {
+  it('turns a fractional box into whole pixels', () => {
+    expect(cropRect(1000, 2000, [0.1, 0.25, 0.6, 0.75])).toEqual({
+      x: 100,
+      y: 500,
+      width: 500,
+      height: 1000,
+    });
+    expect(cropRect(10, 10, [0, 0, 1, 1])).toEqual({ x: 0, y: 0, width: 10, height: 10 });
+  });
+  it('stays inside the image and at least 1 pixel', () => {
+    expect(cropRect(3, 3, [0.99, 0.99, 1, 1])).toEqual({ x: 2, y: 2, width: 1, height: 1 });
   });
 });

@@ -117,3 +117,10 @@ export function draftFromJsonLd(blocks: unknown[]): ImportDraft | null {
     low_confidence: [],
   });
 }
+
+/** The Recipe's first image as written (maybe relative): a string, an ImageObject, or a list. */
+export function recipeImage(blocks: unknown[]): string | null {
+  const first = listOf(findRecipe(blocks)?.image)[0];
+  const url = isNode(first) ? first.url : first;
+  return typeof url === 'string' && url.trim() !== '' ? url.trim() : null;
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { draftFromJsonLd, isoMinutes } from './jsonLd';
+import { draftFromJsonLd, isoMinutes, recipeImage } from './jsonLd';
 
 describe('isoMinutes', () => {
   it.each([
@@ -141,5 +141,21 @@ describe('nutrition from JSON-LD (FR-43)', () => {
     };
     expect(draftFromJsonLd([recipe])?.nutrition).toEqual({ calories: 310, fat_g: 7 });
     expect(draftFromJsonLd([{ '@type': 'Recipe', name: 'Oats' }])?.nutrition).toBeNull();
+  });
+});
+
+describe('recipeImage', () => {
+  const page = (image: unknown) => [{ '@type': 'Recipe', name: 'Soup', image }];
+  it.each([
+    ['https://a/b.jpg', 'https://a/b.jpg'],
+    [{ '@type': 'ImageObject', url: 'https://a/c.jpg' }, 'https://a/c.jpg'],
+    [[{ url: '/rel.jpg' }, 'https://a/d.jpg'], '/rel.jpg'],
+    [undefined, null],
+    [42, null],
+  ])('%j → %s', (image, expected) => {
+    expect(recipeImage(page(image))).toBe(expected);
+  });
+  it('is null without a Recipe', () => {
+    expect(recipeImage([{ '@type': 'WebSite', image: 'https://a/b.jpg' }])).toBeNull();
   });
 });

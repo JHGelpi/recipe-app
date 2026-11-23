@@ -82,3 +82,22 @@ export function fitWithin(
     height: Math.max(1, Math.round(height * scale)),
   };
 }
+
+/** A picture's place on a page: [x0, y0, x1, y1], each a fraction of the page's width or height. */
+export type DishBox = [number, number, number, number];
+
+/** The box in whole pixels of a `width` × `height` image, inside it and at least 1 × 1. */
+export function cropRect(
+  width: number,
+  height: number,
+  box: DishBox,
+): { x: number; y: number; width: number; height: number } {
+  const x = Math.min(width - 1, Math.round(box[0] * width));
+  const y = Math.min(height - 1, Math.round(box[1] * height));
+  return {
+    x,
+    y,
+    width: Math.max(1, Math.min(width, Math.round(box[2] * width)) - x),
+    height: Math.max(1, Math.min(height, Math.round(box[3] * height)) - y),
+  };
+}
