@@ -62,9 +62,12 @@ export function useImportedPhoto(
       else if (step === 'wait' || !page.uri) setResult({ state: 'loading', file: null });
       else {
         const box = image.box;
-        void fetch(page.uri)
-          .then((response) => response.blob())
-          .then((blob) => preparePhoto(blob, DISH_EDGE, box))
+        // Decoded as an image: the CSP's connect-src blocks fetch() of a blob: URL (ADR-0026).
+        const img = new Image();
+        img.src = page.uri;
+        void img
+          .decode()
+          .then(() => preparePhoto(img, DISH_EDGE, box))
           .then(finish, () => finish(null));
       }
     }

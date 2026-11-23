@@ -14,7 +14,11 @@ export class PhotoReadError extends Error {
  * re-encoded as JPEG. Re-encoding drops EXIF, including the location.
  * With a `box`, only that part of it (#116: the dish cut from a screenshot).
  */
-export async function preparePhoto(file: Blob, maxEdge: number, box?: DishBox): Promise<PhotoFile> {
+export async function preparePhoto(
+  file: ImageBitmapSource,
+  maxEdge: number,
+  box?: DishBox,
+): Promise<PhotoFile> {
   let bitmap: ImageBitmap;
   try {
     bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
