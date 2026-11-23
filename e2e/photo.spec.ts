@@ -75,6 +75,10 @@ test('a full-size photo is resized on the phone and read (Review Focus 1)', asyn
   await ready(page);
   await page.getByRole('button', { name: 'Review' }).click();
   await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Big Card Soup');
+  // #116: the dish Claude found on the card is cut out and saved as the dish photo.
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('heading', { name: 'Big Card Soup', level: 1 })).toBeVisible();
+  await expect(shown(page, 'Dish photo')).toBeVisible();
 });
 
 test('pages added offline upload and are read once online (FR-29)', async ({ page, context }) => {

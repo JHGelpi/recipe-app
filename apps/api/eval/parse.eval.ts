@@ -5,7 +5,12 @@ import { loadConfig } from '../src/config';
 import { pageText } from '../src/import/html';
 import { costMicroUsd, createGateway } from '../src/llm/gateway';
 import { buildPhotoRequest } from '../src/llm/parsePhoto';
-import { buildParseRequest, interpretToolInput, RECORD_RECIPE_TOOL } from '../src/llm/parseRecipe';
+import {
+  buildParseRequest,
+  interpretToolInput,
+  RECORD_PHOTO_RECIPE_TOOL,
+  RECORD_RECIPE_TOOL,
+} from '../src/llm/parseRecipe';
 import { jpegInfo } from '../src/photos/jpeg';
 
 // ADR-0005: a small set of real samples, parsed by the real Claude API with
@@ -70,7 +75,7 @@ describe.skipIf(!config.ai.apiKey)('parse eval (real Claude)', () => {
     const started = Date.now();
     const call = await gateway.callTool(
       buildPhotoRequest(pages, ['dinner', 'quick']),
-      RECORD_RECIPE_TOOL,
+      RECORD_PHOTO_RECIPE_TOOL,
     );
     const seconds = (Date.now() - started) / 1000;
     const outcome = interpretToolInput(call.input);
@@ -78,7 +83,9 @@ describe.skipIf(!config.ai.apiKey)('parse eval (real Claude)', () => {
     total += cost;
     console.log(
       `\n=== photos ${recipe} (${pages.length} pages, ${seconds.toFixed(1)} s, $${(cost / 1e6).toFixed(4)}, total $${(total / 1e6).toFixed(4)})\n` +
-        JSON.stringify(outcome, null, 2),
+        JSON.stringify(outcome, null, 2) +
+        // #116: the dish box as the model gave it, to check by eye against the photos.
+        `\nimage: ${JSON.stringify((call.input as { image?: unknown }).image ?? null)}`,
     );
     expect(outcome.kind).toBe(recipe.startsWith('not-recipe') ? 'not_a_recipe' : 'draft');
     // None of the photo samples states nutrition (FR-43).

@@ -48,6 +48,19 @@ export function dishPhotoChoice(
   return imported ? { file: imported } : null;
 }
 
+/**
+ * #116 review: what to do with a screenshot's picture now. A page not listed
+ * yet, loading, or still being retried from the server is waited for.
+ */
+export function pagePictureStep(
+  pageId: string | null,
+  state: 'loading' | 'ready' | 'offline' | 'missing',
+): 'wait' | 'crop' | 'fail' {
+  if (!pageId) return 'wait';
+  if (state === 'ready') return 'crop';
+  return state === 'offline' ? 'fail' : 'wait';
+}
+
 /** FR-11: the editor fields to highlight. */
 export function flaggedFields(draft: ImportDraft): (keyof RecipeForm)[] {
   return draft.low_confidence.flatMap((field) => FORM_FIELDS[field]);

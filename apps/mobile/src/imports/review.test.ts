@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { formFromRecipe } from '../recipes/form';
-import { dishPhotoChoice, draftRecord, flaggedFields, linkHost } from './review';
+import { dishPhotoChoice, pagePictureStep, draftRecord, flaggedFields, linkHost } from './review';
 import { importFromRow } from './rows';
 
 const record = importFromRow({
@@ -83,5 +83,17 @@ describe('dishPhotoChoice (#116)', () => {
   it('uses the imported picture otherwise, or nothing', () => {
     expect(dishPhotoChoice(null, file)).toEqual({ file });
     expect(dishPhotoChoice(null, null)).toBeNull();
+  });
+});
+
+describe('pagePictureStep (#116 review)', () => {
+  it('waits for a page not loaded yet, or still loading or retrying', () => {
+    expect(pagePictureStep(null, 'missing')).toBe('wait');
+    expect(pagePictureStep('p1', 'loading')).toBe('wait');
+    expect(pagePictureStep('p1', 'missing')).toBe('wait');
+  });
+  it('crops a ready page and gives up offline', () => {
+    expect(pagePictureStep('p1', 'ready')).toBe('crop');
+    expect(pagePictureStep('p1', 'offline')).toBe('fail');
   });
 });

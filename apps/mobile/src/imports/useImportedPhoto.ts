@@ -4,6 +4,7 @@ import { preparePhoto } from '../photos/prepare';
 import type { PhotoFile } from '../photos/repository';
 import { usePhotoUri } from '../photos/usePhotoUri';
 import { fetchImportImage, withSession } from './api';
+import { pagePictureStep } from './review';
 import type { ImportRecord } from './rows';
 
 type Result = { state: 'none' | 'loading' | 'ready' | 'failed'; file: PhotoFile | null };
@@ -55,16 +56,17 @@ export function useImportedPhoto(
       void withSession((deps) => fetchImportImage(id, deps))
         .then((blob) => (blob ? preparePhoto(blob, DISH_EDGE) : null))
         .then(finish, () => finish(null));
-    } else if (page.state === 'loading') {
-      setResult({ state: 'loading', file: null });
-    } else if (page.state === 'ready' && page.uri) {
-      const box = image.box;
-      void fetch(page.uri)
-        .then((response) => response.blob())
-        .then((blob) => preparePhoto(blob, DISH_EDGE, box))
-        .then(finish, () => finish(null));
     } else {
-      finish(null);
+      const step = pagePictureStep(pageId, page.state);
+      if (step === 'fail') finish(null);
+      else if (step === 'wait' || !page.uri) setResult({ state: 'loading', file: null });
+      else {
+        const box = image.box;
+        void fetch(page.uri)
+          .then((response) => response.blob())
+          .then((blob) => preparePhoto(blob, DISH_EDGE, box))
+          .then(finish, () => finish(null));
+      }
     }
     return () => {
       live = false;

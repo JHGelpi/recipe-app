@@ -41,7 +41,8 @@ function jpegComments(bytes) {
 const FIXTURE_PAGES = {
   '1000x750': 'Photo Fixture Bread\n- 500 g flour\n- 10 g salt',
   '1000x760': '1. Mix.\n2. Bake.',
-  '1568x1176': 'Big Card Soup\n- 1 onion',
+  // #116: this card shows its dish, so the import cuts it out as the dish photo.
+  '1568x1176': 'Big Card Soup\n- 1 onion\nFAKE_DISH',
 };
 
 function jpegSize(bytes) {

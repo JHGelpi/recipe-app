@@ -28,6 +28,8 @@ export function ReviewImportScreen({ claims, id }: { claims: Claims; id: string 
   const db = usePowerSync();
   const record = useImport(id);
   const [leaving, setLeaving] = useState(false);
+  // Save may wait on the picture (#116), so it says so instead of going blank.
+  const [saving, setSaving] = useState(false);
   const pages = usePages(id);
   const [dishPage, setDishPage] = useState<string | null>(null);
   const imported = useImportedPhoto(record, pages);
@@ -59,6 +61,13 @@ export function ReviewImportScreen({ claims, id }: { claims: Claims; id: string 
     return (
       <Screen>
         <Text>Viewers cannot import recipes.</Text>
+      </Screen>
+    );
+  }
+  if (saving) {
+    return (
+      <Screen>
+        <Text>Saving…</Text>
       </Screen>
     );
   }
@@ -148,6 +157,7 @@ export function ReviewImportScreen({ claims, id }: { claims: Claims; id: string 
         }}
         onSave={async (values) => {
           setLeaving(true);
+          setSaving(true);
           try {
             // A picture still loading is waited for, briefly, rather than lost.
             const file = dishPage
@@ -175,6 +185,7 @@ export function ReviewImportScreen({ claims, id }: { claims: Claims; id: string 
             router.replace(`/recipe/${recipeId}`);
           } catch (error) {
             setLeaving(false);
+            setSaving(false);
             throw error;
           }
         }}

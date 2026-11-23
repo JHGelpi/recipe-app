@@ -54,3 +54,18 @@ export async function loadPhoto(
     return null;
   }
 }
+
+export type PhotoView = { state: 'loading' | 'ready' | 'offline' | 'missing'; uri: string | null };
+
+/**
+ * The view for `id`. A view stored for another photo reads as loading: the
+ * hook resets only after the render that changed the id (#116 review).
+ */
+export function currentView(
+  id: string | null,
+  stored: PhotoView & { id: string | null },
+): PhotoView {
+  return stored.id === id
+    ? { state: stored.state, uri: stored.uri }
+    : { state: 'loading', uri: null };
+}
