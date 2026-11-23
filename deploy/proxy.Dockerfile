@@ -1,4 +1,4 @@
-FROM node:22.23.4-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d AS web
+FROM node:22.23.5-slim@sha256:e9f565d32859f0cbfb52125eafe8be39390f24dac302dc3cdf566e8ba3ab21ee AS web
 WORKDIR /repo
 RUN corepack enable
 # Manifests first, so the dependency layer is cached until they change.
@@ -16,7 +16,7 @@ COPY apps/mobile apps/mobile
 ENV METRO_MAX_WORKERS=2
 RUN EXPO_PUBLIC_BUILD_TIME="$(date -u '+%Y-%m-%d %H:%M')" pnpm --filter mobile run build:web
 
-FROM caddy:2.11.8@sha256:4fcafa98afd1c2e642e353e3c5cf9ddbe892fcee14bc990e7ba2c5b78e51f9cf
+FROM caddy:2.11.9@sha256:4851e54a46b206517c574821bb5cc67f170d2156041e9fbc4c9193b45e84a75b
 COPY deploy/Caddyfile /etc/caddy/Caddyfile
 COPY deploy/email-templates /srv/email-templates
 COPY --from=web /repo/apps/mobile/dist /srv/web
