@@ -207,6 +207,7 @@ describe('POST /api/imports/:id/parse', () => {
       servings: 8,
       cook_minutes: 75,
       nutrition: { calories: 520, protein_g: 32, carbs_g: 41, fat_g: 24 },
+      image: { url: 'http://fake-ai:4010/pages/dish.jpg' },
     });
     expect((await fakeRequests()).some((text) => text.includes(tag))).toBe(false);
     expect(await spent(cook)).toBe(0);

@@ -122,6 +122,8 @@ function recipeFrom(text) {
     author: null,
     nutrition: nutritionFrom(lines).nutrition,
     low_confidence: nutritionFrom(lines).unsure ? ['servings', 'nutrition'] : ['servings'],
+    // #116: FAKE_DISH puts the dish picture in the top left of page 1.
+    image: text.includes('FAKE_DISH') ? { page: 1, x0: 0.1, y0: 0.1, x1: 0.6, y1: 0.5 } : null,
   };
 }
 
@@ -240,6 +242,10 @@ createServer((req, res) => {
   if (path === '/pages/redirect-private') {
     res.writeHead(302, { Location: 'http://127.0.0.1:3000/api/health' });
     return res.end();
+  }
+  if (path === '/pages/dish.jpg') {
+    res.writeHead(200, { 'Content-Type': 'image/jpeg' });
+    return res.end(readFileSync(new URL('dish.jpg', PAGES)));
   }
   const page = /^\/pages\/(jsonld|plain)\.html$/.exec(path);
   if (page) {
