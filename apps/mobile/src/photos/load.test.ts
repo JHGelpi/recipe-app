@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { loadPhoto, trimCache, type LoadDeps } from './load';
+import { currentView, loadPhoto, trimCache, type LoadDeps } from './load';
 
 function deps(over: Partial<LoadDeps> = {}): LoadDeps {
   const store = new Map<string, Response>();
@@ -64,5 +64,20 @@ describe('the photo cache (spec §3)', () => {
       50,
     );
     expect(deleted).toEqual([0, 1, 2].map((i) => `https://app.test/api/photos/${i}`));
+  });
+});
+
+describe('currentView (#116 review)', () => {
+  it('reports loading while the stored view still belongs to the previous photo', () => {
+    expect(currentView('p1', { id: null, state: 'missing', uri: null })).toEqual({
+      state: 'loading',
+      uri: null,
+    });
+  });
+  it('passes through the view of this photo', () => {
+    expect(currentView('p1', { id: 'p1', state: 'ready', uri: 'blob:x' })).toEqual({
+      state: 'ready',
+      uri: 'blob:x',
+    });
   });
 });

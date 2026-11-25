@@ -157,3 +157,26 @@ describe('draftToRecipeFields', () => {
     expect(parsed.success).toBe(true);
   });
 });
+
+describe('the draft image (FR-15, #116)', () => {
+  const box = [0.1, 0.2, 0.6, 0.7];
+  it('keeps a page box and an http(s) link', () => {
+    expect(toImportDraft({ ...minimal, image: { page: 1, box } })?.image).toEqual({ page: 1, box });
+    expect(toImportDraft({ ...minimal, image: { url: 'https://x.test/a.jpg' } })?.image).toEqual({
+      url: 'https://x.test/a.jpg',
+    });
+  });
+
+  it.each([
+    { url: 'javascript:alert(1)' },
+    { page: 0, box },
+    { page: 1, box: [0.5, 0, 0.52, 1] },
+    { page: 1, box: [0.6, 0, 0.1, 1] },
+    { page: 1, box: [0, 0, 1.2, 1] },
+    null,
+  ])('drops %j and keeps the draft, with no image key', (image) => {
+    const draft = toImportDraft({ ...minimal, image });
+    expect(draft).not.toBeNull();
+    expect(draft).not.toHaveProperty('image');
+  });
+});

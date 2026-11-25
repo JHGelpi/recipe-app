@@ -72,6 +72,10 @@ test('a link with recipe data becomes a recipe that shows its site and author (F
   await expect(page.getByRole('heading', { name: 'Fixture Lasagna', level: 1 })).toBeVisible();
   await expect(page.getByText('From fake-ai · by Fixture Cook')).toBeVisible();
   await expect(page.getByText('520 kcal', { exact: true })).toBeVisible();
+  // #116: the page's picture became the dish photo.
+  await expect(
+    page.getByTestId('photo-shown').and(page.getByRole('img', { name: 'Dish photo', exact: true })),
+  ).toBeVisible();
 });
 
 test('an import made offline waits, then is read once online (FR-29)', async ({

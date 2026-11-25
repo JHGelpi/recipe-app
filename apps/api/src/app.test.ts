@@ -13,6 +13,7 @@ function deps(overrides: Partial<AppDeps> = {}): AppDeps {
       claim: vi.fn().mockResolvedValue({ outcome: { kind: 'missing' }, claims: { sub: 'user-1' } }),
       process: vi.fn().mockResolvedValue(undefined),
       usage: vi.fn().mockResolvedValue({ spentUsd: 0.42, capUsd: 2 }),
+      image: vi.fn().mockResolvedValue({ kind: 'missing' }),
     },
     substitutions: { ask: vi.fn().mockResolvedValue({ kind: 'missing' }) },
     sharing: {
@@ -449,5 +450,46 @@ describe('POST /api/substitutions', () => {
       expect(response.status).toBe(status);
       expect(await response.json()).toEqual(json);
     }
+  });
+});
+
+describe('GET /api/imports/:id/image (#116)', () => {
+  const get = (d: AppDeps, id = ID, auth = true) =>
+    createApp(d).request(`/api/imports/${id}/image`, {
+      headers: auth ? { Authorization: 'Bearer jwt' } : {},
+    });
+
+  it('sends the image as fetched, never cached or sniffed', async () => {
+    const d = deps();
+    vi.mocked(d.imports.image).mockResolvedValue({
+      kind: 'ok',
+      bytes: Uint8Array.from([1, 2, 3]),
+      type: 'image/webp',
+    });
+    const response = await get(d);
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toBe('image/webp');
+    expect(response.headers.get('Cache-Control')).toBe('no-store');
+    expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff');
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(Uint8Array.from([1, 2, 3]));
+  });
+
+  it.each([
+    ['missing', 404],
+    ['forbidden', 403],
+    ['failed', 502],
+  ] as const)('answers %s with %i', async (kind, status) => {
+    const d = deps();
+    vi.mocked(d.imports.image).mockResolvedValue({ kind });
+    expect((await get(d)).status).toBe(status);
+  });
+
+  it('refuses no token, a bad id, and a caller over the photo limit', async () => {
+    expect((await get(deps(), ID, false)).status).toBe(401);
+    expect((await get(deps(), 'nope')).status).toBe(404);
+    const d = deps();
+    d.userLimits.photos = Object.assign(() => false, { refund: vi.fn() });
+    expect((await get(d)).status).toBe(429);
+    expect(d.imports.image).not.toHaveBeenCalled();
   });
 });

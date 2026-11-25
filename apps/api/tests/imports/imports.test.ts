@@ -207,6 +207,7 @@ describe('POST /api/imports/:id/parse', () => {
       servings: 8,
       cook_minutes: 75,
       nutrition: { calories: 520, protein_g: 32, carbs_g: 41, fat_g: 24 },
+      image: { url: 'http://fake-ai:4010/pages/dish.jpg' },
     });
     expect((await fakeRequests()).some((text) => text.includes(tag))).toBe(false);
     expect(await spent(cook)).toBe(0);
@@ -258,6 +259,34 @@ describe('POST /api/imports/:id/parse', () => {
       (tx) => tx<{ status: string }[]>`select status from public.imports where id = ${id}`,
     );
     expect(row?.status).toBe('pending');
+  });
+});
+
+describe('GET /api/imports/:id/image (#116)', () => {
+  const image = (actor: Actor, id: string) =>
+    fetch(`${env.apiUrl}/imports/${id}/image`, {
+      headers: { Authorization: `Bearer ${actor.accessToken}` },
+    });
+
+  it('sends the picture of a link import to its household only', async () => {
+    const member = await signInAs(SEED.memberA);
+    const adminB = await signInAs(SEED.adminB);
+    const id = await urlImport(member, `http://fake-ai:4010/pages/jsonld.html?t=${marker()}`);
+    await parse(member, id);
+    expect((await settled(member, id)).status).toBe('ready');
+    const response = await image(member, id);
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toBe('image/jpeg');
+    expect((await response.arrayBuffer()).byteLength).toBeGreaterThan(1000);
+    expect((await image(adminB, id)).status).toBe(404);
+  });
+
+  it('has nothing for a text import', async () => {
+    const cook = await fresh();
+    const id = await textImport(cook, SOUP);
+    await parse(cook, id);
+    await settled(cook, id);
+    expect((await image(cook, id)).status).toBe(404);
   });
 });
 

@@ -4,6 +4,9 @@ What changed in each version of Dishkept, newest first. The app shows new entrie
 
 Each entry is a short list of changes people will notice, in everyday words. Leave out dependency updates, CI, infrastructure and security hardening. Bump the minor number for new features and the patch number for fixes only. After editing, run `pnpm release-notes` and commit both files.
 
+## 1.3.0 · 2026-11-22
+- Imported recipes now come with their picture: a website's recipe photo, or the dish photo cut out of your screenshot. Change or remove it on the recipe
+
 ## 1.2.0 · 2026-10-29
 - Sort Recipes and Favorites by name, rating, newest or quickest from the new Sort button above the list
 

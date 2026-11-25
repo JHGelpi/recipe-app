@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { syntheticJpeg } from '../../../../test-support/jpeg';
+import { RECORD_PHOTO_RECIPE_TOOL, RECORD_RECIPE_TOOL } from '../llm/parseRecipe';
 import { AI_ATTEMPTS, AI_TIMEOUT_MS, AiUnavailableError, type Gateway } from '../llm/gateway';
 import type { SpendCaps } from '../llm/usage';
 import { FETCH_DEFAULTS } from './fetchPage';
@@ -42,6 +43,7 @@ function setup(
   const store: ImportStore = {
     claim: vi.fn(),
     spent: vi.fn(),
+    imageUrl: vi.fn(),
     context: vi.fn().mockResolvedValue({ spentMicroUsd: over.spent ?? 0, tags: ['dinner'] }),
     reserve: vi.fn(async (_c: unknown, caps: SpendCaps) => (over.spent ?? 0) < caps.household),
     finish: vi.fn(async (_c, _r, result: ParseResult, spent: number, reserved: number) => {
@@ -246,5 +248,73 @@ describe('the reservation (spec §3)', () => {
     await processImport(deps, claims, textRow);
     expect(callTool).not.toHaveBeenCalled();
     expect(finished[0]?.result).toEqual({ status: 'failed', error: 'quota' });
+  });
+});
+
+describe('the dish image (#116)', () => {
+  const photoRow: ClaimedImport = {
+    ...textRow,
+    source_type: 'photo',
+    source_text: null,
+    pages: ['p1', 'p2'],
+  };
+  const box = [0.1, 0.1, 0.6, 0.5];
+  const edges = { x0: 0.1, y0: 0.1, x1: 0.6, y1: 0.5 };
+  const answer = (image: unknown) => async () => ({
+    input: { is_recipe: true, title: 'Soup', image },
+    usage: { inputTokens: 1, outputTokens: 1 },
+  });
+  const pages = { p1: syntheticJpeg(2, 2), p2: syntheticJpeg(2, 2) };
+  const draftOf = (finished: { result: ParseResult }[]) =>
+    (finished[0]?.result as { draft: Record<string, unknown> }).draft;
+
+  it('asks for the picture with the photo tool and keeps a box on one of the pages', async () => {
+    const { deps, finished, callTool } = setup({
+      files: pages,
+      gateway: answer({ page: 2, ...edges }),
+    });
+    await processImport(deps, claims, photoRow);
+    expect(callTool.mock.calls[0]?.[1]).toBe(RECORD_PHOTO_RECIPE_TOOL);
+    expect(draftOf(finished).image).toEqual({ page: 2, box });
+  });
+
+  it('drops a box on a page the import does not have, and a link from a photo', async () => {
+    for (const image of [{ page: 3, ...edges }, { url: 'https://a/b.jpg' }]) {
+      const { deps, finished } = setup({ files: pages, gateway: answer(image) });
+      await processImport(deps, claims, photoRow);
+      expect(finished[0]?.result.status).toBe('ready');
+      expect(draftOf(finished)).not.toHaveProperty('image');
+    }
+  });
+
+  it('never takes a picture from a text import', async () => {
+    const { deps, finished, callTool } = setup({ gateway: answer({ url: 'https://a/b.jpg' }) });
+    await processImport(deps, claims, textRow);
+    expect(callTool.mock.calls[0]?.[1]).toBe(RECORD_RECIPE_TOOL);
+    expect(draftOf(finished)).not.toHaveProperty('image');
+  });
+
+  it('resolves a relative JSON-LD image against the final page address', async () => {
+    const html = `<script type="application/ld+json">{"@type":"Recipe","name":"Soup","image":"/img/dish.jpg"}</script>`;
+    const { deps, finished } = setup({ page: { ok: true, html, url: 'https://site.test/r/1' } });
+    await processImport(deps, claims, urlRow);
+    expect(draftOf(finished).image).toEqual({ url: 'https://site.test/img/dish.jpg' });
+  });
+
+  it('uses og:image on a page the AI reads, and ignores one the model makes up', async () => {
+    const html = '<meta property="og:image" content="https://cdn.test/soup.jpg"><p>Soup</p>';
+    const { deps, finished } = setup({
+      page: { ok: true, html, url: urlRow.source_url! },
+      gateway: answer({ url: 'https://evil.test/x.jpg' }),
+    });
+    await processImport(deps, claims, urlRow);
+    expect(draftOf(finished).image).toEqual({ url: 'https://cdn.test/soup.jpg' });
+  });
+
+  it('drops an og:image that is not http(s)', async () => {
+    const html = '<meta property="og:image" content="data:image/png;base64,AAAA"><p>Soup</p>';
+    const { deps, finished } = setup({ page: { ok: true, html, url: urlRow.source_url! } });
+    await processImport(deps, claims, urlRow);
+    expect(draftOf(finished)).not.toHaveProperty('image');
   });
 });

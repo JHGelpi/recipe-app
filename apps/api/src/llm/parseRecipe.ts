@@ -85,6 +85,38 @@ export const RECORD_RECIPE_TOOL: Anthropic.Tool = {
   },
 };
 
+/**
+ * The photo tool: record_recipe plus where the dish picture is (#116). The box
+ * is four named numbers, not a 4-item array: strict mode limits minItems.
+ */
+export const RECORD_PHOTO_RECIPE_TOOL: Anthropic.Tool = {
+  ...RECORD_RECIPE_TOOL,
+  input_schema: {
+    ...RECORD_RECIPE_TOOL.input_schema,
+    properties: {
+      ...(RECORD_RECIPE_TOOL.input_schema.properties as Record<string, unknown>),
+      image: {
+        anyOf: [
+          {
+            type: 'object',
+            properties: {
+              page: { type: 'integer' },
+              x0: { type: 'number' },
+              y0: { type: 'number' },
+              x1: { type: 'number' },
+              y1: { type: 'number' },
+            },
+            required: ['page', 'x0', 'y0', 'x1', 'y1'],
+            additionalProperties: false,
+          },
+          { type: 'null' },
+        ],
+      },
+    },
+    required: [...(RECORD_RECIPE_TOOL.input_schema.required ?? []), 'image'],
+  },
+};
+
 export function buildParseRequest(
   source: { text: string; url: string | null },
   householdTags: string[],

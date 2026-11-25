@@ -1,8 +1,9 @@
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { fetchPage, type FetchOptions } from './fetchPage';
+import { fetchImage, fetchPage, type FetchOptions } from './fetchPage';
 
+const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
 let server: Server;
 let port = 0;
 
@@ -35,6 +36,22 @@ beforeAll(async () => {
     }
     if (path === '/missing') {
       res.writeHead(404).end();
+      return;
+    }
+    if (path === '/img') {
+      res.writeHead(200, { 'Content-Type': 'image/JPEG; foo=bar' }).end(JPEG);
+      return;
+    }
+    if (path === '/img-hop') {
+      res.writeHead(302, { Location: '/img' }).end();
+      return;
+    }
+    if (path === '/svg') {
+      res.writeHead(200, { 'Content-Type': 'image/svg+xml' }).end('<svg/>');
+      return;
+    }
+    if (path === '/big-img') {
+      res.writeHead(200, { 'Content-Type': 'image/png' }).end(Buffer.alloc(5_000));
       return;
     }
     if (path === '/hang') return; // never answers
@@ -121,5 +138,23 @@ describe('fetchPage', () => {
       options({ allowHosts: ['pinned.test'] }),
     );
     expect(result).toMatchObject({ ok: true });
+  });
+});
+
+describe('fetchImage', () => {
+  it('returns the bytes and bare media type of an image, through redirects', async () => {
+    const result = await fetchImage(local('/img-hop'), options());
+    expect(result).toEqual({ ok: true, bytes: new Uint8Array(JPEG), type: 'image/jpeg' });
+  });
+
+  it.each([['/svg'], ['/page'], ['/big-img'], ['/missing']])('fails %s', async (path) => {
+    expect(await fetchImage(local(path), options())).toEqual({ ok: false, error: 'fetch_failed' });
+  });
+
+  it('blocks a redirect to an address that is not allow-listed', async () => {
+    expect(await fetchImage(local('/to-loopback'), options())).toEqual({
+      ok: false,
+      error: 'blocked_address',
+    });
   });
 });

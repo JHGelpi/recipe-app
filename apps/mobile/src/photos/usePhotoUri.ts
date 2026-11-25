@@ -3,10 +3,10 @@ import { useEffect, useState } from 'react';
 import { config } from '../config';
 import { useNetworkOnline } from '../db/useNetworkOnline';
 import { auth } from '../session/auth';
-import { loadPhoto, PHOTO_CACHE, type LoadDeps } from './load';
+import { currentView, loadPhoto, PHOTO_CACHE, type LoadDeps, type PhotoView } from './load';
 import { readLocalPhoto } from './queue';
 
-export type PhotoView = { state: 'loading' | 'ready' | 'offline' | 'missing'; uri: string | null };
+export type { PhotoView };
 
 const RETRIES = 10;
 const RETRY_MS = 30_000;
@@ -21,7 +21,11 @@ export function usePhotoUri(id: string | null): PhotoView {
   const { data } = useQuery<{ local_uri: string | null; state: number }>(LOCAL_SQL, [id ?? '']);
   const row = data[0];
   const local = row?.local_uri && [0, 3].includes(Number(row.state)) ? row.local_uri : null;
-  const [view, setView] = useState<PhotoView>({ state: 'loading', uri: null });
+  const [view, setView] = useState<PhotoView & { id: string | null }>({
+    id,
+    state: 'loading',
+    uri: null,
+  });
   // Another phone may not have uploaded it yet: look again while it is missing.
   const [attempt, setAttempt] = useState(0);
 
@@ -29,13 +33,13 @@ export function usePhotoUri(id: string | null): PhotoView {
   // gets its own retries. Only an id change resets: a network flip or the
   // upload finishing must not blank a photo already shown (final review).
   useEffect(() => {
-    setView({ state: 'loading', uri: null });
+    setView({ id, state: 'loading', uri: null });
     setAttempt(0);
   }, [id]);
 
   useEffect(() => {
     if (!id) {
-      setView({ state: 'missing', uri: null });
+      setView({ id, state: 'missing', uri: null });
       return;
     }
     let live = true;
@@ -61,9 +65,9 @@ export function usePhotoUri(id: string | null): PhotoView {
       if (!live) return;
       if (blob) {
         made = URL.createObjectURL(blob);
-        setView({ state: 'ready', uri: made });
+        setView({ id, state: 'ready', uri: made });
       } else {
-        setView({ state: online ? 'missing' : 'offline', uri: null });
+        setView({ id, state: online ? 'missing' : 'offline', uri: null });
         if (online && attempt < RETRIES) {
           retry = setTimeout(() => live && setAttempt((n) => n + 1), RETRY_MS);
         }
@@ -76,5 +80,5 @@ export function usePhotoUri(id: string | null): PhotoView {
     };
   }, [db, id, local, online, attempt]);
 
-  return view;
+  return currentView(id, view);
 }

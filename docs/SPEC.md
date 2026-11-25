@@ -82,8 +82,8 @@ Priority: **M** = must for v1, **S** = should, **C** = could. Items marked *(pro
 ### Capture & import
 | ID | Requirement | Pri |
 |---|---|---|
-| FR-7 | Import from photo (camera or library), multiple pages per recipe *(built in 4b: up to 8 pages)* | M |
-| FR-8 | Import from URL via paste; via OS share sheet on native builds only (ADR-0007) | M |
+| FR-7 | Import from photo (camera or library), multiple pages per recipe *(built in 4b: up to 8 pages)*. A photo of the finished dish on a page is cut out as the dish photo (#116) | M |
+| FR-8 | Import from URL via paste; via OS share sheet on native builds only (ADR-0007). The page's recipe picture (JSON-LD `image`, else `og:image`) becomes the dish photo (#116) | M |
 | FR-9 | Import from pasted text (incl. social media comments) | M |
 | FR-10 | AI parses: title, ingredients (qty / unit / item / prep note), steps, servings, prep & cook time, suggested tags | M |
 | FR-11 | Review screen before save; low-confidence fields highlighted | M |

@@ -1,7 +1,9 @@
 import { z } from 'zod';
 import { parseIngredientLine, UNITS, type Ingredient, type Unit } from './ingredients';
 import { RECIPE_LIMITS, TITLE_MAX } from './limits';
+import { isHttpUrl } from './imports';
 import { cleanNutrition, nutritionSchema, type Nutrition } from './nutrition';
+import { PHOTO_LIMITS, type DishBox } from './photos';
 import type { Step } from './steps';
 
 /** Fields the AI can mark as unsure (FR-11). */
@@ -33,6 +35,22 @@ const draftIngredientSchema = z.strictObject({
 });
 export type DraftIngredient = z.infer<typeof draftIngredientSchema>;
 
+const fraction = z.number().min(0).max(1);
+// Narrower than 5% of the page is not a dish photo; reversed boxes are noise.
+const MIN_SIDE = 0.05;
+
+/** FR-15, #116: where the dish picture is, from a web page or a screenshot. */
+export const draftImageSchema = z.union([
+  z.strictObject({ url: z.string().max(2000).refine(isHttpUrl) }),
+  z.strictObject({
+    page: z.number().int().min(1).max(PHOTO_LIMITS.pages),
+    box: z
+      .tuple([fraction, fraction, fraction, fraction])
+      .refine(([x0, y0, x1, y1]) => x1 - x0 >= MIN_SIDE && y1 - y0 >= MIN_SIDE),
+  }),
+]);
+export type DraftImage = { url: string } | { page: number; box: DishBox };
+
 const minutes = z
   .number()
   .int()
@@ -57,6 +75,8 @@ export const importDraftSchema = z.strictObject({
   author: z.string().min(1).max(AUTHOR_MAX).nullable(),
   // FR-43. Optional: drafts stored before it have none.
   nutrition: nutritionSchema.nullable().optional(),
+  // Left out when there is none: older app builds read drafts strictly.
+  image: draftImageSchema.optional(),
   low_confidence: z.array(z.enum(DRAFT_FIELDS)),
 });
 export type ImportDraft = z.infer<typeof importDraftSchema>;
@@ -146,7 +166,10 @@ export function toImportDraft(input: unknown): ImportDraft | null {
       ),
     ),
   };
-  const parsed = importDraftSchema.safeParse(draft);
+  const image = draftImageSchema.safeParse(input.image);
+  const parsed = importDraftSchema.safeParse(
+    image.success ? { ...draft, image: image.data } : draft,
+  );
   return parsed.success ? parsed.data : null;
 }
 
